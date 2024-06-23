@@ -1,6 +1,3 @@
-import 'dotenv/config'; // This import block MUST come before any other imports.
-import 'module-alias/register';
-
 import { decodeBase58, encodeBase58 } from '@/util/encode';
 import { path as appRootPath } from 'app-root-path';
 import { readFileSync, writeFileSync } from 'fs';

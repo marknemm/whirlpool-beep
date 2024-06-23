@@ -1,15 +1,16 @@
-import 'dotenv/config'; // This import block MUST come before any other imports.
-import 'module-alias/register';
-
-import { validatePrivateKey } from '@/util/wallet-keys';
+import rpc from '@/util/rpc';
+import { getValidateKeypair } from '@/util/wallet-keypair';
 
 /**
  * Main entry point.
  */
 async function main() {
   try {
-    await validatePrivateKey();
-    console.log('WALLET_PRIVATE_KEY is valid');
+    const keypair = await getValidateKeypair(); // Extra validation precaution.
+
+    await rpc.getBalance(keypair.publicKey);
+
+    console.log('Wallet balance:', (await rpc.getBalance(keypair.publicKey)) / 1e9, 'SOL');
   } catch (error) {
     console.error(error);
     process.exit(1);

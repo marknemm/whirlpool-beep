@@ -4,19 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "clean": "rimraf dist",
+    "build": "tsc && tsc-alias",
+    "clean": "rimraf dist wallet-pk.json",
     "clean:all": "npm run clean && rm -rf node_modules",
-    "cli": "cd ./src/cli && ts-node",
+    "cli": "cd ./src/cli && dotenv -- ts-node -r tsconfig-paths/register",
     "lint": "eslint .",
-    "start": "ts-node src/index.ts",
+    "start": "dotenv -- ts-node -r tsconfig-paths/register src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "_moduleAliases": {
-    "@": "dist"
+    "@": "src"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
@@ -27,17 +27,19 @@
     "app-root-path": "^3.1.0",
     "bs58": "^5.0.0",
     "decimal.js": "^10.4.3",
-    "dotenv": "^16.4.5",
-    "module-alias": "^2.2.3"
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^20.14.8",
+    "dotenv-cli": "^7.4.2",
     "eslint": "^8.57.0",
     "globals": "^15.6.0",
     "rimraf": "^5.0.7",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.10",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.5.2",
     "typescript-eslint": "^7.13.1"
   }

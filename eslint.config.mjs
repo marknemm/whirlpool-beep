@@ -10,7 +10,10 @@ export default tseslint.config({
     ...tseslint.configs.recommended,
   ],
   rules: {
+    '@typescript-eslint/no-unused-vars': 'warn',
+    'no-unused-vars': 'warn',
     'quotes': ['warn', 'single'],
+    'semi': ['warn', 'always'],
   }
 });
 

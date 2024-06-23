@@ -12,7 +12,7 @@ export function encodeBase58(input: string | Uint8Array | null): string {
   if (typeof input === 'string') {
     input = JSON.parse(input) as Uint8Array;
   }
-  return bs58.encode(Uint8Array.from(input))
+  return bs58.encode(Uint8Array.from(input));
 }
 
 /**
