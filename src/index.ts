@@ -6,7 +6,7 @@ import { getValidateKeypair } from '@/util/wallet-keypair';
  */
 async function main() {
   try {
-    const keypair = await getValidateKeypair(); // Extra validation precaution.
+    const keypair = getValidateKeypair();
 
     await rpc.getBalance(keypair.publicKey);
 
