@@ -7,6 +7,7 @@
     "build": "tsc",
     "clean": "rimraf dist",
     "clean:all": "npm run clean && rm -rf node_modules",
+    "cli": "cd ./src/cli && ts-node",
     "lint": "eslint .",
     "start": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,15 +15,20 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "_moduleAliases": {
+    "@": "dist"
+  },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@orca-so/common-sdk": "^0.6.0",
     "@orca-so/whirlpools-sdk": "^0.13.0",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "^1.93.1",
+    "app-root-path": "^3.1.0",
     "bs58": "^5.0.0",
     "decimal.js": "^10.4.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "module-alias": "^2.2.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
