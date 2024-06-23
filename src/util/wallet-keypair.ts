@@ -1,5 +1,7 @@
-import { decodeBase58 } from '@/util/encode';
+import { ANCHOR_WALLET } from '@/constants/anchor';
+import { decodeBase58, encodeBase58 } from '@/util/encode';
 import { Keypair } from '@solana/web3.js';
+import { readFile, writeFile } from 'fs/promises';
 
 /**
  * Get the wallet's public/private {@link Keypair}.
@@ -26,6 +28,25 @@ export function getValidateKeypair(): Keypair {
   }
 
   return keypair;
+}
+
+/**
+ * Write the wallet's private key byte array to a JSON file.
+ *
+ * @param keypair The wallet's {@link Keypair}.
+ * @return A {@link Promise} that resolves when the wallet JSON file has been written.
+ * @throws An error if the private key byte array could not be written to the JSON file.
+ */
+export async function writeWalletJson(keypair: Keypair): Promise<void> {
+  // write file
+  await writeFile(ANCHOR_WALLET, `[${keypair.secretKey.toString()}]`);
+
+  // verify file
+  const pkRawBytesLoaded = await readFile(ANCHOR_WALLET, { encoding: 'utf-8' });
+  const pkB58StrLoaded = encodeBase58(pkRawBytesLoaded);
+  if ( getPrivateKeyEnv() !== pkB58StrLoaded ) {
+    throw new Error(`Failed to write private key to ${ANCHOR_WALLET}`);
+  }
 }
 
 /**

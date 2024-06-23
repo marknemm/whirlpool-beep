@@ -1,5 +1,5 @@
 import rpc from '@/util/rpc';
-import { getValidateKeypair } from '@/util/wallet-keypair';
+import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
 
 /**
  * Main entry point.
@@ -7,6 +7,7 @@ import { getValidateKeypair } from '@/util/wallet-keypair';
 async function main() {
   try {
     const keypair = getValidateKeypair();
+    await writeWalletJson(keypair);
 
     await rpc.getBalance(keypair.publicKey);
 

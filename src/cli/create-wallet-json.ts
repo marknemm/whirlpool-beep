@@ -5,7 +5,7 @@ import { createInterface } from 'readline';
 
 const outFilename = (process.argv.length > 2) // First arg is node, second arg is script name.
   ?  `${appRootPath}/${process.argv[2]}`
-  : `${appRootPath}/wallet-pk.json`;
+  : `${appRootPath}/wallet.json`;
 
 const readline = createInterface({
   input: process.stdin,
