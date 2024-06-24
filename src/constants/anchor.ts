@@ -1,4 +1,3 @@
-
 /**
  * Anchor wallet filename. Will contain JSON byte array of the wallet's private key.
  */

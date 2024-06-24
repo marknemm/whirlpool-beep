@@ -7,7 +7,7 @@ import { readFile, writeFile } from 'fs/promises';
  * Get the wallet's public/private {@link Keypair}.
  *
  * @returns The wallet's {@link Keypair}.
- * @throws An error if the private key `WALLET_PRIVATE_KEY` env var is not set.
+ * @throws An error if the private key `WALLET_PRIVATE_KEY` env var is not set or is invalid.
  */
 export function getKeypair(): Keypair {
   const privateKeyBytes = decodeBase58(getPrivateKeyEnv());
@@ -15,7 +15,7 @@ export function getKeypair(): Keypair {
 }
 
 /**
- * Get and validate the wallet's public/private {@link Keypair}.
+ * Get and perform extra validation on the wallet's public/private {@link Keypair}.
  *
  * @returns The wallet's {@link Keypair}.
  * @throws An error if the private key is invalid or does not match the expected public key.
@@ -39,7 +39,7 @@ export function getValidateKeypair(): Keypair {
  */
 export async function writeWalletJson(keypair: Keypair): Promise<void> {
   // write file
-  await writeFile(ANCHOR_WALLET, `[${keypair.secretKey.toString()}]`);
+  await writeFile(ANCHOR_WALLET, `[${keypair.secretKey.toString()}]`, { encoding: 'utf-8' });
 
   // verify file
   const pkRawBytesLoaded = await readFile(ANCHOR_WALLET, { encoding: 'utf-8' });

@@ -1,17 +1,24 @@
-import rpc from '@/util/rpc';
+import { getPrice } from '@/services/get-price';
 import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
+import { whirlpoolClient } from '@/util/whirlpool-client';
 
 /**
  * Main entry point.
  */
 async function main() {
   try {
+    // Initialization
     const keypair = getValidateKeypair();
     await writeWalletJson(keypair);
 
-    await rpc.getBalance(keypair.publicKey);
+    const ctx = whirlpoolClient().getContext();
+    const rpc = ctx.connection;
+    const publicKey = ctx.wallet.publicKey;
 
-    console.log('Wallet balance:', (await rpc.getBalance(keypair.publicKey)) / 1e9, 'SOL');
+    const balance = (await rpc.getBalance(publicKey)) / 1e9;
+    console.log('Wallet balance:', balance, 'SOL');
+
+    await getPrice();
   } catch (error) {
     console.error(error);
     process.exit(1);
