@@ -1,5 +1,5 @@
-import { ANCHOR_WALLET } from '@/constants/anchor';
 import { decodeBase58, encodeBase58 } from '@/util/encode';
+import { env } from '@/util/env';
 import { Keypair } from '@solana/web3.js';
 import { readFile, writeFile } from 'fs/promises';
 
@@ -10,7 +10,7 @@ import { readFile, writeFile } from 'fs/promises';
  * @throws An error if the private key `WALLET_PRIVATE_KEY` env var is not set or is invalid.
  */
 export function getKeypair(): Keypair {
-  const privateKeyBytes = decodeBase58(getPrivateKeyEnv());
+  const privateKeyBytes = decodeBase58(env.WALLET_PRIVATE_KEY);
   return Keypair.fromSecretKey(privateKeyBytes);
 }
 
@@ -23,7 +23,7 @@ export function getKeypair(): Keypair {
 export function getValidateKeypair(): Keypair {
   const keypair = getKeypair();
 
-  if (keypair.publicKey.toBase58() !== getWalletAddressEnv()) {
+  if (keypair.publicKey.toBase58() !== env.WALLET_ADDRESS) {
     throw new Error('Public key does not match expected value');
   }
 
@@ -39,40 +39,12 @@ export function getValidateKeypair(): Keypair {
  */
 export async function writeWalletJson(keypair: Keypair): Promise<void> {
   // write file
-  await writeFile(ANCHOR_WALLET, `[${keypair.secretKey.toString()}]`, { encoding: 'utf-8' });
+  await writeFile(env.ANCHOR_WALLET, `[${keypair.secretKey.toString()}]`, { encoding: 'utf-8' });
 
   // verify file
-  const pkRawBytesLoaded = await readFile(ANCHOR_WALLET, { encoding: 'utf-8' });
+  const pkRawBytesLoaded = await readFile(env.ANCHOR_WALLET, { encoding: 'utf-8' });
   const pkB58StrLoaded = encodeBase58(pkRawBytesLoaded);
-  if ( getPrivateKeyEnv() !== pkB58StrLoaded ) {
-    throw new Error(`Failed to write private key to ${ANCHOR_WALLET}`);
+  if ( env.WALLET_PRIVATE_KEY !== pkB58StrLoaded ) {
+    throw new Error(`Failed to write private key to ${env.ANCHOR_WALLET}`);
   }
-}
-
-/**
- * Get the wallet's private key.
- *
- * @returns The wallet's private key as a (base58) string.
- * @throws An error if the private key `WALLET_PRIVATE_KEY` env var is not set.
- */
-function getPrivateKeyEnv(): string {
-  if (!process.env.WALLET_PRIVATE_KEY) {
-    throw new Error('WALLET_PRIVATE_KEY env var is not set');
-  }
-
-  return process.env.WALLET_PRIVATE_KEY.trim();
-}
-
-/**
- * Get the wallet's public key. This is also the wallet's address.
- *
- * @returns The wallet's public key as a (base58) string.
- * @throws An error if the public key `WALLET_ADDRESS` env var is not set.
- */
-function getWalletAddressEnv(): string {
-  if (!process.env.WALLET_ADDRESS) {
-    throw new Error('WALLET_ADDRESS env var is not set');
-  }
-
-  return process.env.WALLET_ADDRESS.trim();
 }

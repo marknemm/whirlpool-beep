@@ -8,16 +8,15 @@
     "clean": "rimraf dist wallet-pk.json",
     "clean:all": "npm run clean && rm -rf node_modules",
     "cli": "cd ./src/cli && dotenv -- ts-node -r tsconfig-paths/register",
+    "dev": "dotenv -e .env.development -e .env -- ts-node -r tsconfig-paths/register src/index.ts",
     "lint": "eslint .",
-    "start": "dotenv -- ts-node -r tsconfig-paths/register src/index.ts",
+    "prod": "dotenv -e .env.production -e .env -- ts-node -r tsconfig-paths/register src/index.ts",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "_moduleAliases": {
-    "@": "src"
-  },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@orca-so/common-sdk": "^0.6.0",
@@ -27,7 +26,8 @@
     "app-root-path": "^3.1.0",
     "bs58": "^5.0.0",
     "decimal.js": "^10.4.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "envalid": "^8.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",

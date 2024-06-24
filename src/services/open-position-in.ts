@@ -1,6 +1,7 @@
+import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import { whirlpoolClient } from '@/util/whirlpool-client';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, TokenExtensionUtil, PDAUtil, PriceMath, increaseLiquidityQuoteByInputTokenWithParams, buildDefaultAccountFetcher, IGNORE_CACHE } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, TokenExtensionUtil, buildDefaultAccountFetcher, increaseLiquidityQuoteByInputTokenWithParams } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 
@@ -12,15 +13,11 @@ export async function openPositionIn() {
   const devUSDC = { mint: new PublicKey('BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k'), decimals: 6 };
   const devSAMO = { mint: new PublicKey('Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa'), decimals: 9 };
 
-  // WhirlpoolsConfig account
-  // devToken ecosystem / Orca Whirlpools
-  const DEVNET_WHIRLPOOLS_CONFIG = new PublicKey('FcrweFY1G9HJAHG5inkGB6pKg1HZ6x9UC2WioAfWrGkR');
-
   // Get devSAMO/devUSDC whirlpool
   const tickSpacing = 64;
   const whirlpoolPubkey = PDAUtil.getWhirlpool(
     ORCA_WHIRLPOOL_PROGRAM_ID,
-    DEVNET_WHIRLPOOLS_CONFIG,
+    WHIRLPOOL_CONFIG_PUBLIC_KEY,
     devSAMO.mint,
     devUSDC.mint,
     tickSpacing

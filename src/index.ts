@@ -7,6 +7,10 @@ import { whirlpoolClient } from '@/util/whirlpool-client';
  */
 async function main() {
   try {
+    if (!process.env.NODE_ENV) {
+      throw new Error('NODE_ENV is not set.');
+    }
+
     // Initialization
     const keypair = getValidateKeypair();
     await writeWalletJson(keypair);
