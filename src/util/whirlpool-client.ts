@@ -1,5 +1,7 @@
+import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
+import { WhirlpoolArgs } from '@/interfaces/whirlpool';
 import { AnchorProvider } from '@coral-xyz/anchor';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, type WhirlpoolClient, WhirlpoolContext, buildWhirlpoolClient } from '@orca-so/whirlpools-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolContext, buildWhirlpoolClient, type Whirlpool, type WhirlpoolClient } from '@orca-so/whirlpools-sdk';
 
 let client: WhirlpoolClient;
 
@@ -23,4 +25,23 @@ export function whirlpoolClient(): WhirlpoolClient {
   }
 
   return client;
+}
+
+/**
+ * Gets a {@link Whirlpool} via a Program Derived Address (PDA).
+ *
+ * @param args The {@link WhirlpoolArgs arguments} to derive the PDA for the Whirlpool.
+ * @returns The {@link Whirlpool}.
+ */
+export function getPoolViaPDA(args: WhirlpoolArgs): Promise<Whirlpool> {
+  const whirlpoolPublicKey = PDAUtil.getWhirlpool(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    args.whirlpoolConfigKey ?? WHIRLPOOL_CONFIG_PUBLIC_KEY,
+    args.tokenAMeta.mint,
+    args.tokenBMeta.mint,
+    args.tickSpacing
+  ).publicKey;
+
+  console.log('whirlpool key:', whirlpoolPublicKey.toBase58());
+  return whirlpoolClient().getPool(whirlpoolPublicKey);
 }

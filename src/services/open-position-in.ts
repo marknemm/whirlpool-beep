@@ -1,46 +1,26 @@
-import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
+import { USDC_TOKEN_META } from '@/constants/token';
+import { WhirlpoolArgs } from '@/interfaces/whirlpool';
 import { whirlpoolClient } from '@/util/whirlpool-client';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, TokenExtensionUtil, buildDefaultAccountFetcher, increaseLiquidityQuoteByInputTokenWithParams } from '@orca-so/whirlpools-sdk';
-import { PublicKey } from '@solana/web3.js';
+import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, buildDefaultAccountFetcher, increaseLiquidityQuoteByInputTokenWithParams } from '@orca-so/whirlpools-sdk';
 import Decimal from 'decimal.js';
+import { getPrice } from './get-price';
 
-export async function openPositionIn() {
+export async function openPositionIn(whirlpoolArgs: WhirlpoolArgs) {
   const client = whirlpoolClient();
   const ctx = client.getContext();
 
-  // https://everlastingsong.github.io/nebula/
-  const devUSDC = { mint: new PublicKey('BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k'), decimals: 6 };
-  const devSAMO = { mint: new PublicKey('Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa'), decimals: 9 };
-
-  // Get devSAMO/devUSDC whirlpool
-  const tickSpacing = 64;
-  const whirlpoolPubkey = PDAUtil.getWhirlpool(
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-    WHIRLPOOL_CONFIG_PUBLIC_KEY,
-    devSAMO.mint,
-    devUSDC.mint,
-    tickSpacing
-  ).publicKey;
-  console.log('whirlpool key:', whirlpoolPubkey.toBase58());
-  const whirlpool = await whirlpoolClient().getPool(whirlpoolPubkey);
-
-  // Get the current price of the pool
-  const sqrtPriceX64 = whirlpool.getData().sqrtPrice;
-  const price = PriceMath.sqrtPriceX64ToPrice(sqrtPriceX64, devSAMO.decimals, devUSDC.decimals);
-  console.log('price:', price.toFixed(devUSDC.decimals));
+  const { tokenA, tokenB, whirlpool } = await getPrice(whirlpoolArgs);
+  const whirlpoolData = whirlpool.getData();
 
   // Set price range, amount of tokens to deposit, and acceptable slippage
   const lowerPrice = new Decimal('0.005');
   const upperPrice = new Decimal('0.02');
-  const devUSDCAmt = DecimalUtil.toBN(new Decimal('1' /* devUSDC */), devUSDC.decimals);
+  const devUSDCAmt = DecimalUtil.toBN(new Decimal('1' /* devUSDC */), tokenB.decimals);
   const slippage = Percentage.fromFraction(10, 1000); // 1%
 
   // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
   // (prices corresponding to InitializableTickIndex are available)
-  const whirlpoolData = whirlpool.getData();
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
   const lowerTickIdx = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, whirlpoolData.tickSpacing);
   const upperTickIdx = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, whirlpoolData.tickSpacing);
   console.log('lower & upper tick index:', lowerTickIdx, upperTickIdx);
@@ -68,7 +48,7 @@ export async function openPositionIn() {
     tickLowerIndex: lowerTickIdx,
     tickUpperIndex: upperTickIdx,
     // Input token and amount
-    inputTokenMint: devUSDC.mint,
+    inputTokenMint: USDC_TOKEN_META.mint,
     inputTokenAmount: devUSDCAmt,
     // Acceptable slippage
     slippageTolerance: slippage,

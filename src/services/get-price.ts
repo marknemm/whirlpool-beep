@@ -1,34 +1,25 @@
-import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { whirlpoolClient } from '@/util/whirlpool-client';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath } from '@orca-so/whirlpools-sdk';
-import { PublicKey } from '@solana/web3.js';
-import type Decimal from 'decimal.js';
+import type { TokenPriceData } from '@/interfaces/token';
+import type { WhirlpoolArgs } from '@/interfaces/whirlpool';
+import { getPoolViaPDA } from '@/util/whirlpool-client';
+import type { Whirlpool } from '@orca-so/whirlpools-sdk';
+import { PriceMath } from '@orca-so/whirlpools-sdk';
 
-export async function getPrice(): Promise<Decimal> {
-  const client = whirlpoolClient();
-
-  // https://everlastingsong.github.io/nebula/
-  const devUSDC = { mint: new PublicKey('BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k'), decimals: 6 };
-  const devSAMO = { mint: new PublicKey('Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa'), decimals: 9 };
-
-  // Get devSAMO/devUSDC whirlpool
-  const tickSpacing = 64;
-  const whirlpoolPublicKey = PDAUtil.getWhirlpool(
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-    WHIRLPOOL_CONFIG_PUBLIC_KEY,
-    devSAMO.mint,
-    devUSDC.mint,
-    tickSpacing
-  ).publicKey;
-  console.log('whirlpool key:', whirlpoolPublicKey.toBase58());
-  const whirlpool = await client.getPool(whirlpoolPublicKey);
+/**
+ * Get the price of a {@link Whirlpool} defined by {@link whirlpoolArgs}.
+ *
+ * The price is the price of {@link tokenA} in terms of {@link tokenB}.
+ *
+ * @param whirlpoolArgs The {@link WhirlpoolArgs arguments} to derive the {@link Whirlpool} and calculate the price.
+ * @returns A {@link Promise} that resolves to the {@link TokenPriceData} of the {@link Whirlpool}.
+ */
+export async function getPrice(whirlpoolArgs: WhirlpoolArgs): Promise<TokenPriceData> {
+  const whirlpool = await getPoolViaPDA(whirlpoolArgs);
+  const tokenA = { ...whirlpoolArgs.tokenAMeta, ...whirlpool.getTokenAInfo() };
+  const tokenB = { ...whirlpoolArgs.tokenBMeta, ...whirlpool.getTokenBInfo() };
 
   // Get the current price of the pool
-  const sqrtPriceX64 = whirlpool.getData().sqrtPrice;
-  const price = PriceMath.sqrtPriceX64ToPrice(sqrtPriceX64, devSAMO.decimals, devUSDC.decimals);
+  const sqrtPrice = whirlpool.getData().sqrtPrice;
+  const price = PriceMath.sqrtPriceX64ToPrice(sqrtPrice, tokenA.decimals, tokenB.decimals);
 
-  console.log('sqrt price x64:', sqrtPriceX64.toString());
-  console.log('price:', price.toFixed(devUSDC.decimals));
-
-  return price;
+  return { price, sqrtPrice, tokenA, tokenB, whirlpool };
 }
