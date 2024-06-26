@@ -1,23 +1,52 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { WhirlpoolArgs } from '@/interfaces/whirlpool';
-import { AnchorProvider } from '@coral-xyz/anchor';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolContext, buildWhirlpoolClient, type Whirlpool, type WhirlpoolClient } from '@orca-so/whirlpools-sdk';
-
-let client: WhirlpoolClient;
+import type { WhirlpoolArgs, WhirlpoolClientExt } from '@/interfaces/whirlpool';
+import { anchor } from '@/util/anchor';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolContext, buildWhirlpoolClient } from '@orca-so/whirlpools-sdk';
+import { PublicKey } from '@solana/web3.js';
 
 /**
- * Initializes and gets a singleton {@link whirlpoolClient} for interacting with Whirlpool accounts on Solana.
+ * Singleton {@link WhirlpoolClientExt} for interacting with Whirlpool accounts on Solana.
+ *
+ * Initialized via {@link whirlpoolClient}.
+ */
+let client: WhirlpoolClientExt;
+
+/**
+ * Initializes and gets a singleton {@link whirlpoolClientExt} for interacting with Whirlpool accounts on Solana.
  *
  * `Note`: Must be invoked after writing the wallet JSON file.
  *
- * @return The singleton {@link WhirlpoolClient}.
+ * @return The singleton {@link WhirlpoolClientExt}.
  */
-export function whirlpoolClient(): WhirlpoolClient {
+export function whirlpoolClient(): WhirlpoolClientExt {
   if (!client) { // Enforce singleton
-    const provider = AnchorProvider.env();
-    const ctx = WhirlpoolContext.withProvider(provider, ORCA_WHIRLPOOL_PROGRAM_ID);
+    // Initialize WhirlpoolClient with AnchorProvider which reads wallet pk in wallet.json.
 
-    client = buildWhirlpoolClient(ctx);
+    const ctx = WhirlpoolContext.withProvider(anchor, ORCA_WHIRLPOOL_PROGRAM_ID);
+
+    // Build base WhirlpoolClient and assign custom extension methods
+    client = Object.assign(buildWhirlpoolClient(ctx), {
+
+      getPoolViaPDA: (args: WhirlpoolArgs) => {
+        console.log(ORCA_WHIRLPOOL_PROGRAM_ID.toBase58());
+        console.log(args.whirlpoolConfigKey?.toBase58() ?? WHIRLPOOL_CONFIG_PUBLIC_KEY.toBase58());
+        console.log(args.tokenAMeta.address);
+        console.log(args.tokenBMeta.address);
+        console.log(args.tickSpacing);
+
+        const whirlpoolPublicKey = PDAUtil.getWhirlpool(
+          ORCA_WHIRLPOOL_PROGRAM_ID,
+          args.whirlpoolConfigKey ?? WHIRLPOOL_CONFIG_PUBLIC_KEY,
+          new PublicKey(args.tokenAMeta.address),
+          new PublicKey(args.tokenBMeta.address),
+          args.tickSpacing
+        ).publicKey;
+
+        console.log('whirlpool key:', whirlpoolPublicKey.toBase58());
+        return client.getPool(whirlpoolPublicKey);
+      }
+
+    } as WhirlpoolClientExt);
 
     console.log('Initialized whirlpool client');
     console.log('RPC Endpoint:', ctx.connection.rpcEndpoint);
@@ -25,23 +54,4 @@ export function whirlpoolClient(): WhirlpoolClient {
   }
 
   return client;
-}
-
-/**
- * Gets a {@link Whirlpool} via a Program Derived Address (PDA).
- *
- * @param args The {@link WhirlpoolArgs arguments} to derive the PDA for the Whirlpool.
- * @returns The {@link Whirlpool}.
- */
-export function getPoolViaPDA(args: WhirlpoolArgs): Promise<Whirlpool> {
-  const whirlpoolPublicKey = PDAUtil.getWhirlpool(
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-    args.whirlpoolConfigKey ?? WHIRLPOOL_CONFIG_PUBLIC_KEY,
-    args.tokenAMeta.mint,
-    args.tokenBMeta.mint,
-    args.tickSpacing
-  ).publicKey;
-
-  console.log('whirlpool key:', whirlpoolPublicKey.toBase58());
-  return whirlpoolClient().getPool(whirlpoolPublicKey);
 }

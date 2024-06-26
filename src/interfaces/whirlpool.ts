@@ -1,5 +1,5 @@
 import type { TokenMeta } from '@/interfaces/token';
-import type { Whirlpool } from '@orca-so/whirlpools-sdk';
+import type { Whirlpool, WhirlpoolClient } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
 
 /**
@@ -32,5 +32,28 @@ export interface WhirlpoolArgs {
    * @default WHIRLPOOL_CONFIG_PUBLIC_KEY
    */
   whirlpoolConfigKey?: PublicKey;
+
+}
+
+/**
+ * Helper class to help interact with Whirlpool Accounts with a simpler interface.
+ *
+ * Also contains custom extension methods.
+ *
+ * @extends WhirlpoolClient The native Orca SO {@link WhirlpoolClient}.
+ */
+export interface WhirlpoolClientExt extends WhirlpoolClient {
+
+  /**
+   * Custom ext that gets a {@link Whirlpool} via a Program Derived Address (PDA).
+   *
+   * @param args The {@link WhirlpoolArgs arguments} to derive the PDA for the Whirlpool.
+   * @returns The {@link Whirlpool}.
+   */
+  getPoolViaPDA(args: WhirlpoolArgs): Promise<Whirlpool>;
+
+}
+
+export interface WhirlpoolPositionRange {
 
 }

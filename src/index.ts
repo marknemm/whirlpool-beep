@@ -1,33 +1,32 @@
-import { getPrice } from '@/services/get-price';
+import { env } from '@/util/env'; // Load and validate env variables ASAP
+
+import { getTokenMetaPair } from '@/services/token/query';
+import { getBalance } from '@/services/wallet/get-balance';
+import { getPrice } from '@/services/whirlpool/get-price';
+import { logPrice } from '@/util/log';
 import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
-import { whirlpoolClient } from '@/util/whirlpool-client';
-import { SAMO_TOKEN_META, USDC_TOKEN_META } from './constants/token';
-import { logPrice } from './util/log';
 
 /**
  * Main entry point.
  */
 async function main() {
   try {
-    if (!process.env.NODE_ENV) {
-      throw new Error('NODE_ENV is not set.');
-    }
-
-    // Initialization
+    // Initialization using wallet private key
     const keypair = getValidateKeypair();
     await writeWalletJson(keypair);
 
-    const ctx = whirlpoolClient().getContext();
-    const rpc = ctx.connection;
-    const publicKey = ctx.wallet.publicKey;
+    // Fetch token metadata (will throw error if tokens are not found)
+    const [tokenAMeta, tokenBMeta] = await getTokenMetaPair();
 
-    const balance = (await rpc.getBalance(publicKey)) / 1e9;
+    // Check wallet account balance
+    const balance = await getBalance();
     console.log('Wallet balance:', balance, 'SOL');
 
+    // Check price of whirlpool
     const price = await getPrice({
-      tickSpacing: 64,
-      tokenAMeta: SAMO_TOKEN_META,
-      tokenBMeta: USDC_TOKEN_META,
+      tickSpacing: env.TICK_SPACING,
+      tokenAMeta,
+      tokenBMeta,
     });
     logPrice(price);
   } catch (error) {

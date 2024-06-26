@@ -1,12 +1,11 @@
 import type { BN } from '@coral-xyz/anchor';
 import type { TokenInfo, Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
 /**
  * Full info for a token.
  */
-export type Token = TokenMeta & TokenInfo;
+export type Token = Omit<TokenMeta, 'address'> & TokenInfo;
 
 /**
  * Token metadata.
@@ -14,9 +13,19 @@ export type Token = TokenMeta & TokenInfo;
 export interface TokenMeta {
 
   /**
-   * The {@link PublicKey} of the token.
+   * The address of the token.
    */
-  mint: PublicKey;
+  address: string;
+
+  /**
+   * The number of decimals for the token amount.
+   */
+  decimals: number;
+
+  /**
+   * The logo URI of the token.
+   */
+  logoURI?: string;
 
   /**
    * The name of the token.
@@ -27,6 +36,16 @@ export interface TokenMeta {
    * The symbol of the token.
    */
   symbol: string;
+
+  /**
+   * The tags for the token.
+   */
+  tags?: string[];
+
+  /**
+   * The URI for the token.
+   */
+  uri?: string;
 
 }
 
@@ -59,5 +78,17 @@ export interface TokenPriceData {
    * The {@link Whirlpool} that is used to calculate the price.
    */
   whirlpool: Whirlpool;
+
+}
+
+/**
+ * The response of a token query.
+ */
+export interface TokenQueryResponse {
+
+  /**
+   * The content of the response.
+   */
+  content: TokenMeta[];
 
 }

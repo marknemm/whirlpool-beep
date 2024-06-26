@@ -1,39 +1,43 @@
-import { USDC_TOKEN_META } from '@/constants/token';
-import { WhirlpoolArgs } from '@/interfaces/whirlpool';
+import type { WhirlpoolArgs } from '@/interfaces/whirlpool';
+import { getPrice } from '@/services/whirlpool/get-price';
+import { logPositionRange, logPrice } from '@/util/log';
 import { whirlpoolClient } from '@/util/whirlpool-client';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, buildDefaultAccountFetcher, increaseLiquidityQuoteByInputTokenWithParams } from '@orca-so/whirlpools-sdk';
+import { type RpcResponseAndContext, type SignatureResult } from '@solana/web3.js';
 import Decimal from 'decimal.js';
-import { getPrice } from './get-price';
 
-export async function openPositionIn(whirlpoolArgs: WhirlpoolArgs) {
+/**
+ * Opens a position in a {@link Whirlpool}.
+ * The position is opened with a price range and a specified amount of liquidity.
+ *
+ * @param whirlpoolArgs The {@link WhirlpoolArgs} to use for retrieving the {@link Whirlpool} to open a position in.
+ * @returns A {@link Promise} that resolves to an {@link RpcResponseAndContext} containing the {@link SignatureResult} of the transaction.
+ */
+export async function openPosition(whirlpoolArgs: WhirlpoolArgs): Promise<RpcResponseAndContext<SignatureResult>> {
   const client = whirlpoolClient();
-  const ctx = client.getContext();
+  const rpc = client.getContext().connection;
 
-  const { tokenA, tokenB, whirlpool } = await getPrice(whirlpoolArgs);
+  const tokenPriceData = await getPrice(whirlpoolArgs);
+  logPrice(tokenPriceData);
+
+  const { tokenA, tokenB, whirlpool } = tokenPriceData;
   const whirlpoolData = whirlpool.getData();
 
   // Set price range, amount of tokens to deposit, and acceptable slippage
   const lowerPrice = new Decimal('0.005');
   const upperPrice = new Decimal('0.02');
-  const devUSDCAmt = DecimalUtil.toBN(new Decimal('1' /* devUSDC */), tokenB.decimals);
-  const slippage = Percentage.fromFraction(10, 1000); // 1%
 
   // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
   // (prices corresponding to InitializableTickIndex are available)
   const lowerTickIdx = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, whirlpoolData.tickSpacing);
   const upperTickIdx = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, whirlpoolData.tickSpacing);
-  console.log('lower & upper tick index:', lowerTickIdx, upperTickIdx);
-  console.log('lower & upper price:',
-    PriceMath.tickIndexToPrice(lowerTickIdx, tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-    PriceMath.tickIndexToPrice(upperTickIdx, tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals)
-  );
+  logPositionRange(lowerTickIdx, upperTickIdx, tokenA, tokenB);
 
-  const fetcher = await buildDefaultAccountFetcher(ctx.connection);
   const tokenExtensionCtx = await TokenExtensionUtil.buildTokenExtensionContext(
-    fetcher,
+    await buildDefaultAccountFetcher(rpc),
     whirlpoolData,
-    IGNORE_CACHE,
+    IGNORE_CACHE
   );
 
   // Obtain deposit estimation
@@ -48,10 +52,10 @@ export async function openPositionIn(whirlpoolArgs: WhirlpoolArgs) {
     tickLowerIndex: lowerTickIdx,
     tickUpperIndex: upperTickIdx,
     // Input token and amount
-    inputTokenMint: USDC_TOKEN_META.mint,
-    inputTokenAmount: devUSDCAmt,
+    inputTokenMint: tokenB.mint,
+    inputTokenAmount: DecimalUtil.toBN(new Decimal('1' /* devUSDC */), tokenB.decimals),
     // Acceptable slippage
-    slippageTolerance: slippage,
+    slippageTolerance: Percentage.fromFraction(10, 1000) // 1%,
   });
 
   // Output the estimation
@@ -71,6 +75,6 @@ export async function openPositionIn(whirlpoolArgs: WhirlpoolArgs) {
   console.log('position NFT:', openPositionTx.positionMint.toBase58());
 
   // Wait for the transaction to complete
-  const latestBlockhash = await ctx.connection.getLatestBlockhash();
-  await ctx.connection.confirmTransaction({signature, ...latestBlockhash}, 'confirmed');
+  const latestBlockhash = await rpc.getLatestBlockhash();
+  return rpc.confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
 }
