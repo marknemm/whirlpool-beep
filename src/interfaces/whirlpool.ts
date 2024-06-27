@@ -1,6 +1,15 @@
-import type { TokenMeta } from '@/interfaces/token';
+import type { Token, TokenMeta } from '@/interfaces/token';
+import { BN } from '@coral-xyz/anchor';
 import type { Whirlpool, WhirlpoolClient } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
+import Decimal from 'decimal.js';
+
+/**
+ * The tick index range of a {@link Whirlpool} position.
+ *
+ * The tick index range will be within `[-443636, 443636]`, which maps to a price range of `[2^-64, 2^64]`.
+ */
+export type PositionTickRange = [number, number];
 
 /**
  * Arguments to derive the `PDA` (program derived address) for a {@link Whirlpool}.
@@ -54,6 +63,34 @@ export interface WhirlpoolClientExt extends WhirlpoolClient {
 
 }
 
-export interface WhirlpoolPositionRange {
+/**
+ * The {@link price} of a {@link Whirlpool} token, {@link tokenA}, in terms of token {@link tokenB}.
+ */
+export interface WhirlpoolPriceData {
+
+  /**
+   * The price of {@link tokenA} in terms of {@link tokenB}.
+   */
+  price: Decimal;
+
+  /**
+   * The square root of the price of {@link tokenA} in terms of {@link tokenB}.
+   */
+  sqrtPrice: BN;
+
+  /**
+   * The token that is priced.
+   */
+  tokenA: Token;
+
+  /**
+   * The token that {@link tokenA} is priced in terms of.
+   */
+  tokenB: Token;
+
+  /**
+   * The {@link Whirlpool} that is used to calculate the price.
+   */
+  whirlpool: Whirlpool;
 
 }
