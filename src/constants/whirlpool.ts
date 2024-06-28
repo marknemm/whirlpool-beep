@@ -1,4 +1,4 @@
-import { env } from '@/util/env';
+import env from '@/util/env';
 import { PublicKey } from '@solana/web3.js';
 
 /**

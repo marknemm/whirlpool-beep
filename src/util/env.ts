@@ -1,13 +1,15 @@
-import { cleanEnv, num, str, url } from 'envalid';
+import { bool, cleanEnv, num, str, url } from 'envalid';
 
 /**
  * Preprocessed, validated, and strongly typed environment variables.
  */
-export const env = cleanEnv(process.env, {
+const env = cleanEnv(process.env, {
   ANCHOR_PROVIDER_URL: url(),
   ANCHOR_WALLET: str({ default: 'wallet.json' }),
   CHAIN_ID: num(),
+  LOG_COLOR: bool({ default: false }),
   LOG_LEVEL: str({ choices: ['debug', 'info'], default: 'info' }),
+  LOG_TIMESTAMP: bool({ default: false }),
   NODE_ENV: str({ choices: ['development', 'production', 'test'] }),
   TICK_SPACING: num(),
   TOKEN_A: str(),
@@ -18,3 +20,5 @@ export const env = cleanEnv(process.env, {
   WHIRLPOOL_CONFIG_ADDRESS: str(),
   WHIRLPOOL_CONFIG_EXTENSION_ADDRESS: str(),
 });
+
+export default env;

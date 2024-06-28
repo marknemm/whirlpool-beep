@@ -1,5 +1,5 @@
 import { decodeBase58, encodeBase58 } from '@/util/encode';
-import { env } from '@/util/env';
+import env from '@/util/env';
 import { Keypair } from '@solana/web3.js';
 import { readFile, writeFile } from 'fs/promises';
 

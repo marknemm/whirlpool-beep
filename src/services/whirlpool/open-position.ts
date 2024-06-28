@@ -42,8 +42,8 @@ export async function openPosition(
 
   // Send the transaction
   const signature = await tx.buildAndExecute();
-  debug('Signature: %s', signature);
-  debug('Position NFT: %s', positionMint.toBase58());
+  debug('Signature:', signature);
+  debug('Position NFT:', positionMint.toBase58());
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc.getLatestBlockhash();
@@ -123,7 +123,7 @@ async function genDepositQuote(
     slippageTolerance: Percentage.fromFraction(10, 1000) // 1%,
   });
 
-  debug('Token A max input: %d', DecimalUtil.fromBN(quote.tokenMaxA, tokenA.decimals).toFixed(tokenA.decimals));
-  debug('Token B max input: %d', DecimalUtil.fromBN(quote.tokenMaxB, tokenB.decimals).toFixed(tokenB.decimals));
+  debug('Token A max input:', DecimalUtil.fromBN(quote.tokenMaxA, tokenA.decimals).toFixed(tokenA.decimals));
+  debug('Token B max input:', DecimalUtil.fromBN(quote.tokenMaxB, tokenB.decimals).toFixed(tokenB.decimals));
   return quote;
 }

@@ -1,6 +1,6 @@
 import type { TokenMeta, TokenQueryResponse } from '@/interfaces/token';
-import { env } from '@/util/env';
-import { umi } from '@/util/umi';
+import env from '@/util/env';
+import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import { PublicKeyUtils } from '@orca-so/common-sdk';

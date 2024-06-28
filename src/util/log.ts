@@ -1,9 +1,12 @@
-import { SECRETS_REGEX } from '@/constants/regex';
+import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
 import type { PositionTickRange, WhirlpoolPriceData } from '@/interfaces/whirlpool';
-import { env } from '@/util/env';
+import env from '@/util/env';
 import { PriceMath, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import { inspect } from 'util';
+import { red, yellow } from 'colors';
+import { inspect, type InspectOptions } from 'util';
 import { createLogger, format, transports, type LeveledLogMethod, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
+
+const inspectOpts: InspectOptions = { depth: 5, colors: env.LOG_COLOR, breakLength: 40 };
 
 /**
  * The {@link Logger} instance.
@@ -11,24 +14,80 @@ import { createLogger, format, transports, type LeveledLogMethod, type Logger } 
 const logger = createLogger({
   format: format.combine(
     format.errors({ stack: true }),
+    format.timestamp(),
   ),
   transports: [
     new transports.Console({
       level: env.LOG_LEVEL,
       format: format.combine(
-        format.colorize(),
-        format.splat(),
-        format.printf(({level, message, stack}) => {
-          const logStr = !stack
-            ? `${level}: ${inspect(message, { depth: 5, colors: true, breakLength: 40 })}`
-            : `${level}: ${stack.replace(/^Error: /, '')}\n`;
+        env.LOG_COLOR
+          ? format.colorize()
+          : format.combine(), // no-op
+        format.printf(({ level, message, timestamp, stack, ...rest }) => {
+          const restMessages = rest[Symbol.for('splat')];
 
+          // Include/exclude timestamp in log message
+          timestamp = env.LOG_TIMESTAMP ? `[${timestamp}] ` : '';
+
+          // Add space to align messages after log levels
+          level = `[${level}] ${level.match(/info|warn/)?.length ? ' ' : ''}`;
+
+          // Generate formatted and colored base log message
+          message = formatMessage(message);
+
+          // Append formatted and colored rest message values to log message
+          message += formatRestMessages(restMessages);
+
+          // Generate formatted and colored stack trace
+          stack = stack?.replace(/^Error: /, '');
+          if (stack && env.LOG_COLOR) {
+            stack = red(stack);
+          }
+
+          // Append parts of log message to output.
+          const logStr = stack
+            ? `${timestamp}${level}${stack}\n`
+            : `${timestamp}${level}${message}`;
+
+          // IMPORTANT - Filter out all secret values.
           return logStr.replaceAll(SECRETS_REGEX, '[SECRET]');
         })
       ),
     })
   ],
 });
+
+/**
+ * Format a message for logging.
+ *
+ * @param message The message to format.
+ * @returns The formatted message.
+ */
+function formatMessage(message: object | string): string {
+  return (typeof message === 'string')
+    ? (env.LOG_COLOR)
+      ? message.replaceAll(DECIMAL_REGEX, `$1${yellow('$2')}$3`)
+      : message
+    : inspect(message, inspectOpts);
+}
+
+/**
+ * Format the rest of the messages for logging.
+ *
+ * @param messages The messages to format.
+ * @returns The formatted messages as a single `string`.
+ */
+function formatRestMessages(messages: (object | string)[]): string {
+  if (!messages?.length) return '';
+
+  if (messages.length === 1) {
+    return ` ${inspect(messages[0], inspectOpts)}`;
+  }
+
+  return messages.reduce<string>((acc, message) =>
+    acc + ` ${formatMessage(message)}`
+  , '');
+}
 
 /**
  * Debug logger for logging debug data.
@@ -63,10 +122,11 @@ export const warn = logger.warn;
  */
 export function logPrice(tokenPrice: WhirlpoolPriceData, log: LeveledLogMethod = debug) {
   if (!tokenPrice) return;
+
   const { price, tokenA, tokenB } = tokenPrice;
 
   const fixedPrice = parseFloat(price.toFixed(tokenB.decimals));
-  log(`Price of ${tokenA.symbol} in terms of ${tokenB.symbol}: %d`, fixedPrice);
+  log(`Price of ${tokenA.symbol} in terms of ${tokenB.symbol}:`, fixedPrice);
 }
 
 /**
@@ -77,14 +137,18 @@ export function logPrice(tokenPrice: WhirlpoolPriceData, log: LeveledLogMethod =
  * @param log The {@link LeveledLogMethod} to log with. Defaults to {@link debug}.
  */
 export function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool, log: LeveledLogMethod = debug) {
+  if (!tickRange || !whirlpool) return;
+
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
 
-  log('Lower & upper tick index: [%d, %d]', tickRange[0], tickRange[1]);
-  log('Lower & upper price: [%d, %d]',
+  const priceRange = [
     PriceMath.tickIndexToPrice(tickRange[0], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-    PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals)
-  );
+    PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
+  ];
+
+  log(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
+  log(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
 }
 
 export default logger;

@@ -9,4 +9,6 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
  * `UMI` is a modular framework for building and using JS clients for Solana programs.
  * It provides a set of higher level tools (compared to `web3.js`) for interacting with Solana account data.
  */
-export const umi = createUmi(anchor.connection).use(mplTokenMetadata());
+const umi = createUmi(anchor.connection).use(mplTokenMetadata());
+
+export default umi;

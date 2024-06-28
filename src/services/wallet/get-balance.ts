@@ -11,6 +11,6 @@ export async function getBalance(): Promise<number> {
   const lamports = await rpc.getBalance(anchor.publicKey);
   const sol = lamportsToSol(lamports);
 
-  debug('Wallet balance: %s %s', sol, 'SOL');
+  debug('Wallet balance:', sol, 'SOL');
   return sol;
 }

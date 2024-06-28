@@ -40,15 +40,15 @@ export function whirlpoolClient(): WhirlpoolClientExt {
           args.tickSpacing
         ).publicKey;
 
-        info('Retrieving whirlpool with public key: %s', whirlpoolPublicKey.toBase58());
+        info('Retrieving whirlpool with public key:', whirlpoolPublicKey.toBase58());
         return client.getPool(whirlpoolPublicKey);
       }
 
     } as WhirlpoolClientExt);
 
     info('Initialized whirlpool client');
-    info('RPC Endpoint: %s', ctx.connection.rpcEndpoint);
-    info('Wallet Pubkey: %s', ctx.wallet.publicKey.toBase58());
+    info('RPC Endpoint:', ctx.connection.rpcEndpoint);
+    info('Wallet Pubkey:', ctx.wallet.publicKey.toBase58());
   }
 
   return client;

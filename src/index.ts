@@ -1,16 +1,18 @@
-import { env } from '@/util/env'; // Load and validate env variables ASAP
+import env from '@/util/env'; // Load and validate env variables ASAP
 
 import { getTokenMetaPair } from '@/services/token/query';
 import { getBalance } from '@/services/wallet/get-balance';
 import { getPrice } from '@/services/whirlpool/get-price';
+import { debug, error } from '@/util/log';
 import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
-import { error } from './util/log';
 
 /**
  * Main entry point.
  */
 async function main() {
   try {
+    debug('Environment variables loaded and validated:', { ...env });
+
     // Initialization using wallet private key
     const keypair = getValidateKeypair();
     await writeWalletJson(keypair);
