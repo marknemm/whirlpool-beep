@@ -1,13 +1,15 @@
 import type { Token, TokenMeta } from '@/interfaces/token';
-import { BN } from '@coral-xyz/anchor';
+import type { BN } from '@coral-xyz/anchor';
 import type { Whirlpool, WhirlpoolClient } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
-import Decimal from 'decimal.js';
+import type Decimal from 'decimal.js';
 
 /**
- * The tick index range of a {@link Whirlpool} position.
+ * A tuple containing the tick index range of a {@link Whirlpool} position.
  *
  * The tick index range will be within `[-443636, 443636]`, which maps to a price range of `[2^-64, 2^64]`.
+ *
+ * @see https://orca-so.gitbook.io/orca-developer-portal/whirlpools/architecture-overview/price-and-ticks
  */
 export type PositionTickRange = [number, number];
 
@@ -24,12 +26,12 @@ export interface WhirlpoolArgs {
   tickSpacing: number;
 
   /**
-   * The {@link Whirlpool}'s token A {@link PublicKey}.
+   * The {@link Whirlpool}'s token A {@link TokenMeta} containing a {@link PublicKey}.
    */
   tokenAMeta: TokenMeta;
 
   /**
-   * The {@link Whirlpool}'s token B {@link PublicKey}.
+   * The {@link Whirlpool}'s token B {@link TokenMeta} containing a {@link PublicKey}.
    */
   tokenBMeta: TokenMeta;
 
@@ -50,6 +52,7 @@ export interface WhirlpoolArgs {
  * Also contains custom extension methods.
  *
  * @extends WhirlpoolClient The native Orca SO {@link WhirlpoolClient}.
+ * @see https://orca-so.gitbook.io/orca-developer-portal/whirlpools/interacting-with-the-protocol/basic-usage/setup-whirlpool-context
  */
 export interface WhirlpoolClientExt extends WhirlpoolClient {
 
@@ -64,7 +67,7 @@ export interface WhirlpoolClientExt extends WhirlpoolClient {
 }
 
 /**
- * The {@link price} of a {@link Whirlpool} token, {@link tokenA}, in terms of token {@link tokenB}.
+ * The {@link price} of a {@link Whirlpool}; specifically price of {@link tokenA} in terms of {@link tokenB}.
  */
 export interface WhirlpoolPriceData {
 

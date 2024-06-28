@@ -1,10 +1,9 @@
 import type { PositionTickRange, WhirlpoolArgs } from '@/interfaces/whirlpool';
 import { getPrice } from '@/services/whirlpool/get-price';
-import { logPositionRange } from '@/util/log';
+import { debug, logPositionRange } from '@/util/log';
 import { whirlpoolClient } from '@/util/whirlpool-client';
-import { type BN } from '@coral-xyz/anchor';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, buildDefaultAccountFetcher, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type RpcResponseAndContext, type SignatureResult } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 
@@ -43,8 +42,8 @@ export async function openPosition(
 
   // Send the transaction
   const signature = await tx.buildAndExecute();
-  console.log('Signature:', signature);
-  console.log('Position NFT:', positionMint.toBase58());
+  debug('Signature: %s', signature);
+  debug('Position NFT: %s', positionMint.toBase58());
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc.getLatestBlockhash();
@@ -81,7 +80,7 @@ function genPositionTickRange(
   const lowerTickIdx = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
   const upperTickIdx = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
 
-  logPositionRange(lowerTickIdx, upperTickIdx, whirlpool);
+  logPositionRange([lowerTickIdx, upperTickIdx], whirlpool);
   return [lowerTickIdx, upperTickIdx]; // Subset of range [-443636, 443636]
 }
 
@@ -100,14 +99,13 @@ async function genDepositQuote(
 ): Promise<IncreaseLiquidityQuote> {
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
-  const rpc = whirlpoolClient().getContext().connection;
 
   const quote = increaseLiquidityQuoteByInputTokenWithParams({
     // Pass the pool definition and state
     tokenMintA: tokenA.mint,
     tokenMintB: tokenB.mint,
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
-      await buildDefaultAccountFetcher(rpc),
+      whirlpoolClient().getFetcher(),
       whirlpool.getData(),
       IGNORE_CACHE
     ),
@@ -125,7 +123,7 @@ async function genDepositQuote(
     slippageTolerance: Percentage.fromFraction(10, 1000) // 1%,
   });
 
-  console.log('Token A max input:', DecimalUtil.fromBN(quote.tokenMaxA, tokenA.decimals).toFixed(tokenA.decimals));
-  console.log('Token B max input:', DecimalUtil.fromBN(quote.tokenMaxB, tokenB.decimals).toFixed(tokenB.decimals));
+  debug('Token A max input: %d', DecimalUtil.fromBN(quote.tokenMaxA, tokenA.decimals).toFixed(tokenA.decimals));
+  debug('Token B max input: %d', DecimalUtil.fromBN(quote.tokenMaxB, tokenB.decimals).toFixed(tokenB.decimals));
   return quote;
 }

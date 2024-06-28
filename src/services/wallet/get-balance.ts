@@ -1,5 +1,6 @@
 import { anchor, rpc } from '@/util/anchor';
 import { lamportsToSol } from '@/util/currency';
+import { debug } from '@/util/log';
 
 /**
  * Queries the wallet account balance.
@@ -8,5 +9,8 @@ import { lamportsToSol } from '@/util/currency';
  */
 export async function getBalance(): Promise<number> {
   const lamports = await rpc.getBalance(anchor.publicKey);
-  return lamportsToSol(lamports);
+  const sol = lamportsToSol(lamports);
+
+  debug('Wallet balance: %s %s', sol, 'SOL');
+  return sol;
 }

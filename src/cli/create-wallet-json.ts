@@ -1,5 +1,6 @@
 import { decodeBase58, encodeBase58 } from '@/util/encode';
 import { path as appRootPath } from 'app-root-path';
+import { info } from '@/util/log';
 import { readFileSync, writeFileSync } from 'fs';
 import { createInterface } from 'readline';
 
@@ -23,6 +24,6 @@ readline.question('privateKey(base58):', (pkB58Str) => {
   const pkRawBytesLoaded = readFileSync(outFilename, { encoding: 'utf-8' });
   const pkB58StrLoaded = encodeBase58(pkRawBytesLoaded);
   if ( pkB58Str === pkB58StrLoaded ) {
-    console.log(`${outFilename} created successfully!`);
+    info(`${outFilename} created successfully!`);
   }
 });

@@ -1,8 +1,8 @@
 # whirlpool
 
-A TS Node project that automates interaction with the Orca Whirlpool smart contract.
+A **TS Node** project that automates interaction with the **Orca Whirlpool** smart contract.
 
-## Installation and Run
+## Quickstart
 
 1) Run `npm install` to install node_module dependencies.
 2) copy [.env.example](.env.example) to a file named [.env](.env).

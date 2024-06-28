@@ -34,6 +34,7 @@ export async function getTokenMetaPair(
  * @param symbol The symbol of the token to fetch.
  * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
+ * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
 export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
   const params = {

@@ -31,7 +31,8 @@
     "bs58": "^5.0.0",
     "decimal.js": "^10.4.3",
     "dotenv": "^16.4.5",
-    "envalid": "^8.0.0"
+    "envalid": "^8.0.0",
+    "winston": "^3.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",

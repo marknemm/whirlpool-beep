@@ -1,6 +1,4 @@
-import type { BN } from '@coral-xyz/anchor';
-import type { TokenInfo, Whirlpool } from '@orca-so/whirlpools-sdk';
-import type Decimal from 'decimal.js';
+import type { TokenInfo } from '@orca-so/whirlpools-sdk';
 
 /**
  * Full info for a token.

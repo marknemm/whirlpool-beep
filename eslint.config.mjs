@@ -10,14 +10,16 @@ export default tseslint.config({
     ...tseslint.configs.recommended,
   ],
   rules: {
-    '@typescript-eslint/no-unused-vars': ['warn', {     // Enable the warning about unused variables
-      args: 'none',                                     // Do not check for unused function arguments
-      caughtErrors: 'none',                             // Do not check for unused caught errors
-      varsIgnorePattern: '^[A-Z]|^_',                   // Ignore variables (type / class imports) that start with an uppercase letter or an underscore
+    '@typescript-eslint/no-unused-vars': ['warn', {           // Enable the warning about unused variables
+      args: 'none',                                           // Do not check for unused function arguments
+      caughtErrors: 'none',                                   // Do not check for unused caught errors
+      varsIgnorePattern: '^[A-Z]|^_',                         // Ignore variables (type / class imports) that start with an uppercase letter or an underscore
     }],
-    'no-unused-vars': 'off',                            // Disable the rule that checks for unused variables (use TS version instead)
-    'quotes': ['warn', 'single'],                       // Use single quotes for strings
-    'semi': ['warn', 'always'],                         // Add semicolons at the end of each statement
+    'no-console': 'error',                                    // Disallow the use of console.log - IMPORTANT to prevent leaking secrets!
+    'no-restricted-imports': ['error', 'console', 'winston'], // Disallow importing certain modules - IMPORTANT to prevent vulnerabilities!
+    'no-unused-vars': 'off',                                  // Disable the rule that checks for unused variables (use TS version instead)
+    'quotes': ['warn', 'single'],                             // Use single quotes for strings
+    'semi': ['warn', 'always'],                               // Add semicolons at the end of each statement
   }
 });
 

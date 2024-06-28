@@ -4,9 +4,7 @@ import { getTokenMetaPair } from '@/services/token/query';
 import { getBalance } from '@/services/wallet/get-balance';
 import { getPrice } from '@/services/whirlpool/get-price';
 import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
-import { openPosition } from './services/whirlpool/open-position';
-import { Percentage } from '@orca-so/common-sdk';
-import Decimal from 'decimal.js';
+import { error } from './util/log';
 
 /**
  * Main entry point.
@@ -21,8 +19,7 @@ async function main() {
     const [tokenAMeta, tokenBMeta] = await getTokenMetaPair();
 
     // Check wallet account balance
-    const balance = await getBalance();
-    console.log('Wallet balance:', balance, 'SOL');
+    await getBalance();
 
     // Check price of whirlpool
     await getPrice({
@@ -37,8 +34,8 @@ async function main() {
     //   tokenAMeta,
     //   tokenBMeta,
     // }, Percentage.fromFraction(5, 100), new Decimal(3));
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    error(err);
     process.exit(1);
   }
 }
