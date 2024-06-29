@@ -23,7 +23,7 @@ readline.question('privateKey(base58):', (pkB58Str) => {
   // verify file
   const pkRawBytesLoaded = readFileSync(outFilename, { encoding: 'utf-8' });
   const pkB58StrLoaded = encodeBase58(pkRawBytesLoaded);
-  if ( pkB58Str === pkB58StrLoaded ) {
+  if (pkB58Str === pkB58StrLoaded) {
     info(`${outFilename} created successfully!`);
   }
 });

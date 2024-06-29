@@ -5,7 +5,7 @@ import env from '@/util/env';
 import { PriceMath, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'util';
-import { createLogger, format, transports, type LeveledLogMethod, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
+import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 
 export * from '@/interfaces/log';
 
@@ -68,7 +68,7 @@ const logger = createLogger({
  */
 function formatMessage(message: object | string): string {
   return (typeof message === 'string')
-    ? (env.LOG_COLOR)
+    ? env.LOG_COLOR
       ? message.replaceAll(DECIMAL_REGEX, `$1${yellow('$2')}$3`)
       : message
     : inspect(message, inspectOpts);
@@ -88,33 +88,9 @@ function formatRestMessages(messages: (object | string)[]): string {
   }
 
   return messages.reduce<string>((acc, message) =>
-    acc + ` ${formatMessage(message)}`
+    `${acc} ${formatMessage(message)}`
   , '');
 }
-
-/**
- * Debug logger for logging debug data.
- *
- * Will not log if the log level is set to `info`.
- *
- * Should be configured in prod env to log at `info` level, and therefore, debug logs will not display.
- */
-export const debug = logger.debug;
-
-/**
- * Info logger for logging general information.
- */
-export const info = logger.info;
-
-/**
- * Error logger for logging errors.
- */
-export const error = logger.error;
-
-/**
- * Warning logger for logging warnings.
- */
-export const warn = logger.warn;
 
 /**
  * Log the price of a token, {@link tokenA}, in terms of another token, {@link tokenB}.
@@ -153,5 +129,15 @@ export function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlp
   logger.log(logLevel, `Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
   logger.log(logLevel, `Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
 }
+
+/**
+ * Log level methods for the logger.
+ *
+ * @property debug The debug log level. Should only output in dev.
+ * @property error The error log level. Used for logging errors in both dev and prod.
+ * @property info The info log level. Used for general information logging in both dev and prod.
+ * @property warn The warn log level. Used for logging warnings in both dev and prod.
+ */
+export const { debug, error, info, warn } = logger;
 
 export default logger;

@@ -44,7 +44,7 @@ export async function writeWalletJson(keypair: Keypair): Promise<void> {
   // verify file
   const pkRawBytesLoaded = await readFile(env.ANCHOR_WALLET, { encoding: 'utf-8' });
   const pkB58StrLoaded = encodeBase58(pkRawBytesLoaded);
-  if ( env.WALLET_PRIVATE_KEY !== pkB58StrLoaded ) {
+  if (env.WALLET_PRIVATE_KEY !== pkB58StrLoaded) {
     throw new Error(`Failed to write private key to ${env.ANCHOR_WALLET}`);
   }
 }

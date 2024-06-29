@@ -19,7 +19,7 @@ export async function getPrice(whirlpoolArgs: WhirlpoolArgs): Promise<WhirlpoolP
   const tokenB = { ...whirlpoolArgs.tokenBMeta, ...whirlpool.getTokenBInfo() };
 
   // Get the current price of the pool
-  const sqrtPrice = whirlpool.getData().sqrtPrice;
+  const { sqrtPrice } = whirlpool.getData();
   const price = PriceMath.sqrtPriceX64ToPrice(sqrtPrice, tokenA.decimals, tokenB.decimals);
 
   const priceData: WhirlpoolPriceData = { price, sqrtPrice, tokenA, tokenB, whirlpool };

@@ -69,7 +69,7 @@ function genPositionTickRange(
   // Extract necessary data from Whirlpool
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
-  const tickSpacing = whirlpool.getData().tickSpacing;
+  const { tickSpacing } = whirlpool.getData();
 
   // Calculate price range based on priceMargin Percentage input
   const priceMarginValue = price.mul(priceMargin.toDecimal());
