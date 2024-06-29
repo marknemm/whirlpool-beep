@@ -9,10 +9,11 @@ import axios from 'axios';
 /**
  * Fetches a pair of tokens' {@link TokenMeta} by their symbols.
  *
- * @param symbolA The symbol of the first token to fetch. Defaults to {@link env.TOKEN_A}.
- * @param symbolB The symbol of the second token to fetch. Defaults to {@link env.TOKEN_B}.
+ * @param queryA The query for the first token to fetch. Defaults to {@link env.TOKEN_A}.
+ * @param queryB The query for the second token to fetch. Defaults to {@link env.TOKEN_B}.
  * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
  * @throws An error if the GET request fails or either token could not be retrieved.
+ * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
 export async function getTokenMetaPair(
   queryA: string = env.TOKEN_A,
@@ -31,7 +32,7 @@ export async function getTokenMetaPair(
 /**
  * Fetches a token's metadata by its symbol.
  *
- * @param symbol The symbol of the token to fetch.
+ * @param query The query for the token to fetch.
  * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.

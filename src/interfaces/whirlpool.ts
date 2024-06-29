@@ -51,7 +51,7 @@ export interface WhirlpoolArgs {
  *
  * Also contains custom extension methods.
  *
- * @extends WhirlpoolClient The native Orca SO {@link WhirlpoolClient}.
+ * @augments WhirlpoolClient The native Orca SO {@link WhirlpoolClient}.
  * @see https://orca-so.gitbook.io/orca-developer-portal/whirlpools/interacting-with-the-protocol/basic-usage/setup-whirlpool-context
  */
 export interface WhirlpoolClientExt extends WhirlpoolClient {

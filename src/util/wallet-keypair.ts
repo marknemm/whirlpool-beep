@@ -18,7 +18,7 @@ export function getKeypair(): Keypair {
  * Get and perform extra validation on the wallet's public/private {@link Keypair}.
  *
  * @returns The wallet's {@link Keypair}.
- * @throws An error if the private key is invalid or does not match the expected public key.
+ * @throws An {@link Error} if the private key is invalid or does not match the expected public key.
  */
 export function getValidateKeypair(): Keypair {
   const keypair = getKeypair();
@@ -34,8 +34,8 @@ export function getValidateKeypair(): Keypair {
  * Write the wallet's private key byte array to a JSON file.
  *
  * @param keypair The wallet's {@link Keypair}.
- * @return A {@link Promise} that resolves when the wallet JSON file has been written.
- * @throws An error if the private key byte array could not be written to the JSON file.
+ * @returns A {@link Promise} that resolves when the wallet JSON file has been written.
+ * @throws An {@link Error} if the private key byte array could not be written to the JSON file.
  */
 export async function writeWalletJson(keypair: Keypair): Promise<void> {
   // write file

@@ -17,7 +17,7 @@ let client: WhirlpoolClientExt;
  *
  * `Note`: Must be invoked after writing the wallet JSON file.
  *
- * @return The singleton {@link WhirlpoolClientExt}.
+ * @returns The singleton {@link WhirlpoolClientExt}.
  */
 export function whirlpoolClient(): WhirlpoolClientExt {
   if (!client) { // Enforce singleton
