@@ -69,7 +69,7 @@ const logger = createLogger({
 function formatMessage(message: object | string): string {
   return (typeof message === 'string')
     ? env.LOG_COLOR
-      ? message.replaceAll(DECIMAL_REGEX, `$1${yellow('$2')}$3`)
+      ? message.replaceAll(DECIMAL_REGEX, `${yellow('$1')}`)
       : message
     : inspect(message, inspectOpts);
 }

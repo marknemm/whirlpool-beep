@@ -1,14 +1,11 @@
 import env from '@/util/env';
 
 /**
- * {@link RegExp} to detect decimal numbers.
+ * {@link RegExp} to detect standalone decimal numbers.
  *
- * Also, provides 3 capture groups for:
- * 1. Leading whitespace
- * 2. The decimal number
- * 3. Trailing whitespace
+ * Also, provides 1 capture group for the decimal number.
  */
-export const DECIMAL_REGEX = /(^|\s+)(\d+\.?\d*)(\s+|$)/g;
+export const DECIMAL_REGEX = /(?<=^|\s)((?:[+-]?\$?|\$[+-]?)(?:(?:\d{1,3}(?:[,_]\d{3})*|\d+)\.?\d*|\.\d+))(?=\s|$)/g;
 
 /**
  * {@link RegExp} to detect private keys in `base58` format.
@@ -18,12 +15,9 @@ export const PRIVATE_KEY_REGEX = /[1-9A-HJ-NP-Za-km-z]{80,}/g;
 /**
  * {@link RegExp} to detect private keys in raw `byte array` format.
  *
- * Also, provides 3 capture groups for:
- * 1. The optional opening square bracket
- * 2. The byte array content
- * 3. The optional closing square bracket
+ * Also, provides a capture group for the byte array values.
  */
-export const PRIVATE_KEY_BYTE_ARRAY_REGEX = /(\[)?(([0-9]{1,3},){60,}[0-9]{1,3})(\])?/g;
+export const PRIVATE_KEY_BYTE_ARRAY_REGEX = /(?:\[\s*)?((?:[0-9]{1,3}\s*,\s*){60,}[0-9]{1,3})(?:\s*\])?/g;
 
 /**
  * {@link RegExp} to detect secret strings such as private keys.

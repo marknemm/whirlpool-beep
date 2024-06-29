@@ -29,8 +29,7 @@ export function whirlpoolClient(): WhirlpoolClientExt {
     client = Object.assign(buildWhirlpoolClient(ctx), {
 
       getPoolViaPDA: (args: WhirlpoolArgs) => {
-        debug('Whirlpool args:');
-        debug(args);
+        debug('Whirlpool args:', args);
 
         const whirlpoolPublicKey = PDAUtil.getWhirlpool(
           ORCA_WHIRLPOOL_PROGRAM_ID,
