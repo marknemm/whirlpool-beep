@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
 import tseslint from 'typescript-eslint';
+import noFloatingPromise from 'eslint-plugin-no-floating-promise';
 
 export default tseslint.config({
   files: ['src/**/*.{js,mjs,cjs,ts}'],
@@ -9,6 +10,9 @@ export default tseslint.config({
     jsdoc.configs['flat/recommended'],
     ...tseslint.configs.recommended,
   ],
+  plugins: {
+    'no-floating-promise': noFloatingPromise,
+  },
   rules: {
     '@typescript-eslint/no-unused-vars': ['warn', {           // Enable the warning about unused variables
       args: 'none',                                           // Do not check for unused function arguments
@@ -68,6 +72,7 @@ export default tseslint.config({
       ignoreUrls: true,                                       // Ignore URLs when checking line length
     }],
     'no-console': 'error',                                    // Disallow the use of console.log - IMPORTANT to prevent leaking secrets!
+    'no-floating-promise/no-floating-promise': 'warn',        // Enable the warning about floating promises
     'no-restricted-imports': ['error', 'console', 'winston'], // Disallow importing certain modules - IMPORTANT to prevent vulnerabilities!
     'no-unused-vars': 'off',                                  // Disable the rule that checks for unused variables (use TS version instead)
     'quotes': ['warn', 'single'],                             // Use single quotes for strings
