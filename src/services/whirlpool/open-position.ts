@@ -77,11 +77,11 @@ function genPositionTickRange(
   const upperPrice = price.plus(priceMarginValue);
 
   // Calculate tick index range based on price range (tick index range may not map exactly to price range due to tick spacing)
-  const lowerTickIdx = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
-  const upperTickIdx = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
+  const lowerTick = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
+  const upperTick = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
 
-  logPositionRange([lowerTickIdx, upperTickIdx], whirlpool);
-  return [lowerTickIdx, upperTickIdx]; // Subset of range [-443636, 443636]
+  logPositionRange([lowerTick, upperTick], whirlpool);
+  return [lowerTick, upperTick]; // Subset of range [-443636, 443636]
 }
 
 /**
