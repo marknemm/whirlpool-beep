@@ -5,7 +5,6 @@ import { bool, cleanEnv, num, str, url } from 'envalid';
  */
 const env = cleanEnv(process.env, {
   ANCHOR_PROVIDER_URL: url(),
-  ANCHOR_WALLET: str({ default: 'wallet.json' }),
   CHAIN_ID: num(),
   LOG_COLOR: bool({ default: false }),
   LOG_LEVEL: str({ choices: ['debug', 'info'], default: 'info' }),
