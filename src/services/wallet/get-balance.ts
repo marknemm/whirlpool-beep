@@ -1,5 +1,5 @@
 import anchor from '@/util/anchor';
-import { lamportsToSol } from '@/util/currency';
+import { toSol } from '@/util/currency';
 import { debug } from '@/util/log';
 
 /**
@@ -9,7 +9,7 @@ import { debug } from '@/util/log';
  */
 export async function getBalance(): Promise<number> {
   const lamports = await anchor().connection.getBalance(anchor().publicKey);
-  const sol = lamportsToSol(lamports);
+  const sol = toSol(lamports);
 
   debug('Wallet balance:', sol, 'SOL');
   return sol;

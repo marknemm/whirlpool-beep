@@ -62,16 +62,6 @@ export interface WhirlpoolPriceData {
   sqrtPrice: BN;
 
   /**
-   * The token that is priced.
-   */
-  tokenA: Token;
-
-  /**
-   * The token that {@link tokenA} is priced in terms of.
-   */
-  tokenB: Token;
-
-  /**
    * The {@link Whirlpool} that is used to calculate the price.
    */
   whirlpool: Whirlpool;

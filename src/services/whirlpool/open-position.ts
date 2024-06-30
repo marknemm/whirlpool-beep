@@ -1,30 +1,30 @@
-import type { PositionTickRange, WhirlpoolArgs } from '@/interfaces/whirlpool';
+import type { PositionTickRange } from '@/interfaces/whirlpool';
 import { getPrice } from '@/services/whirlpool/get-price';
-import { debug, logPositionRange } from '@/util/log';
+import { debug } from '@/util/log';
 import whirlpoolClient from '@/util/whirlpool';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type RpcResponseAndContext, type SignatureResult } from '@solana/web3.js';
-import Decimal from 'decimal.js';
+import type Decimal from 'decimal.js';
 
 /**
  * Opens a position in a {@link Whirlpool}.
  * The position is opened with a price range and a specified amount of liquidity.
  *
- * @param whirlpoolArgs The {@link WhirlpoolArgs} to use for retrieving the {@link Whirlpool} to open a position in.
+ * @param whirlpool The {@link Whirlpool} to open a position in.
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @param liquidityDeposit The initial amount of token `B` to deposit as liquidity in the position.
  * @returns A {@link Promise} that resolves to an {@link RpcResponseAndContext} containing the {@link SignatureResult} of the transaction.
  */
 export async function openPosition(
-  whirlpoolArgs: WhirlpoolArgs,
+  whirlpool: Whirlpool,
   priceMargin: Percentage,
   liquidityDeposit: Decimal
 ): Promise<RpcResponseAndContext<SignatureResult>> {
   const rpc = whirlpoolClient().getContext().connection;
 
   // Get Whirlpool price data
-  const { price, whirlpool } = await getPrice(whirlpoolArgs);
+  const { price } = await getPrice(whirlpool);
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = genPositionTickRange(whirlpool, price, priceMargin);
@@ -84,6 +84,27 @@ function genPositionTickRange(
 }
 
 /**
+ * Log the price range data for a {@link Whirlpool} position.
+ *
+ * @param tickRange The {@link PositionTickRange} to log.
+ * @param whirlpool The {@link Whirlpool} to log the position range for.
+ */
+function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
+  if (!tickRange || !whirlpool) return;
+
+  const tokenA = whirlpool.getTokenAInfo();
+  const tokenB = whirlpool.getTokenBInfo();
+
+  const priceRange = [
+    PriceMath.tickIndexToPrice(tickRange[0], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
+    PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
+  ];
+
+  debug(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
+  debug(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
+}
+
+/**
  * Gen an estimated quote on the maximum tokens required to deposit based on a specified {@link liquidityDeposit} amount.
  *
  * @param whirlpool The {@link Whirlpool} to get the deposit quote for.
@@ -115,9 +136,7 @@ async function genDepositQuote(
     tickUpperIndex: tickRange[1],
     // Input token and amount
     inputTokenMint: tokenB.mint,
-    inputTokenAmount: (liquidityDeposit instanceof Decimal)
-      ? DecimalUtil.toBN(liquidityDeposit, tokenB.decimals)
-      : liquidityDeposit,
+    inputTokenAmount: liquidityDeposit,
     // Acceptable slippage
     slippageTolerance: Percentage.fromFraction(10, 1000) // 1%,
   });

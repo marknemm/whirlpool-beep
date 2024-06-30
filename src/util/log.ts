@@ -1,8 +1,5 @@
 import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
-import type { LogLevel } from '@/interfaces/log';
-import type { PositionTickRange, WhirlpoolPriceData } from '@/interfaces/whirlpool';
 import env from '@/util/env';
-import { PriceMath, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'util';
 import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
@@ -90,53 +87,6 @@ function formatRestMessages(messages: (object | string)[]): string {
   return messages.reduce<string>((acc, message) =>
     `${acc} ${formatMessage(message)}`
   , '');
-}
-
-/**
- * Log the environment variables.
- *
- * @param logLevel The {@link LogLevel} to log with. Defaults to `'debug'`.
- */
-export function logEnv(logLevel: LogLevel = 'debug') {
-  logger.log(logLevel, 'Environment variables loaded and validated:', { ...env });
-}
-
-/**
- * Log the price of a token, {@link tokenA}, in terms of another token, {@link tokenB}.
- * If input is missing, this function does nothing.
- *
- * @param tokenPrice The {@link WhirlpoolPriceData} to log.
- * @param logLevel The {@link LogLevel} to log with. Defaults to `'debug'`.
- */
-export function logPrice(tokenPrice: WhirlpoolPriceData, logLevel: LogLevel = 'debug') {
-  if (!tokenPrice) return;
-
-  const { price, tokenA, tokenB } = tokenPrice;
-
-  const fixedPrice = parseFloat(price.toFixed(tokenB.decimals));
-  logger.log(logLevel, `Price of ${tokenA.symbol} in terms of ${tokenB.symbol}:`, fixedPrice);
-}
-
-/**
- * Log the price range data for a {@link Whirlpool} position.
- *
- * @param tickRange The {@link PositionTickRange} to log.
- * @param whirlpool The {@link Whirlpool} to log the position range for.
- * @param logLevel The {@link LogLevel} to log with. Defaults to `'debug'`.
- */
-export function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool, logLevel: LogLevel = 'debug') {
-  if (!tickRange || !whirlpool) return;
-
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
-
-  const priceRange = [
-    PriceMath.tickIndexToPrice(tickRange[0], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-    PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-  ];
-
-  logger.log(logLevel, `Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
-  logger.log(logLevel, `Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
 }
 
 /**
