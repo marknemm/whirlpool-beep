@@ -2,6 +2,7 @@ import rpc from '@/util/rpc';
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { type Umi } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { info } from './log';
 
 let _umi: Umi;
 
@@ -19,6 +20,8 @@ let _umi: Umi;
 export default function umi(): Umi {
   if (!_umi) {
     _umi = createUmi(rpc()).use(mplTokenMetadata());
+
+    info('-- Initialized UMI --');
   }
 
   return _umi;

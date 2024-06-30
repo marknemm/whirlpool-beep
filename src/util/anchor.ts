@@ -3,6 +3,7 @@ import env from '@/util/env';
 import rpc from '@/util/rpc';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import { Keypair } from '@solana/web3.js';
+import { info } from '@/util/log';
 
 let _anchor: AnchorProvider;
 
@@ -26,6 +27,9 @@ export default function anchor(): AnchorProvider {
     // Create a wallet and anchor provider
     const wallet = new Wallet(keypair);
     _anchor = new AnchorProvider(rpc(), wallet, AnchorProvider.defaultOptions());
+
+    info('-- Initialized Anchor --');
+    info('Wallet Address:', wallet.publicKey.toBase58());
   }
 
   return _anchor;

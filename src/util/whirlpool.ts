@@ -17,9 +17,7 @@ export default function whirlpoolClient(): WhirlpoolClient {
 
     _whirlpoolClient = buildWhirlpoolClient(ctx);
 
-    info('Initialized whirlpool client');
-    info('RPC Endpoint:', ctx.connection.rpcEndpoint);
-    info('Wallet Pubkey:', ctx.wallet.publicKey.toBase58());
+    info('-- Initialized Whirlpool Client --');
   }
 
   return _whirlpoolClient;

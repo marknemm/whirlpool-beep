@@ -1,6 +1,7 @@
 import type { PositionTickRange } from '@/interfaces/whirlpool';
 import { getPrice } from '@/services/whirlpool/get-price';
 import { debug } from '@/util/log';
+import rpc from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
@@ -21,8 +22,6 @@ export async function openPosition(
   priceMargin: Percentage,
   liquidityDeposit: Decimal
 ): Promise<RpcResponseAndContext<SignatureResult>> {
-  const rpc = whirlpoolClient().getContext().connection;
-
   // Get Whirlpool price data
   const { price } = await getPrice(whirlpool);
 
@@ -45,8 +44,8 @@ export async function openPosition(
   debug('Position NFT:', positionMint.toBase58());
 
   // Wait for the transaction to complete
-  const latestBlockhash = await rpc.getLatestBlockhash();
-  return rpc.confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
+  const latestBlockhash = await rpc().getLatestBlockhash();
+  return rpc().confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
 }
 
 /**

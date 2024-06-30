@@ -4,56 +4,53 @@ import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'util';
 import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 
-export * from '@/interfaces/log';
-
 const inspectOpts: InspectOptions = { depth: 5, colors: env.LOG_COLOR, breakLength: 40 };
 
 /**
  * The {@link Logger} instance.
  */
 const logger = createLogger({
-  format: format.combine(
-    format.errors({ stack: true }),
-    format.timestamp(),
+  level: env.LOG_LEVEL,             // Specify lowest log level that shall be output: 'debug' | 'info'
+  format: format.combine(           // Define format for lot message output
+    env.LOG_COLOR
+      ? format.colorize()           // Add standard color to log level
+      : format.combine(),           // no-op - Do not add color
+    env.LOG_TIMESTAMP
+      ? format.timestamp()          // Include timestamp data with each log message
+      : format.combine(),           // no-op - Do not include timestamp
+    format.errors({ stack: true }), // Enable processing of Error object with stack trace
+    format.printf(({ level, message = '', timestamp, stack = '', ...rest }) => {
+      // Include/exclude timestamp in log message
+      timestamp = env.LOG_TIMESTAMP ? `[${timestamp}] ` : '';
+
+      // Add space to align messages after log levels
+      level = `[${level}] ${level.match(/info|warn/)?.length ? ' ' : ''}`;
+
+      // Generate formatted and colored base log message
+      message = formatMessage(message);
+
+      // Append formatted and colored rest message values to log message
+      message += formatRestMessages(rest[Symbol.for('splat')]);
+
+      // Extract leading newlines from message
+      const newlines = getLeadingNewlines(message);
+      message = message.substring(newlines.length);
+
+      // Generate formatted and colored stack trace
+      stack = stack?.replace(/^Error: /, '');
+      if (stack && env.LOG_COLOR) {
+        stack = red(stack);
+      }
+
+      // Append parts of log message to output.
+      const logStr = `${newlines}${timestamp}${level}${stack ? `${stack}\n` : message}`;
+
+      // IMPORTANT - Filter out all secret values.
+      return logStr.replaceAll(SECRETS_REGEX, '[SECRET]');
+    }),
   ),
   transports: [
-    new transports.Console({
-      level: env.LOG_LEVEL,
-      format: format.combine(
-        env.LOG_COLOR
-          ? format.colorize()
-          : format.combine(), // no-op
-        format.printf(({ level, message, timestamp, stack, ...rest }) => {
-          const restMessages = rest[Symbol.for('splat')];
-
-          // Include/exclude timestamp in log message
-          timestamp = env.LOG_TIMESTAMP ? `[${timestamp}] ` : '';
-
-          // Add space to align messages after log levels
-          level = `[${level}] ${level.match(/info|warn/)?.length ? ' ' : ''}`;
-
-          // Generate formatted and colored base log message
-          message = formatMessage(message);
-
-          // Append formatted and colored rest message values to log message
-          message += formatRestMessages(restMessages);
-
-          // Generate formatted and colored stack trace
-          stack = stack?.replace(/^Error: /, '');
-          if (stack && env.LOG_COLOR) {
-            stack = red(stack);
-          }
-
-          // Append parts of log message to output.
-          const logStr = stack
-            ? `${timestamp}${level}${stack}\n`
-            : `${timestamp}${level}${message}`;
-
-          // IMPORTANT - Filter out all secret values.
-          return logStr.replaceAll(SECRETS_REGEX, '[SECRET]');
-        })
-      ),
-    })
+    new transports.Console(),
   ],
 });
 
@@ -80,13 +77,29 @@ function formatMessage(message: object | string): string {
 function formatRestMessages(messages: (object | string)[]): string {
   if (!messages?.length) return '';
 
+  // Treat only rest message as a data value that will receive syntax highlighting according to its type.
   if (messages.length === 1) {
     return ` ${inspect(messages[0], inspectOpts)}`;
   }
 
+  // Treat rest of messages as concatenated parts of base message.
   return messages.reduce<string>((acc, message) =>
     `${acc} ${formatMessage(message)}`
   , '');
+}
+
+/**
+ * Get the leading newlines from a message.
+ *
+ * @param message The message to get the leading newlines from.
+ * @returns The leading newlines.
+ */
+function getLeadingNewlines(message: string): string {
+  let newlines = '';
+  for (let i = 0; i < message.length && message.charAt(i) === '\n'; i++) {
+    newlines += '\n';
+  }
+  return newlines;
 }
 
 /**
@@ -98,5 +111,8 @@ function formatRestMessages(messages: (object | string)[]): string {
  * @property warn The warn log level. Used for logging warnings in both dev and prod.
  */
 export const { debug, error, info, warn } = logger;
+
+export type * from '@/interfaces/log';
+export type { LeveledLogMethod, LogCallback, Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 
 export default logger;

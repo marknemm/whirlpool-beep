@@ -1,5 +1,6 @@
-import { Connection } from '@solana/web3.js';
 import env from '@/util/env';
+import { info } from '@/util/log';
+import { Connection } from '@solana/web3.js';
 
 let _rpc: Connection;
 
@@ -11,6 +12,9 @@ let _rpc: Connection;
 export default function rpc(): Connection {
   if (!_rpc) {
     _rpc = new Connection(env.ANCHOR_PROVIDER_URL);
+
+    info('-- Initialized RPC Connection --');
+    info('RPC Endpoint:', _rpc.rpcEndpoint);
   }
 
   return _rpc;
