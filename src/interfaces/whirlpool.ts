@@ -1,6 +1,6 @@
 import type { Token, TokenMeta } from '@/interfaces/token';
 import type { BN } from '@coral-xyz/anchor';
-import type { Whirlpool, WhirlpoolClient } from '@orca-so/whirlpools-sdk';
+import type { Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
@@ -43,26 +43,6 @@ export interface WhirlpoolArgs {
    * @default WHIRLPOOL_CONFIG_PUBLIC_KEY
    */
   whirlpoolConfigKey?: PublicKey;
-
-}
-
-/**
- * Helper class to help interact with Whirlpool Accounts with a simpler interface.
- *
- * Also contains custom extension methods.
- *
- * @augments WhirlpoolClient The native Orca SO {@link WhirlpoolClient}.
- * @see https://orca-so.gitbook.io/orca-developer-portal/whirlpools/interacting-with-the-protocol/basic-usage/setup-whirlpool-context
- */
-export interface WhirlpoolClientExt extends WhirlpoolClient {
-
-  /**
-   * Custom ext that gets a {@link Whirlpool} via a Program Derived Address (PDA).
-   *
-   * @param args The {@link WhirlpoolArgs arguments} to derive the PDA for the Whirlpool.
-   * @returns The {@link Whirlpool}.
-   */
-  getPoolViaPDA(args: WhirlpoolArgs): Promise<Whirlpool>;
 
 }
 

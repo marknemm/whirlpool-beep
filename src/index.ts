@@ -3,19 +3,17 @@ import env from '@/util/env'; // Load and validate env variables ASAP
 import { getTokenMetaPair } from '@/services/token/query';
 import { getBalance } from '@/services/wallet/get-balance';
 import { getPrice } from '@/services/whirlpool/get-price';
-import { debug, error } from '@/util/log';
-import { getValidateKeypair, writeWalletJson } from '@/util/wallet-keypair';
+import { debug, error, logEnv } from '@/util/log';
+import whirlpoolClient from '@/util/whirlpool';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil } from '@orca-so/whirlpools-sdk';
+import { PublicKey } from '@solana/web3.js';
 
 /**
  * Main entry point.
  */
 async function main() {
   try {
-    debug('Environment variables loaded and validated:', { ...env });
-
-    // Initialization using wallet private key
-    const keypair = getValidateKeypair();
-    await writeWalletJson(keypair);
+    logEnv();
 
     // Fetch token metadata (will throw error if tokens are not found)
     const [tokenAMeta, tokenBMeta] = await getTokenMetaPair();
@@ -24,11 +22,22 @@ async function main() {
     await getBalance();
 
     // Check price of whirlpool
-    await getPrice({
+    const { whirlpool } = await getPrice({
       tickSpacing: env.TICK_SPACING,
       tokenAMeta,
       tokenBMeta,
     });
+
+    const tickArrayPublicKey = PDAUtil.getTickArray(
+      ORCA_WHIRLPOOL_PROGRAM_ID,
+      new PublicKey(whirlpool.getAddress()),
+      0
+    ).publicKey;
+
+    const tickArray = await whirlpoolClient().getContext().fetcher.getTickArray(tickArrayPublicKey);
+    tickArray?.ticks[0];
+
+    debug('tickArrayPublicKey', tickArrayPublicKey.toBase58());
 
     // Open a position in whirlpool
     // openPosition({

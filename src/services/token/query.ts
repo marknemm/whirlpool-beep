@@ -61,7 +61,7 @@ export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
   // Can only fetch manually if given a base58 public key of the token mint.
   if (!tokenMeta && PublicKeyUtils.isBase58(query)) {
     // Higher level function than web3.js RPC that fetches token mint and metadata account data using PDA.
-    const digitalAsset = await fetchDigitalAsset(umi, publicKey(query));
+    const digitalAsset = await fetchDigitalAsset(umi(), publicKey(query));
     tokenMeta = digitalAssetToTokenMeta(digitalAsset);
   }
 

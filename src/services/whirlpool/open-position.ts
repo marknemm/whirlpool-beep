@@ -1,7 +1,7 @@
 import type { PositionTickRange, WhirlpoolArgs } from '@/interfaces/whirlpool';
 import { getPrice } from '@/services/whirlpool/get-price';
 import { debug, logPositionRange } from '@/util/log';
-import { whirlpoolClient } from '@/util/whirlpool-client';
+import whirlpoolClient from '@/util/whirlpool';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type RpcResponseAndContext, type SignatureResult } from '@solana/web3.js';
@@ -21,8 +21,7 @@ export async function openPosition(
   priceMargin: Percentage,
   liquidityDeposit: Decimal
 ): Promise<RpcResponseAndContext<SignatureResult>> {
-  const client = whirlpoolClient();
-  const rpc = client.getContext().connection;
+  const rpc = whirlpoolClient().getContext().connection;
 
   // Get Whirlpool price data
   const { price, whirlpool } = await getPrice(whirlpoolArgs);

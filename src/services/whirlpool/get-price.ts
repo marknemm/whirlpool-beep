@@ -1,6 +1,6 @@
 import type { WhirlpoolArgs, WhirlpoolPriceData } from '@/interfaces/whirlpool';
 import { logPrice } from '@/util/log';
-import { whirlpoolClient } from '@/util/whirlpool-client';
+import { getPoolViaPDA } from '@/util/whirlpool';
 import { PriceMath, type Whirlpool } from '@orca-so/whirlpools-sdk';
 
 /**
@@ -12,9 +12,7 @@ import { PriceMath, type Whirlpool } from '@orca-so/whirlpools-sdk';
  * @returns A {@link Promise} that resolves to the {@link WhirlpoolPriceData} of the {@link Whirlpool}.
  */
 export async function getPrice(whirlpoolArgs: WhirlpoolArgs): Promise<WhirlpoolPriceData> {
-  const client = whirlpoolClient();
-
-  const whirlpool = await client.getPoolViaPDA(whirlpoolArgs);
+  const whirlpool = await getPoolViaPDA(whirlpoolArgs);
   const tokenA = { ...whirlpoolArgs.tokenAMeta, ...whirlpool.getTokenAInfo() };
   const tokenB = { ...whirlpoolArgs.tokenBMeta, ...whirlpool.getTokenBInfo() };
 

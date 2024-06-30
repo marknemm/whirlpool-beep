@@ -93,6 +93,15 @@ function formatRestMessages(messages: (object | string)[]): string {
 }
 
 /**
+ * Log the environment variables.
+ *
+ * @param logLevel The {@link LogLevel} to log with. Defaults to `'debug'`.
+ */
+export function logEnv(logLevel: LogLevel = 'debug') {
+  logger.log(logLevel, 'Environment variables loaded and validated:', { ...env });
+}
+
+/**
  * Log the price of a token, {@link tokenA}, in terms of another token, {@link tokenB}.
  * If input is missing, this function does nothing.
  *

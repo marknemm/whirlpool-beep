@@ -1,12 +1,18 @@
 import { AnchorProvider } from '@coral-xyz/anchor';
-import { type Connection } from '@solana/web3.js';
+import keypair, { writeWalletJson } from '@/util/wallet-keypair';
+
+let _anchor: AnchorProvider;
 
 /**
- * Singleton {@link AnchorProvider} for interacting with Solana Smart Contracts via IDL.
+ * Gets the singleton {@link AnchorProvider}, and initializes it if it has not already been initialized.
+ *
+ * @returns The {@link AnchorProvider} singleton.
  */
-export const anchor = AnchorProvider.env();
+export default function anchor(): AnchorProvider {
+  if (!_anchor) {
+    writeWalletJson(keypair()); // Anchor depends on private key in WALLET_JSON file
+    _anchor = AnchorProvider.env();
+  }
 
-/**
- * Singleton RPC {@link Connection} for interacting with Solana.
- */
-export const rpc = anchor.connection;
+  return _anchor;
+}
