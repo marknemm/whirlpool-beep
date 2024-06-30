@@ -27,10 +27,10 @@ export async function openPosition(
   const { price } = await getPrice(whirlpool);
 
   // Use Whirlpool price data to generate position tick range
-  const tickRange = genPositionTickRange(whirlpool, price, priceMargin);
+  const tickRange = _genPositionTickRange(whirlpool, price, priceMargin);
 
   // Obtain deposit estimation
-  const quote = await genDepositQuote(whirlpool, tickRange, liquidityDeposit);
+  const quote = await _genDepositQuote(whirlpool, tickRange, liquidityDeposit);
 
   // Create a transaction
   const { positionMint, tx } = await whirlpool.openPositionWithMetadata(
@@ -60,7 +60,7 @@ export async function openPosition(
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @returns A tuple containing the lower and upper tick index of the position.
  */
-function genPositionTickRange(
+function _genPositionTickRange(
   whirlpool: Whirlpool,
   price: Decimal,
   priceMargin: Percentage,
@@ -79,7 +79,7 @@ function genPositionTickRange(
   const lowerTick = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
   const upperTick = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
 
-  logPositionRange([lowerTick, upperTick], whirlpool);
+  _logPositionRange([lowerTick, upperTick], whirlpool);
   return [lowerTick, upperTick]; // Subset of range [-443636, 443636]
 }
 
@@ -89,7 +89,7 @@ function genPositionTickRange(
  * @param tickRange The {@link PositionTickRange} to log.
  * @param whirlpool The {@link Whirlpool} to log the position range for.
  */
-function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
+function _logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
   if (!tickRange || !whirlpool) return;
 
   const tokenA = whirlpool.getTokenAInfo();
@@ -112,7 +112,7 @@ function logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
  * @param liquidityDeposit The initial amount to deposit as liquidity in the position.
  * @returns A {@link Promise} that resolves to the {@link increaseLiquidityQuoteByInputTokenWithParams} quote.
  */
-async function genDepositQuote(
+async function _genDepositQuote(
   whirlpool: Whirlpool,
   tickRange: PositionTickRange,
   liquidityDeposit: Decimal

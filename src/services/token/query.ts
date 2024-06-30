@@ -7,18 +7,27 @@ import { PublicKeyUtils } from '@orca-so/common-sdk';
 import axios from 'axios';
 
 /**
- * Fetches a pair of tokens' {@link TokenMeta} by their symbols.
+ * Cache for previously queried {@link TokenMeta}.
+ */
+const _cache = new Map<string, TokenMeta>();
+
+/**
+ * Clears the {@link TokenMeta} cache.
+ */
+export function clearTokenCache() {
+  _cache.clear();
+}
+
+/**
+ * Fetches a pair of tokens {@link TokenMeta} by given queries.
  *
- * @param queryA The query for the first token to fetch. Defaults to {@link env.TOKEN_A}.
- * @param queryB The query for the second token to fetch. Defaults to {@link env.TOKEN_B}.
+ * @param queryA The query for the first token to fetch.
+ * @param queryB The query for the second token to fetch.
  * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
  * @throws An error if the GET request fails or either token could not be retrieved.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
-export async function getTokenMetaPair(
-  queryA: string = env.TOKEN_A,
-  queryB: string = env.TOKEN_B
-): Promise<[TokenMeta, TokenMeta]> {
+export async function getTokenMetaPair(queryA: string, queryB: string): Promise<[TokenMeta, TokenMeta]> {
   const tokenAMeta = await getTokenMeta(queryA);
   const tokenBMeta = await getTokenMeta(queryB);
 
@@ -30,7 +39,7 @@ export async function getTokenMetaPair(
 }
 
 /**
- * Fetches a token's metadata by its symbol.
+ * Fetches a token's metadata by a given {@link query}.
  *
  * @param query The query for the token to fetch.
  * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
@@ -38,6 +47,8 @@ export async function getTokenMetaPair(
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
 export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
+  if (_cache.has(query)) return _cache.get(query)!;
+
   const params = {
     chainId: env.CHAIN_ID,
     limit: 10,
@@ -62,7 +73,12 @@ export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
   if (!tokenMeta && PublicKeyUtils.isBase58(query)) {
     // Higher level function than web3.js RPC that fetches token mint and metadata account data using PDA.
     const digitalAsset = await fetchDigitalAsset(umi(), publicKey(query));
-    tokenMeta = digitalAssetToTokenMeta(digitalAsset);
+    tokenMeta = _digitalAssetToTokenMeta(digitalAsset);
+  }
+
+  if (tokenMeta) {
+    _cache.set(query, tokenMeta);
+    _cache.set(tokenMeta.address, tokenMeta);
   }
 
   return tokenMeta;
@@ -74,7 +90,7 @@ export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
  * @param digitalAsset The {@link DigitalAsset} to convert.
  * @returns The generated {@link TokenMeta}, or `null` if the {@link DigitalAsset} is `null`.
  */
-function digitalAssetToTokenMeta(digitalAsset: DigitalAsset): TokenMeta | null {
+function _digitalAssetToTokenMeta(digitalAsset: DigitalAsset): TokenMeta | null {
   if (!digitalAsset) return null;
 
   return {

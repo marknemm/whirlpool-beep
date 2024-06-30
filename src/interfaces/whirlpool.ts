@@ -1,4 +1,4 @@
-import type { Token, TokenMeta } from '@/interfaces/token';
+import type { TokenMeta } from '@/interfaces/token';
 import type { BN } from '@coral-xyz/anchor';
 import type { Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
