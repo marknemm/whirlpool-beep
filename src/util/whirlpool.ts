@@ -1,5 +1,7 @@
 import anchor from '@/util/anchor';
-import { info } from '@/util/log';
+import { debug, info } from '@/util/log';
+import rpc from '@/util/rpc';
+import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, WhirlpoolClient, WhirlpoolContext, buildWhirlpoolClient } from '@orca-so/whirlpools-sdk';
 
 export * from '@/interfaces/whirlpool';
@@ -21,4 +23,25 @@ export default function whirlpoolClient(): WhirlpoolClient {
   }
 
   return _whirlpoolClient;
+}
+
+/**
+ * Signs a transaction payload with the {@link WhirlpoolClient}'s {@link AnchorProvider}, and sends it out.
+ *
+ * @param tx The {@link TransactionBuilder} containing the transaction instructions to send.
+ * @returns A {@link Promise} that resolves once the transaction is complete.
+ * @throws An {@link Error} if the transaction fails to complete.
+ */
+export async function sendTx(tx: TransactionBuilder): Promise<void> {
+  // Sign and send transaction
+  const signature = await tx.buildAndExecute();
+  debug('Tx Signature:', signature);
+
+  // Wait for the transaction to complete
+  const latestBlockhash = await rpc().getLatestBlockhash();
+  const confirmResponse = await rpc().confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
+
+  if (confirmResponse.value.err) {
+    throw new Error(confirmResponse.value.err.toString());
+  }
 }

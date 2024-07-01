@@ -1,10 +1,3 @@
-import type { TokenInfo } from '@orca-so/whirlpools-sdk';
-
-/**
- * Full info for a token.
- */
-export type Token = Omit<TokenMeta, 'address'> & TokenInfo;
-
 /**
  * Token metadata.
  */

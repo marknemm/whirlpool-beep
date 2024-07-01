@@ -3,11 +3,9 @@ import env from '@/util/env'; // Load and validate env variables ASAP
 import { getTokenMetaPair } from '@/services/token/query';
 import { getBalance } from '@/services/wallet/get-balance';
 import { getPrice } from '@/services/whirlpool/get-price';
+import { getTickArray } from '@/services/whirlpool/get-tick-array';
 import { getWhirlpool } from '@/services/whirlpool/get-whirlpool';
 import { debug, error } from '@/util/log';
-import whirlpoolClient from '@/util/whirlpool';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil } from '@orca-so/whirlpools-sdk';
-import { PublicKey } from '@solana/web3.js';
 
 /**
  * Main entry point.
@@ -29,18 +27,10 @@ async function main() {
     });
 
     // Check price of whirlpool
-    await getPrice(whirlpool);
+    const price = await getPrice(whirlpool);
 
-    const tickArrayPublicKey = PDAUtil.getTickArray(
-      ORCA_WHIRLPOOL_PROGRAM_ID,
-      new PublicKey(whirlpool.getAddress()),
-      0
-    ).publicKey;
-
-    const tickArray = await whirlpoolClient().getContext().fetcher.getTickArray(tickArrayPublicKey);
-    tickArray?.ticks[0];
-
-    debug('tickArrayPublicKey', tickArrayPublicKey.toBase58());
+    const tickArrayData = await getTickArray({ whirlpool, priceOrTickIdx: price });
+    debug('Tick array data:', tickArrayData?.ticks[0], tickArrayData?.ticks[tickArrayData.ticks.length - 1]);
 
     // Open a position in whirlpool
     // openPosition(whirlpool, Percentage.fromFraction(5, 100), new Decimal(3));

@@ -1,6 +1,6 @@
 import type { TokenMeta } from '@/interfaces/token';
 import type { BN } from '@coral-xyz/anchor';
-import type { Whirlpool } from '@orca-so/whirlpools-sdk';
+import type { TickArray, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
@@ -12,6 +12,25 @@ import type Decimal from 'decimal.js';
  * @see https://orca-so.gitbook.io/orca-developer-portal/whirlpools/architecture-overview/price-and-ticks
  */
 export type PositionTickRange = [number, number];
+
+/**
+ * Arguments to derive the `PDA` (program derived address) for a {@link TickArray}.
+ */
+export interface TickArrayArgs {
+
+  /**
+   * The {@link Whirlpool} or the {@link PublicKey} of the {@link Whirlpool} that contains the tick array.
+   */
+  whirlpool: Whirlpool;
+
+  /**
+   * Either the {@link WhirlpoolPriceData} or the tick index to derive the {@link TickArray} PDA.
+   *
+   * Will derive the PDA for a {@link TickArray} containing the price data or tick index.
+   */
+  priceOrTickIdx: number | WhirlpoolPriceData;
+
+}
 
 /**
  * Arguments to derive the `PDA` (program derived address) for a {@link Whirlpool}.
@@ -35,14 +54,17 @@ export interface WhirlpoolArgs {
    */
   tokenBMeta: TokenMeta;
 
+}
+
+/**
+ * Arguments for creation of a new {@link Whirlpool}.
+ */
+export interface WhirlpoolCreateArgs extends WhirlpoolArgs {
+
   /**
-   * The `WhirlpoolConfig` account {@link PublicKey}.
-   *
-   * Defaults to the {@link PublicKey} of the config account owned by ORCA foundation.
-   *
-   * @default WHIRLPOOL_CONFIG_PUBLIC_KEY
+   * The initial price of the {@link Whirlpool}.
    */
-  whirlpoolConfigKey?: PublicKey;
+  initialPrice: Decimal;
 
 }
 
@@ -63,6 +85,25 @@ export interface WhirlpoolPriceData {
 
   /**
    * The {@link Whirlpool} that is used to calculate the price.
+   */
+  whirlpool: Whirlpool;
+
+}
+
+/**
+ * Position data for a {@link Whirlpool}.
+ */
+export interface WhirlpoolPositionData {
+
+  /**
+   * A {@link PositionTickRange} tuple containing the lower and upper tick index of a position.
+   *
+   * The tick index range will be within `[-443636, 443636]`, which maps to a price range of `[2^-64, 2^64]`.
+   */
+  tickRange: PositionTickRange;
+
+  /**
+   * The {@link Whirlpool} that contains the position.
    */
   whirlpool: Whirlpool;
 

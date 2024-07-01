@@ -15,7 +15,7 @@ export async function getWhirlpool(args: WhirlpoolArgs): Promise<Whirlpool> {
 
   const whirlpoolPDA = PDAUtil.getWhirlpool(
     ORCA_WHIRLPOOL_PROGRAM_ID,
-    args.whirlpoolConfigKey ?? WHIRLPOOL_CONFIG_PUBLIC_KEY,
+    WHIRLPOOL_CONFIG_PUBLIC_KEY,
     new PublicKey(args.tokenAMeta.address),
     new PublicKey(args.tokenBMeta.address),
     args.tickSpacing

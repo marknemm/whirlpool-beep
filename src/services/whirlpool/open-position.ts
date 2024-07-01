@@ -1,11 +1,9 @@
-import type { PositionTickRange } from '@/interfaces/whirlpool';
+import type { PositionTickRange, WhirlpoolPositionData } from '@/interfaces/whirlpool';
 import { getPrice } from '@/services/whirlpool/get-price';
 import { debug } from '@/util/log';
-import rpc from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool';
+import whirlpoolClient, { sendTx } from '@/util/whirlpool';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import { type RpcResponseAndContext, type SignatureResult } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
 /**
@@ -15,13 +13,13 @@ import type Decimal from 'decimal.js';
  * @param whirlpool The {@link Whirlpool} to open a position in.
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @param liquidityDeposit The initial amount of token `B` to deposit as liquidity in the position.
- * @returns A {@link Promise} that resolves to an {@link RpcResponseAndContext} containing the {@link SignatureResult} of the transaction.
+ * @returns A {@link Promise} that resolves to {@link WhirlpoolPositionData} for the newly opened position.
  */
 export async function openPosition(
   whirlpool: Whirlpool,
   priceMargin: Percentage,
   liquidityDeposit: Decimal
-): Promise<RpcResponseAndContext<SignatureResult>> {
+): Promise<WhirlpoolPositionData> {
   // Get Whirlpool price data
   const { price } = await getPrice(whirlpool);
 
@@ -38,14 +36,11 @@ export async function openPosition(
     quote
   );
 
-  // Send the transaction
-  const signature = await tx.buildAndExecute();
-  debug('Signature:', signature);
-  debug('Position NFT:', positionMint.toBase58());
+  debug('Opening Whirlpool position...');
+  await sendTx(tx);
+  debug ('Whirlpool position opened with mint:', positionMint);
 
-  // Wait for the transaction to complete
-  const latestBlockhash = await rpc().getLatestBlockhash();
-  return rpc().confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
+  return { tickRange, whirlpool };
 }
 
 /**
