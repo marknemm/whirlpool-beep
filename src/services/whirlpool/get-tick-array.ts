@@ -18,7 +18,7 @@ export async function getTickArray(tickArrayArgs: TickArrayArgs): Promise<TickAr
     ? tickArrayArgs.priceOrTickIdx
     : null;
 
-  debug(`Deriving PDA of tick array via ${priceData ? 'price data' : 'tick index'}:`, tickArrayArgs.priceOrTickIdx);
+  debug(`Deriving PDA of tick array via ${priceData ? 'price data' : 'tick index'}:`, priceData?.price ?? tickIdx);
 
   const tickArrayPublicKey = priceData
     ? PDAUtil.getTickArrayFromSqrtPrice(

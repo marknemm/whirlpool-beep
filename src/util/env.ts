@@ -6,7 +6,9 @@ import { bool, cleanEnv, num, str, url } from 'envalid';
 const env = cleanEnv(process.env, {
   ANCHOR_PROVIDER_URL: url(),
   CHAIN_ID: num(),
+  LOG_BREAK_LEN: num({ default: 40 }),
   LOG_COLOR: bool({ default: false }),
+  LOG_DEPTH: num({ default: 3 }),
   LOG_LEVEL: str({ choices: ['debug', 'info'], default: 'info' }),
   LOG_TIMESTAMP: bool({ default: false }),
   NODE_ENV: str({ choices: ['development', 'production', 'test'] }),

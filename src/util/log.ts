@@ -4,7 +4,11 @@ import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'util';
 import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 
-const inspectOpts: InspectOptions = { depth: 5, colors: env.LOG_COLOR, breakLength: 40 };
+const _inspectOpts: InspectOptions = {
+  breakLength: env.LOG_BREAK_LEN,
+  colors: env.LOG_COLOR,
+  depth: env.LOG_DEPTH,
+};
 
 /**
  * The {@link Logger} instance.
@@ -65,7 +69,7 @@ function formatMessage(message: object | string): string {
     ? env.LOG_COLOR
       ? message.replaceAll(DECIMAL_REGEX, `${yellow('$1')}`)
       : message
-    : inspect(message, inspectOpts);
+    : inspect(message, _inspectOpts);
 }
 
 /**
@@ -79,7 +83,7 @@ function formatRestMessages(messages: (object | string)[]): string {
 
   // Treat only rest message as a data value that will receive syntax highlighting according to its type.
   if (messages.length === 1) {
-    return ` ${inspect(messages[0], inspectOpts)}`;
+    return ` ${inspect(messages[0], _inspectOpts)}`;
   }
 
   // Treat rest of messages as concatenated parts of base message.
