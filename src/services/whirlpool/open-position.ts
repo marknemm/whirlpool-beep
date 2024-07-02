@@ -1,9 +1,7 @@
-import type { PositionTickRange, WhirlpoolPositionData } from '@/interfaces/whirlpool';
-import { getPrice } from '@/services/whirlpool/get-price';
 import { debug } from '@/util/log';
-import whirlpoolClient, { sendTx } from '@/util/whirlpool';
+import whirlpoolClient, { getPrice, sendTx } from '@/util/whirlpool';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
 /**
@@ -13,15 +11,15 @@ import type Decimal from 'decimal.js';
  * @param whirlpool The {@link Whirlpool} to open a position in.
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @param liquidityDeposit The initial amount of token `B` to deposit as liquidity in the position.
- * @returns A {@link Promise} that resolves to {@link WhirlpoolPositionData} for the newly opened position.
+ * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
 export async function openPosition(
   whirlpool: Whirlpool,
   priceMargin: Percentage,
   liquidityDeposit: Decimal
-): Promise<WhirlpoolPositionData> {
+): Promise<Position> {
   // Get Whirlpool price data
-  const { price } = await getPrice(whirlpool);
+  const price = getPrice(whirlpool);
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = _genPositionTickRange(whirlpool, price, priceMargin);
@@ -40,7 +38,7 @@ export async function openPosition(
   await sendTx(tx);
   debug ('Whirlpool position opened with mint:', positionMint);
 
-  return { tickRange, whirlpool };
+  return await whirlpoolClient().getPosition(positionMint);
 }
 
 /**
@@ -58,7 +56,7 @@ function _genPositionTickRange(
   whirlpool: Whirlpool,
   price: Decimal,
   priceMargin: Percentage,
-): PositionTickRange {
+): [number, number] {
   // Extract necessary data from Whirlpool
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
@@ -83,7 +81,7 @@ function _genPositionTickRange(
  * @param tickRange The {@link PositionTickRange} to log.
  * @param whirlpool The {@link Whirlpool} to log the position range for.
  */
-function _logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
+function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
   if (!tickRange || !whirlpool) return;
 
   const tokenA = whirlpool.getTokenAInfo();
@@ -108,7 +106,7 @@ function _logPositionRange(tickRange: PositionTickRange, whirlpool: Whirlpool) {
  */
 async function _genDepositQuote(
   whirlpool: Whirlpool,
-  tickRange: PositionTickRange,
+  tickRange: [number, number],
   liquidityDeposit: Decimal
 ): Promise<IncreaseLiquidityQuote> {
   const tokenA = whirlpool.getTokenAInfo();

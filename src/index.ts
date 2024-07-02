@@ -2,10 +2,9 @@ import env from '@/util/env'; // Load and validate env variables ASAP
 
 import { getTokenMetaPair } from '@/services/token/query';
 import { getBalance } from '@/services/wallet/get-balance';
-import { getPrice } from '@/services/whirlpool/get-price';
 import { getTickArray } from '@/services/whirlpool/get-tick-array';
-import { getWhirlpool } from '@/services/whirlpool/get-whirlpool';
 import { debug, error } from '@/util/log';
+import { getPrice, getWhirlpool } from '@/util/whirlpool';
 
 /**
  * Main entry point.
@@ -20,17 +19,15 @@ async function main() {
     // Check wallet account balance
     await getBalance();
 
-    const whirlpool = await getWhirlpool({
-      tickSpacing: env.TICK_SPACING,
-      tokenAMeta,
-      tokenBMeta,
-    });
+    // Get whirlpool
+    const whirlpool = await getWhirlpool(tokenAMeta.address, tokenBMeta.address, env.TICK_SPACING);
 
     // Check price of whirlpool
-    const price = await getPrice(whirlpool);
+    const price = getPrice(whirlpool);
+    debug(`Price of ${tokenAMeta.symbol} in terms of ${tokenBMeta.symbol}:`, price.toFixed(tokenBMeta.decimals));
 
-    const tickArrayData = await getTickArray({ whirlpool, priceOrTickIdx: price });
-    debug('Tick array data:', tickArrayData?.ticks[0], tickArrayData?.ticks[tickArrayData.ticks.length - 1]);
+    const tickArray = await getTickArray(whirlpool);
+    debug('Tick array data:', tickArray.data?.ticks[0], tickArray.data?.ticks[tickArray.data.ticks.length - 1]);
 
     // Open a position in whirlpool
     // openPosition(whirlpool, Percentage.fromFraction(5, 100), new Decimal(3));

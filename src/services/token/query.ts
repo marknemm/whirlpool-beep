@@ -1,9 +1,11 @@
 import type { TokenMeta, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
+import { debug } from '@/util/log';
 import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
-import { PublicKeyUtils } from '@orca-so/common-sdk';
+import { AddressUtil, PublicKeyUtils, type Address } from '@orca-so/common-sdk';
+import { type Whirlpool } from '@orca-so/whirlpools-sdk';
 import axios from 'axios';
 
 /**
@@ -19,15 +21,32 @@ export function clearTokenCache() {
 }
 
 /**
- * Fetches a pair of tokens {@link TokenMeta} by given queries.
+ * Fetches a pair of {@link TokenMeta} based off of the token info found in a given {@link whirlpool}.
  *
- * @param queryA The query for the first token to fetch.
- * @param queryB The query for the second token to fetch.
+ * @param whirlpool The {@link Whirlpool} to fetch the token pair for.
  * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
  * @throws An error if the GET request fails or either token could not be retrieved.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
-export async function getTokenMetaPair(queryA: string, queryB: string): Promise<[TokenMeta, TokenMeta]> {
+export async function getTokenMetaPairViaWhirlpool(whirlpool: Whirlpool): Promise<[TokenMeta, TokenMeta]> {
+  return getTokenMetaPair(
+    whirlpool.getTokenAInfo().address,
+    whirlpool.getTokenBInfo().address
+  );
+}
+
+/**
+ * Fetches a pair of tokens {@link TokenMeta} by given queries.
+ *
+ * @param queryA The query for or {@link Address} of token A.
+ * @param queryB The query for or {@link Address} of token B.
+ * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
+ * @throws An error if the GET request fails or either token could not be retrieved.
+ */
+export async function getTokenMetaPair(
+  queryA: string | Address,
+  queryB: string | Address
+): Promise<[TokenMeta, TokenMeta]> {
   const tokenAMeta = await getTokenMeta(queryA);
   const tokenBMeta = await getTokenMeta(queryB);
 
@@ -39,15 +58,21 @@ export async function getTokenMetaPair(queryA: string, queryB: string): Promise<
 }
 
 /**
- * Fetches a token's metadata by a given {@link query}.
+ * Fetches a {@link TokenMeta} by a given {@link query}.
  *
- * @param query The query for the token to fetch.
+ * @param query The query for or {@link Address} of the token to fetch.
  * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
-export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
-  if (_cache.has(query)) return _cache.get(query)!;
+export async function getTokenMeta(query: string | Address): Promise<TokenMeta | null> {
+  query = _queryToString(query);
+  debug('Fetching token meta for query:', query);
+
+  if (_cache.has(query)) {
+    debug('Token meta found in cache');
+    return _cache.get(query)!;
+  }
 
   const params = {
     chainId: env.CHAIN_ID,
@@ -80,8 +105,21 @@ export async function getTokenMeta(query: string): Promise<TokenMeta | null> {
     _cache.set(query, tokenMeta);
     _cache.set(tokenMeta.address, tokenMeta);
   }
+  debug('Fetched token meta:', tokenMeta);
 
   return tokenMeta;
+}
+
+/**
+ * Converts a query to a string.
+ *
+ * @param query The query to convert.
+ * @returns The converted query as a string.
+ */
+function _queryToString(query: string | Address): string {
+  return (typeof query === 'string')
+    ? query
+    : AddressUtil.toString(query);
 }
 
 /**

@@ -104,6 +104,7 @@ export default tseslint.config({
     'no-unused-expressions': ['warn', {                         // Enable the warning about unused expressions
       allowTernary: true,                                       // Allow ternary expressions
     }],
+    'no-unused-private-class-members': 'warn',                  // Enable the warning about unused private class members
     'no-unused-vars': 'off',                                    // Disable the rule that disallows unused variables (use TypeScript instead)
     'no-useless-constructor': 'off',                            // Enable the warning about useless constructors
     'no-useless-return': 'warn',                                // Enable the warning about useless return statements
