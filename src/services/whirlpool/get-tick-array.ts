@@ -1,5 +1,5 @@
 import { debug, info } from '@/util/log';
-import whirlpoolClient, { getTokenInfoPair } from '@/util/whirlpool';
+import whirlpoolClient from '@/util/whirlpool-client';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type TickArray, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
@@ -13,7 +13,8 @@ import type Decimal from 'decimal.js';
  * @throws An {@link Error} if the {@link TickArrayArgs} are invalid.
  */
 export async function getTickArrayViaPrice(whirlpool: Whirlpool, price: Decimal): Promise<TickArray> {
-  const [tokenA, tokenB] = getTokenInfoPair(whirlpool);
+  const tokenA = whirlpool.getTokenAInfo();
+  const tokenB = whirlpool.getTokenBInfo();
 
   const tickIdx = PriceMath.priceToTickIndex(price, tokenA.decimals, tokenB.decimals);
 

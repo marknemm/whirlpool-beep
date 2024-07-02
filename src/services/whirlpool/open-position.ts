@@ -1,5 +1,7 @@
+import { toPrice } from '@/util/currency';
 import { debug } from '@/util/log';
-import whirlpoolClient, { getPrice, sendTx } from '@/util/whirlpool';
+import { verifyTransaction } from '@/util/rpc';
+import whirlpoolClient from '@/util/whirlpool-client';
 import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
@@ -19,7 +21,7 @@ export async function openPosition(
   liquidityDeposit: Decimal
 ): Promise<Position> {
   // Get Whirlpool price data
-  const price = getPrice(whirlpool);
+  const price = toPrice(whirlpool);
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = _genPositionTickRange(whirlpool, price, priceMargin);
@@ -34,8 +36,9 @@ export async function openPosition(
     quote
   );
 
-  debug('Opening Whirlpool position...');
-  await sendTx(tx);
+  debug('Opening whirlpool position...');
+  const signature = await tx.buildAndExecute();
+  await verifyTransaction(signature);
   debug ('Whirlpool position opened with mint:', positionMint);
 
   return await whirlpoolClient().getPosition(positionMint);

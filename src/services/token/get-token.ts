@@ -1,4 +1,4 @@
-import type { TokenMeta, TokenQueryResponse } from '@/interfaces/token';
+import type { TokenMeta, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
 import { debug } from '@/util/log';
 import umi from '@/util/umi';
@@ -44,8 +44,8 @@ export async function getTokenMetaPairViaWhirlpool(whirlpool: Whirlpool): Promis
  * @throws An error if the GET request fails or either token could not be retrieved.
  */
 export async function getTokenMetaPair(
-  queryA: string | Address,
-  queryB: string | Address
+  queryA: TokenQuery,
+  queryB: TokenQuery
 ): Promise<[TokenMeta, TokenMeta]> {
   const tokenAMeta = await getTokenMeta(queryA);
   const tokenBMeta = await getTokenMeta(queryB);
@@ -65,7 +65,7 @@ export async function getTokenMetaPair(
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
-export async function getTokenMeta(query: string | Address): Promise<TokenMeta | null> {
+export async function getTokenMeta(query: TokenQuery): Promise<TokenMeta | null> {
   query = _queryToString(query);
   debug('Fetching token meta for query:', query);
 
@@ -116,7 +116,7 @@ export async function getTokenMeta(query: string | Address): Promise<TokenMeta |
  * @param query The query to convert.
  * @returns The converted query as a string.
  */
-function _queryToString(query: string | Address): string {
+function _queryToString(query: TokenQuery): string {
   return (typeof query === 'string')
     ? query
     : AddressUtil.toString(query);

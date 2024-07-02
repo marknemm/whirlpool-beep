@@ -1,9 +1,9 @@
 import { decodeBase58 } from '@/util/encode';
 import env from '@/util/env';
+import { info } from '@/util/log';
 import rpc from '@/util/rpc';
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import { Keypair } from '@solana/web3.js';
-import { info } from '@/util/log';
 
 let _anchor: AnchorProvider;
 

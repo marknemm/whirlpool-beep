@@ -1,10 +1,11 @@
 import env from '@/util/env'; // Load and validate env variables ASAP
 
-import { getTokenMetaPair } from '@/services/token/query';
-import { getBalance } from '@/services/wallet/get-balance';
+import { getTokenMetaPair } from '@/services/token/get-token';
+import { getWalletBalance } from '@/services/wallet/get-balance';
 import { getTickArray } from '@/services/whirlpool/get-tick-array';
+import { getWhirlpool } from '@/services/whirlpool/get-whirlpool';
+import { toPrice } from '@/util/currency';
 import { debug, error } from '@/util/log';
-import { getPrice, getWhirlpool } from '@/util/whirlpool';
 
 /**
  * Main entry point.
@@ -17,13 +18,14 @@ async function main() {
     const [tokenAMeta, tokenBMeta] = await getTokenMetaPair(env.TOKEN_A, env.TOKEN_B);
 
     // Check wallet account balance
-    await getBalance();
+    await getWalletBalance(tokenAMeta.address);
+    await getWalletBalance(tokenBMeta.address);
 
     // Get whirlpool
     const whirlpool = await getWhirlpool(tokenAMeta.address, tokenBMeta.address, env.TICK_SPACING);
 
     // Check price of whirlpool
-    const price = getPrice(whirlpool);
+    const price = toPrice(whirlpool);
     debug(`Price of ${tokenAMeta.symbol} in terms of ${tokenBMeta.symbol}:`, price.toFixed(tokenBMeta.decimals));
 
     const tickArray = await getTickArray(whirlpool);

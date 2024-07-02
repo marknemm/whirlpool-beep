@@ -1,3 +1,5 @@
+import { Address } from '@orca-so/common-sdk';
+
 /**
  * Token metadata.
  */
@@ -51,3 +53,10 @@ export interface TokenQueryResponse {
   content: TokenMeta[];
 
 }
+
+/**
+ * A token query.
+ *
+ * Can be a token `symbol` or mint {@link Address}.
+ */
+export type TokenQuery = string | Address;
