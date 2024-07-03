@@ -4,7 +4,7 @@ import { debug } from '@/util/log';
 import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
-import { AddressUtil, PublicKeyUtils, type Address } from '@orca-so/common-sdk';
+import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
 import { type Whirlpool } from '@orca-so/whirlpools-sdk';
 import axios from 'axios';
 
@@ -20,6 +20,20 @@ const _cache = new Map<string, DigitalAsset>();
  */
 export function clearTokenCache() {
   _cache.clear();
+}
+
+/**
+ * Fetches an NFT {@link DigitalAsset} by a given {@link query}.
+ *
+ * @param query The {@link TokenQuery} for the NFT to fetch.
+ * @returns A {@link Promise} that resolves to the NFT {@link DigitalAsset};
+ * `null` if the NFT is not found or a token is found that is fungible.
+ */
+export async function getNFT(query: TokenQuery): Promise<DigitalAsset | null> {
+  const token = await getToken(query);
+  return (token?.mint.supply === 1n)
+    ? token
+    : null;
 }
 
 /**
@@ -40,8 +54,8 @@ export async function getTokenPairViaWhirlpool(whirlpool: Whirlpool): Promise<[D
 /**
  * Fetches a pair of tokens {@link TokenMeta} by given queries.
  *
- * @param queryA The query for or {@link Address} of token A.
- * @param queryB The query for or {@link Address} of token B.
+ * @param queryA The {@link TokenQuery} for token A.
+ * @param queryB The {@link TokenQuery} for token B.
  * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
  * @throws An error if the GET request fails or either token could not be retrieved.
  */
@@ -62,7 +76,7 @@ export async function getTokenPair(
 /**
  * Fetches a {@link TokenMeta} by a given {@link query}.
  *
- * @param query The query for or {@link Address} of the token to fetch.
+ * @param query The {@link TokenQuery} for the token to fetch.
  * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.

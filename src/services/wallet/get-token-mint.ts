@@ -1,9 +1,7 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { getWalletNFTAccount, getWalletNFTAccounts, getWalletTokenAccount } from '@/services/wallet/get-token-account';
-import anchor from '@/util/anchor';
-import umi from '@/util/umi';
-import { type DigitalAsset, fetchAllDigitalAssetByOwner, fetchDigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { publicKey } from '@metaplex-foundation/umi';
+import { getToken } from '@/services/token/get-token';
+import { getWalletNFTAccount, getWalletNFTAccounts, getWalletTokenAccount, getWalletTokenAccounts } from '@/services/wallet/get-token-account';
+import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 
 /**
  * Gets a token mint {@link DigitalAsset} that is associated with the wallet.
@@ -15,7 +13,7 @@ export async function getWalletTokenMintAsset(currency: TokenQuery): Promise<Dig
   const tokenAccount = await getWalletTokenAccount(currency);
 
   return tokenAccount
-    ? await fetchDigitalAsset(umi(), publicKey(tokenAccount.address))
+    ? await getToken(tokenAccount.mint)
     : null;
 }
 
@@ -25,10 +23,17 @@ export async function getWalletTokenMintAsset(currency: TokenQuery): Promise<Dig
  * @returns A {@link Promise} that resolves to an array of {@link DigitalAsset}s.
  */
 export async function getWalletTokenMintAssets(): Promise<DigitalAsset[]> {
-  return await fetchAllDigitalAssetByOwner(
-    umi(),
-    publicKey(anchor().wallet.publicKey)
-  );
+  const tokenAccounts = await getWalletTokenAccounts();
+  const digitalAssets = [];
+
+  for (const nftAccount of tokenAccounts) {
+    const digitalAsset = await getToken(nftAccount.mint);
+    if (digitalAsset) {
+      digitalAssets.push(digitalAsset);
+    }
+  }
+
+  return digitalAssets;
 }
 
 /**
@@ -41,7 +46,7 @@ export async function getWalletNFTMintAsset(query: TokenQuery): Promise<DigitalA
   const nftAccount = await getWalletNFTAccount(query);
 
   return nftAccount
-    ? await fetchDigitalAsset(umi(), publicKey(nftAccount.address))
+    ? await getToken(nftAccount.mint)
     : null;
 }
 
@@ -55,7 +60,7 @@ export async function getWalletNFTMintAssets() {
   const digitalAssets = [];
 
   for (const nftAccount of nftAccounts) {
-    digitalAssets.push(await fetchDigitalAsset(umi(), publicKey(nftAccount.mint)));
+    digitalAssets.push(await getToken(nftAccount.mint));
   }
 
   return digitalAssets;

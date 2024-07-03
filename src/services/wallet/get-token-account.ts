@@ -1,11 +1,10 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { getToken } from '@/services/token/get-token';
+import { getNFT, getToken } from '@/services/token/get-token';
 import anchor from '@/util/anchor';
-import { toNum } from '@/util/currency';
 import rpc from '@/util/rpc';
 import { type Wallet } from '@coral-xyz/anchor';
 import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token';
-import { PublicKey, type ParsedAccountData, type TokenAccountsFilter } from '@solana/web3.js';
+import { PublicKey, type TokenAccountsFilter } from '@solana/web3.js';
 
 /**
  * Gets an SPL token {@link Account} (`ATA`) associated with the {@link Wallet}.
@@ -83,9 +82,8 @@ export async function getWalletNFTAccounts(filter?: TokenAccountsFilter): Promis
   // NFTs have both an amount of 1 in ATA and supply of 1 in the token mint account.
   for (const tokenAccount of tokenAccounts) {
     if (tokenAccount.amount === 1n) {
-      const tokenMintResponse = await rpc().getParsedAccountInfo(tokenAccount.mint);
-      const parsedAccount = (tokenMintResponse.value?.data as ParsedAccountData).parsed;
-      if (toNum(parsedAccount?.info?.supply) === 1) {
+      const nft = await getNFT(tokenAccount.mint); // Implicitly checks supply == 1
+      if (nft) {
         nftAccounts.push(tokenAccount);
       }
     }
