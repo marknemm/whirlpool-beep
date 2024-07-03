@@ -11,7 +11,7 @@ let _rpc: Connection;
  */
 export default function rpc(): Connection {
   if (!_rpc) {
-    _rpc = new Connection(env.ANCHOR_PROVIDER_URL);
+    _rpc = new Connection(env.RPC_ENDPOINT);
 
     info('-- Initialized RPC Connection --');
     info('RPC Endpoint:', _rpc.rpcEndpoint);

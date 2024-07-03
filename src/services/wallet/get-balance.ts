@@ -1,12 +1,11 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { getTokenMeta } from '@/services/token/get-token';
+import { getToken } from '@/services/token/get-token';
 import anchor from '@/util/anchor';
-import { toSol } from '@/util/currency';
+import { toNum, toSol } from '@/util/currency';
 import { debug } from '@/util/log';
 import rpc from '@/util/rpc';
-import { BN } from '@coral-xyz/anchor';
-import { DecimalUtil, type Address } from '@orca-so/common-sdk';
-import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token';
+import { type Address } from '@orca-so/common-sdk';
+import { getWalletTokenAccount } from './get-token-account';
 
 /**
  * Queries the wallet account balance.
@@ -16,41 +15,23 @@ import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token
  * @returns A {@link Promise} that resolves to the wallet account balance (SOL).
  */
 export async function getWalletBalance(currency: TokenQuery = 'SOL'): Promise<number> {
-  const currencyTokenMeta = await getTokenMeta(currency);
-  if (!currencyTokenMeta) {
+  const currencyToken = await getToken(currency);
+  if (!currencyToken) {
     throw new Error(`Failed to fetch token metadata for query: ${currency}`);
   }
 
   let amount = 0;
 
-  if (currencyTokenMeta.symbol === 'SOL') {
+  if (currencyToken.metadata.symbol === 'SOL') {
+    // Fetch the default wallet balance and convert Lamports to SOL
     const lamports = await rpc().getBalance(anchor().publicKey);
     amount = toSol(lamports);
   } else {
-    // Fetch the desired token account
-    const tokenAccounts = await _getWalletTokenAccounts();
-    const tokenAccount = tokenAccounts.find(
-      (account) => account.mint.toBase58() === currencyTokenMeta?.address
-    );
-
-    // Convert the token amount to a number
-    amount = DecimalUtil.fromBN(
-      new BN(tokenAccount?.amount.toString() ?? '0'),
-      currencyTokenMeta.decimals
-    ).toNumber();
+    // Fetch the desired token account and get amount
+    const tokenAccount = await getWalletTokenAccount(currencyToken.mint.publicKey);
+    amount = toNum(tokenAccount?.amount, currencyToken.mint.decimals);
   }
 
-  debug('Wallet balance:', amount, currencyTokenMeta?.symbol);
+  debug('Wallet balance:', amount, currencyToken.metadata.symbol);
   return amount;
-}
-
-async function _getWalletTokenAccounts(): Promise<Account[]> {
-  const response = await rpc().getTokenAccountsByOwner(
-    anchor().publicKey,
-    { programId: TOKEN_PROGRAM_ID }
-  );
-
-  return response.value.map((responseData) =>
-    unpackAccount(responseData.pubkey, responseData.account)
-  );
 }

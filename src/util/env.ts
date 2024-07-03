@@ -4,7 +4,6 @@ import { bool, cleanEnv, num, str, url } from 'envalid';
  * Preprocessed, validated, and strongly typed environment variables.
  */
 const env = cleanEnv(process.env, {
-  ANCHOR_PROVIDER_URL: url(),
   CHAIN_ID: num(),
   LOG_BREAK_LEN: num({ default: 40 }),
   LOG_COLOR: bool({ default: false }),
@@ -12,6 +11,7 @@ const env = cleanEnv(process.env, {
   LOG_LEVEL: str({ choices: ['debug', 'info'], default: 'info' }),
   LOG_TIMESTAMP: bool({ default: false }),
   NODE_ENV: str({ choices: ['development', 'production', 'test'] }),
+  RPC_ENDPOINT: url(),
   TICK_SPACING: num(),
   TOKEN_A: str(),
   TOKEN_B: str(),

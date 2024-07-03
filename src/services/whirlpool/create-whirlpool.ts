@@ -2,7 +2,7 @@ import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import { getTokenMetaPair } from '@/services/token/get-token';
 import { debug } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool';
+import whirlpoolClient from '@/util/whirlpool-client';
 import { type Address } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
