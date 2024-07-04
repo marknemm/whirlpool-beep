@@ -3,7 +3,7 @@ import { debug, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx } from '@orca-so/whirlpools-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleData, WhirlpoolIx } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
@@ -13,7 +13,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
  * @returns A {@link Promise} that resolves to the {@link PublicKey} (address) of the position bundle.
  * @throws An {@link Error} if the position bundle initialization fails to complete.
  */
-export async function createPositionBundle(): Promise<PublicKey> {
+export async function createPositionBundle(): Promise<PositionBundleData | null> {
   const positionBundleMintKeypair = Keypair.generate();
   const positionBundlePda = PDAUtil.getPositionBundle(ORCA_WHIRLPOOL_PROGRAM_ID, positionBundleMintKeypair.publicKey);
   const positionBundleMetadataPda = PDAUtil.getPositionBundleMetadata(positionBundleMintKeypair.publicKey);
@@ -43,5 +43,5 @@ export async function createPositionBundle(): Promise<PublicKey> {
   info('Position bundle initialized with address:', positionBundlePda.publicKey.toBase58());
   info('Position bundle mint:', positionBundleMintKeypair.publicKey.toBase58());
 
-  return positionBundlePda.publicKey;
+  return whirlpoolClient().getFetcher().getPositionBundle(positionBundlePda.publicKey);
 }

@@ -1,24 +1,25 @@
+import { getPositionBundle } from '@/services/position/get-position-bundle';
+import { getWalletNFTAccount } from '@/services/wallet/get-token-account';
+import anchor from '@/util/anchor';
 import { toPrice } from '@/util/currency';
 import { debug } from '@/util/log';
-import { verifyTransaction } from '@/util/rpc';
+import rpc, { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
-import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, PriceMath, TokenExtensionUtil, increaseLiquidityQuoteByInputTokenWithParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
+import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
 /**
- * Opens a position in a {@link Whirlpool}.
- * The position is opened with a price range and a specified amount of liquidity.
+ * Opens a {@link Position} in a {@link Whirlpool}.
  *
- * @param whirlpool The {@link Whirlpool} to open a position in.
- * @param priceMargin The price margin {@link Percentage} to use for the position.
- * @param liquidityDeposit The initial amount of token `B` to deposit as liquidity in the position.
+ * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
+ * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
 export async function openPosition(
   whirlpool: Whirlpool,
-  priceMargin: Percentage,
-  liquidityDeposit: Decimal
+  priceMargin: Percentage
 ): Promise<Position> {
   // Get Whirlpool price data
   const price = toPrice(whirlpool);
@@ -27,21 +28,52 @@ export async function openPosition(
   const tickRange = _genPositionTickRange(whirlpool, price, priceMargin);
 
   // Obtain deposit estimation
-  const quote = await _genDepositQuote(whirlpool, tickRange, liquidityDeposit);
+  // const quote = await _genDepositQuote(whirlpool, tickRange, liquidityDeposit);
+
+  const positionBundle = await getPositionBundle();
+  if (!positionBundle) throw new Error('Position bundle not available');
+
+  const positionBundlePda = PDAUtil.getPositionBundle(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    positionBundle.positionBundleMint
+  );
+  const positionBundleTokenAccount = await getWalletNFTAccount(positionBundle.positionBundleMint);
+  if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
+
+  const bundleIndex = PositionBundleUtil.findUnoccupiedBundleIndex(positionBundle);
+  if (bundleIndex == null) throw new Error('No available bundle index found in position bundle');
+
+  const bundledPositionPda = PDAUtil.getBundledPosition(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    positionBundle.positionBundleMint,
+    bundleIndex
+  );
+
+  const openPositionIx = await WhirlpoolIx.openBundledPositionIx(
+    whirlpoolClient().getContext().program,
+    {
+      funder: anchor().wallet.publicKey,
+      positionBundle: positionBundlePda.publicKey,
+      positionBundleAuthority: anchor().wallet.publicKey,
+      positionBundleTokenAccount: new PublicKey(positionBundleTokenAccount.address),
+      bundleIndex,
+      bundledPositionPda,
+      whirlpool: whirlpool.getAddress(),
+      tickLowerIndex: tickRange[0],
+      tickUpperIndex: tickRange[1],
+    }
+  );
 
   // Create a transaction
-  const { positionMint, tx } = await whirlpool.openPositionWithMetadata(
-    tickRange[0],
-    tickRange[1],
-    quote
-  );
+  const tx = new TransactionBuilder(rpc(), anchor().wallet);
+  tx.addInstruction(openPositionIx);
 
   debug('Opening whirlpool position...');
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
-  debug ('Whirlpool position opened with mint:', positionMint);
+  debug ('Whirlpool position opened with mint:', bundledPositionPda.publicKey.toBase58());
 
-  return await whirlpoolClient().getPosition(positionMint);
+  return await whirlpoolClient().getPosition(bundledPositionPda.publicKey);
 }
 
 /**
@@ -97,46 +129,4 @@ function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
 
   debug(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
   debug(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
-}
-
-/**
- * Gen an estimated quote on the maximum tokens required to deposit based on a specified {@link liquidityDeposit} amount.
- *
- * @param whirlpool The {@link Whirlpool} to get the deposit quote for.
- * @param tickRange The tick index range of the position that liquidity will be deposited into.
- * @param liquidityDeposit The initial amount to deposit as liquidity in the position.
- * @returns A {@link Promise} that resolves to the {@link increaseLiquidityQuoteByInputTokenWithParams} quote.
- */
-async function _genDepositQuote(
-  whirlpool: Whirlpool,
-  tickRange: [number, number],
-  liquidityDeposit: Decimal
-): Promise<IncreaseLiquidityQuote> {
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
-
-  const quote = increaseLiquidityQuoteByInputTokenWithParams({
-    // Pass the pool definition and state
-    tokenMintA: tokenA.mint,
-    tokenMintB: tokenB.mint,
-    tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
-      whirlpoolClient().getFetcher(),
-      whirlpool.getData(),
-      IGNORE_CACHE
-    ),
-    sqrtPrice: whirlpool.getData().sqrtPrice,
-    tickCurrentIndex: whirlpool.getData().tickCurrentIndex,
-    // Price range
-    tickLowerIndex: tickRange[0],
-    tickUpperIndex: tickRange[1],
-    // Input token and amount
-    inputTokenMint: tokenB.mint,
-    inputTokenAmount: liquidityDeposit,
-    // Acceptable slippage
-    slippageTolerance: Percentage.fromFraction(10, 1000) // 1%,
-  });
-
-  debug('Token A max input:', DecimalUtil.fromBN(quote.tokenMaxA, tokenA.decimals).toFixed(tokenA.decimals));
-  debug('Token B max input:', DecimalUtil.fromBN(quote.tokenMaxB, tokenB.decimals).toFixed(tokenB.decimals));
-  return quote;
 }

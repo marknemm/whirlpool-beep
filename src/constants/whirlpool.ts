@@ -18,3 +18,13 @@ export const WHIRLPOOL_CONFIG_EXTENSION_PUBLIC_KEY = new PublicKey(
 export const WHIRLPOOL_CONFIG_PUBLIC_KEY = new PublicKey(
   env.WHIRLPOOL_CONFIG_ADDRESS
 );
+
+/**
+ * Symbol for `Whirlpool` position bundle NFTs.
+ */
+export const WHIRLPOOL_POSITION_BUNDLE_SYMBOL = 'OPB';
+
+/**
+ * Symbol for `Whirlpool` position NFTs.
+ */
+export const WHIRLPOOL_POSITION_SYMBOL = 'OWP';

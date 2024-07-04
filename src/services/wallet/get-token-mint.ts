@@ -55,12 +55,15 @@ export async function getWalletNFTMintAsset(query: TokenQuery): Promise<DigitalA
  *
  * @returns A {@link Promise} that resolves to an array of NFT {@link DigitalAsset}s.
  */
-export async function getWalletNFTMintAssets() {
+export async function getWalletNFTMintAssets(): Promise<DigitalAsset[]> {
   const nftAccounts = await getWalletNFTAccounts();
   const digitalAssets = [];
 
   for (const nftAccount of nftAccounts) {
-    digitalAssets.push(await getToken(nftAccount.mint));
+    const digitalAsset = await getToken(nftAccount.mint);
+    if (digitalAsset) {
+      digitalAssets.push(digitalAsset);
+    }
   }
 
   return digitalAssets;

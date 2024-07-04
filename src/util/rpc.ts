@@ -1,6 +1,6 @@
 import env from '@/util/env';
 import { debug, info } from '@/util/log';
-import { Connection } from '@solana/web3.js';
+import { Commitment, Connection } from '@solana/web3.js';
 
 let _rpc: Connection;
 
@@ -24,15 +24,16 @@ export default function rpc(): Connection {
  * Verifies a blockchain transaction by waiting for it to be confirmed.
  *
  * @param signature The signature of the transaction to verify.
+ * @param commitment The commitment level to use for the verification. Defaults to `finalized`.
  * @returns A {@link Promise} that resolves when the transaction is confirmed.
  * @throws An {@link Error} if the transaction cannot be confirmed.
  */
-export async function verifyTransaction(signature: string): Promise<void> {
+export async function verifyTransaction(signature: string, commitment: Commitment = 'finalized'): Promise<void> {
   debug('Verifying Tx with signature:', signature);
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc().getLatestBlockhash();
-  const confirmResponse = await rpc().confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
+  const confirmResponse = await rpc().confirmTransaction({ signature, ...latestBlockhash }, commitment);
 
   if (confirmResponse.value.err) {
     throw new Error(confirmResponse.value.err.toString());
