@@ -1,5 +1,5 @@
 import env from '@/util/env';
-import { debug, info } from '@/util/log';
+import { info } from '@/util/log';
 import { Commitment, Connection } from '@solana/web3.js';
 
 let _rpc: Connection;
@@ -29,7 +29,7 @@ export default function rpc(): Connection {
  * @throws An {@link Error} if the transaction cannot be confirmed.
  */
 export async function verifyTransaction(signature: string, commitment: Commitment = 'finalized'): Promise<void> {
-  debug('Verifying Tx with signature:', signature);
+  info('Verifying Tx with signature:', signature);
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc().getLatestBlockhash();

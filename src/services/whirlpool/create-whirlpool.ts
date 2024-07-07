@@ -1,5 +1,5 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { getTokenMetaPair } from '@/services/token/get-token';
+import { getTokenPair } from '@/services/token/get-token';
 import { debug } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
@@ -23,12 +23,12 @@ export async function createWhirlpool(
   tickSpacing: number,
   initialPrice: Decimal
 ): Promise<Whirlpool> {
-  const [tokenAMeta, tokenBMeta] = await getTokenMetaPair(tokenAddrA, tokenAddrB);
+  const [tokenA, tokenB] = await getTokenPair(tokenAddrA, tokenAddrB);
 
   const initialTick = PriceMath.priceToTickIndex(
     initialPrice,
-    tokenAMeta.decimals,
-    tokenBMeta.decimals
+    tokenA.mint.decimals,
+    tokenB.mint.decimals
   );
 
   const { poolKey, tx } = await whirlpoolClient().createPool(

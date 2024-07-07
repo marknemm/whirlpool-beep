@@ -1,14 +1,13 @@
-import { getPositionBundle } from '@/services/position/get-position-bundle';
+import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { getWalletNFTAccount } from '@/services/wallet/get-token-account';
 import anchor from '@/util/anchor';
 import { toPrice } from '@/util/currency';
-import { debug } from '@/util/log';
+import { debug, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
 import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type Decimal from 'decimal.js';
 
 /**
  * Opens a {@link Position} in a {@link Whirlpool}.
@@ -21,34 +20,37 @@ export async function openPosition(
   whirlpool: Whirlpool,
   priceMargin: Percentage
 ): Promise<Position> {
-  // Get Whirlpool price data
-  const price = toPrice(whirlpool);
+  info('\n-- Open Position --');
 
   // Use Whirlpool price data to generate position tick range
-  const tickRange = _genPositionTickRange(whirlpool, price, priceMargin);
+  const tickRange = _genPositionTickRange(whirlpool, priceMargin);
 
-  // Obtain deposit estimation
-  // const quote = await _genDepositQuote(whirlpool, tickRange, liquidityDeposit);
-
+  // Get the position bundle associated with configured wallet
   const positionBundle = await getPositionBundle();
   if (!positionBundle) throw new Error('Position bundle not available');
 
+  // Get PDA for position bundle (needed b/c positionBundle holds the mint address, not actual bundle address)
   const positionBundlePda = PDAUtil.getPositionBundle(
     ORCA_WHIRLPOOL_PROGRAM_ID,
     positionBundle.positionBundleMint
   );
+
+  // Get the position bundle token account (ATA) for the position bundle mint
   const positionBundleTokenAccount = await getWalletNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
 
+  // Find an unoccupied bundle index for the new position
   const bundleIndex = PositionBundleUtil.findUnoccupiedBundleIndex(positionBundle);
-  if (bundleIndex == null) throw new Error('No available bundle index found in position bundle');
+  if (bundleIndex == null) throw new Error('No unoccupied bundle index found in position bundle');
 
+  // Get PDA for the new position
   const bundledPositionPda = PDAUtil.getBundledPosition(
     ORCA_WHIRLPOOL_PROGRAM_ID,
     positionBundle.positionBundleMint,
     bundleIndex
   );
 
+  // Create instruction to open position inside bundle
   const openPositionIx = await WhirlpoolIx.openBundledPositionIx(
     whirlpoolClient().getContext().program,
     {
@@ -64,16 +66,20 @@ export async function openPosition(
     }
   );
 
-  // Create a transaction
+  // Create a transaction to open position inside bundle
   const tx = new TransactionBuilder(rpc(), anchor().wallet);
   tx.addInstruction(openPositionIx);
 
-  debug('Opening whirlpool position...');
+  // Execute and verify the transaction
+  info('Executing open position transaction...');
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
-  debug ('Whirlpool position opened with mint:', bundledPositionPda.publicKey.toBase58());
+  info('Whirlpool position opened with mint:', bundledPositionPda.publicKey.toBase58());
 
-  return await whirlpoolClient().getPosition(bundledPositionPda.publicKey);
+  // Get and return the newly opened position
+  const position = await whirlpoolClient().getPosition(bundledPositionPda.publicKey);
+  debug('Position opened:', position);
+  return position;
 }
 
 /**
@@ -83,19 +89,18 @@ export async function openPosition(
  * Also, the generated tick index range may not map exactly to the price range due to the {@link Whirlpool} tick spacing.
  *
  * @param whirlpool The {@link Whirlpool} to generate the position range for.
- * @param price The price of token `A` in terms of token `B`.
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @returns A tuple containing the lower and upper tick index of the position.
  */
 function _genPositionTickRange(
   whirlpool: Whirlpool,
-  price: Decimal,
   priceMargin: Percentage,
 ): [number, number] {
   // Extract necessary data from Whirlpool
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
   const { tickSpacing } = whirlpool.getData();
+  const price = toPrice(whirlpool);
 
   // Calculate price range based on priceMargin Percentage input
   const priceMarginValue = price.mul(priceMargin.toDecimal());
@@ -113,7 +118,7 @@ function _genPositionTickRange(
 /**
  * Log the price range data for a {@link Whirlpool} position.
  *
- * @param tickRange The {@link PositionTickRange} to log.
+ * @param tickRange The tick range data to log.
  * @param whirlpool The {@link Whirlpool} to log the position range for.
  */
 function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
@@ -127,6 +132,6 @@ function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
     PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
   ];
 
-  debug(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
-  debug(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
+  info(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
+  info(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
 }
