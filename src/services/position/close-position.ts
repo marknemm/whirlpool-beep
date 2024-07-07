@@ -1,5 +1,7 @@
 import { BundledPosition } from '@/interfaces/position';
-import { collectFeesRewards } from '@/services/position/collect-fees-rewards';
+import { collectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
+import { decreaseLiquidity } from '@/services/position/decrease-liquidity';
+import { getWalletNFTAccount } from '@/services/wallet/get-token-account';
 import anchor from '@/util/anchor';
 import { info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
@@ -7,8 +9,6 @@ import whirlpoolClient from '@/util/whirlpool-client';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import { getWalletNFTAccount } from '../wallet/get-token-account';
-import { decreaseLiquidity } from './decrease-liquidity';
 
 /**
  * Closes a {@link Position} in a {@link Whirlpool}.
@@ -21,7 +21,7 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
 
   const { bundleIndex, position, positionBundle } = bundledPosition;
 
-  await collectFeesRewards(position);
+  const collectTx = await collectFeesRewardsTx(position);
 
   if (!position.getData().liquidity.isZero()) {
     await decreaseLiquidity(position, position.getData().liquidity);
@@ -45,7 +45,8 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
   );
 
   const tx = new TransactionBuilder(rpc(), anchor().wallet);
-  tx.addInstruction(closeBundledPositionIx);
+  tx.addInstruction(collectTx.compressIx(true))
+    .addInstruction(closeBundledPositionIx);
 
   info('Executing close position transaction...');
   const signature = await tx.buildAndExecute();

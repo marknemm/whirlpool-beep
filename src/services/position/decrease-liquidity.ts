@@ -4,7 +4,7 @@ import { debug, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
 import { BN } from '@coral-xyz/anchor';
-import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
+import { DecimalUtil, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
@@ -16,12 +16,10 @@ import type Decimal from 'decimal.js';
  * @returns A {@link Promise} that resolves to the actual decrease in liquidity.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
-export async function decreaseLiquidity(position: Position, amount: BN | Decimal): Promise<DecreaseLiquidityQuote> {
+export async function decreaseLiquidity(position: Position, amount: BN | Decimal): Promise<BN> {
   info('\n-- Decreasing liquidity --');
 
-  // Obtain decrease liquidity quote and create transaction
-  const quote = await _genDecreaseLiquidityQuote(position, amount);
-  const tx = await position.decreaseLiquidity(quote);
+  const { tx } = await decreaseLiquidityTx(position, amount);
 
   // Execute and verify the transaction
   info('Executing decrease liquidity transaction...');
@@ -38,16 +36,16 @@ export async function decreaseLiquidity(position: Position, amount: BN | Decimal
 }
 
 /**
- * Gen an estimated quote on the minimum tokens available to be withdrawn based on a specified {@link amount}.
+ * Creates a transaction to decrease liquidity in a given {@link position}.
  *
- * @param position The {@link Position} to get the withdrawal quote for.
- * @param amount The amount to withdraw.
- * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityQuote}.
+ * @param position The {@link Position} to decrease liquidity in.
+ * @param amount The amount of liquidity to decrease.
+ * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-async function _genDecreaseLiquidityQuote(
+export async function decreaseLiquidityTx(
   position: Position,
-  amount: Decimal
-): Promise<DecreaseLiquidityQuote> {
+  amount: BN | Decimal
+): Promise<{ quote: DecreaseLiquidityQuote, tx: TransactionBuilder }> {
   const tokenA = await getToken(position.getWhirlpoolData().tokenMintA);
   const tokenB = await getToken(position.getWhirlpoolData().tokenMintB);
 
@@ -77,5 +75,6 @@ async function _genDecreaseLiquidityQuote(
   info(`${tokenA.metadata.symbol} min output:`, toStr(quote.tokenMinA, tokenA.mint.decimals));
   info(`${tokenB.metadata.symbol} min output:`, toStr(quote.tokenMinB, tokenB.mint.decimals));
 
-  return quote;
+  const tx = await position.decreaseLiquidity(quote);
+  return { quote, tx };
 }

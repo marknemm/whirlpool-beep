@@ -4,10 +4,10 @@ import { debug, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient from '@/util/whirlpool-client';
 import { type BN } from '@coral-xyz/anchor';
-import { DecimalUtil, Percentage } from '@orca-so/common-sdk';
+import { DecimalUtil, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import Decimal from 'decimal.js';
+import type Decimal from 'decimal.js';
 
 /**
  * Deposits liquidity into a {@link Position}.
@@ -20,9 +20,7 @@ import Decimal from 'decimal.js';
 export async function increaseLiquidity(position: Position, amount: Decimal): Promise<BN> {
   info('\n-- Increasing liquidity --');
 
-  // Obtain increase liquidity quote and create transaction
-  const quote = await _genIncreaseLiquidityQuote(position, amount);
-  const tx = await position.increaseLiquidity(quote);
+  const { tx } = await increaseLiquidityTx(position, amount);
 
   // Execute and verify the transaction
   info('Executing increase liquidity transaction...');
@@ -39,16 +37,16 @@ export async function increaseLiquidity(position: Position, amount: Decimal): Pr
 }
 
 /**
- * Gen an estimated quote on the maximum tokens required to deposit based on a specified {@link amount}.
+ * Creates a transaction to increase liquidity in a given {@link position}.
  *
- * @param position The {@link Position} to get the deposit quote for.
- * @param amount The amount of liquidity to deposit in the {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ * @param position The {@link Position} to increase liquidity in.
+ * @param amount The amount of liquidity to increase.
+ * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-async function _genIncreaseLiquidityQuote(
+export async function increaseLiquidityTx(
   position: Position,
   amount: Decimal
-): Promise<IncreaseLiquidityQuote> {
+): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
   const tokenA = await getToken(position.getWhirlpoolData().tokenMintA);
   const tokenB = await getToken(position.getWhirlpoolData().tokenMintB);
 
@@ -84,5 +82,6 @@ async function _genIncreaseLiquidityQuote(
   info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
   info(`${tokenB.metadata.symbol} max input:`, toStr(quote.tokenMaxB, tokenB.mint.decimals));
 
-  return quote;
+  const tx = await position.increaseLiquidity(quote);
+  return { quote, tx };
 }

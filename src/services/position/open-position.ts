@@ -16,10 +16,34 @@ import { PublicKey } from '@solana/web3.js';
  * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(
+export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage): Promise<Position> {
+  info('\n-- Open Position --');
+
+  const { address, tx } = await openPositionTx(whirlpool, priceMargin);
+
+  // Execute and verify the transaction
+  info('Executing open position transaction...');
+  const signature = await tx.buildAndExecute();
+  await verifyTransaction(signature);
+  info('Whirlpool position opened with address:', address.toBase58());
+
+  // Get and return the newly opened position
+  const position = await whirlpoolClient().getPosition(address);
+  debug('Position opened:', position);
+  return position;
+}
+
+/**
+ * Creates a transaction to open a {@link Position} in a {@link Whirlpool}.
+ *
+ * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
+ * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
+ * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ */
+export async function openPositionTx(
   whirlpool: Whirlpool,
   priceMargin: Percentage
-): Promise<Position> {
+): Promise<{ tx: TransactionBuilder, address: PublicKey }> {
   info('\n-- Open Position --');
 
   // Use Whirlpool price data to generate position tick range
@@ -70,16 +94,7 @@ export async function openPosition(
   const tx = new TransactionBuilder(rpc(), anchor().wallet);
   tx.addInstruction(openPositionIx);
 
-  // Execute and verify the transaction
-  info('Executing open position transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
-  info('Whirlpool position opened with mint:', bundledPositionPda.publicKey.toBase58());
-
-  // Get and return the newly opened position
-  const position = await whirlpoolClient().getPosition(bundledPositionPda.publicKey);
-  debug('Position opened:', position);
-  return position;
+  return { address: bundledPositionPda.publicKey, tx };
 }
 
 /**

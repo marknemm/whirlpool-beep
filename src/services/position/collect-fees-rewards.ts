@@ -26,16 +26,12 @@ export async function collectAllFeesRewards(): Promise<void> {
  * Collects the fee reward for a given {@link position}.
  *
  * @param position The {@link Position} to collect the fee reward for.
+ * @returns A {@link Promise} that resolves once the fee reward is collected.
  */
 export async function collectFeesRewards(position: Position): Promise<void> {
   info('\n-- Collect Fees and Rewards --');
 
-  const collectFeesTx = await position.collectFees(true);
-  const collectRewardsTxs = await position.collectRewards();
-
-  const tx = new TransactionBuilder(rpc(), anchor().wallet);
-  tx.addInstruction(collectFeesTx.compressIx(true));
-  collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
+  const tx = await collectFeesRewardsTx(position);
 
   info('Executing collect fees and rewards transaction...');
   const signature = await tx.buildAndExecute();
@@ -43,4 +39,21 @@ export async function collectFeesRewards(position: Position): Promise<void> {
 
   info('Collected fees and rewards for position:', position.getAddress().toBase58());
   await position.refreshData();
+}
+
+/**
+ * Creates a transaction to collect fees and rewards for a given {@link position}.
+ *
+ * @param position The {@link Position} to collect fees and rewards for.
+ * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ */
+export async function collectFeesRewardsTx(position: Position): Promise<TransactionBuilder> {
+  const collectFeesTx = await position.collectFees(true);
+  const collectRewardsTxs = await position.collectRewards();
+
+  const tx = new TransactionBuilder(rpc(), anchor().wallet);
+  tx.addInstruction(collectFeesTx.compressIx(true));
+  collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
+
+  return tx;
 }
