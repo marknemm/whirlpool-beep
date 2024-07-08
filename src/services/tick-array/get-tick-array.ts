@@ -1,5 +1,5 @@
 import { debug, info } from '@/util/log';
-import whirlpoolClient from '@/util/whirlpool-client';
+import whirlpoolClient from '@/util/whirlpool';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type TickArray, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 

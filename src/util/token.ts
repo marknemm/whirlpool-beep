@@ -5,7 +5,6 @@ import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
-import { WhirlpoolData, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import axios from 'axios';
 
 /**
@@ -34,25 +33,6 @@ export async function getNFT(query: TokenQuery): Promise<DigitalAsset | null> {
   return (token?.mint.supply === 1n)
     ? token
     : null;
-}
-
-/**
- * Fetches a pair of tokens based off of the token info found in a given {@link whirlpool}.
- *
- * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to fetch the token pair for.
- * @returns A {@link Promise} that resolves to an array filled with a pair of token {@link DigitalAsset}s.
- * @throws An error if the GET request fails or either token could not be retrieved.
- * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
- */
-export async function getTokenPairViaWhirlpool(
-  whirlpool: Whirlpool | WhirlpoolData
-): Promise<[DigitalAsset, DigitalAsset]> {
-  return getTokenPair(
-    (whirlpool as WhirlpoolData).tokenMintA
-      ?? (whirlpool as Whirlpool).getTokenAInfo().mint,
-    (whirlpool as WhirlpoolData).tokenMintB
-      ?? (whirlpool as Whirlpool).getTokenBInfo().mint
-  );
 }
 
 /**
@@ -87,12 +67,12 @@ export async function getTokenPair(
  */
 export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> {
   query = _queryToString(query);
-  debug('Fetching token for query:', query);
 
   if (_cache.has(query)) {
-    debug('Token found in cache');
     return _cache.get(query)!;
   }
+
+  debug('Fetching token for query:', query);
 
   if (!PublicKeyUtils.isBase58(query)) {
     // Query token via standard token list API that is used by solana explorer.

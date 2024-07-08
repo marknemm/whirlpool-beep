@@ -1,18 +1,18 @@
-import { getToken } from '@/services/token/get-token';
+import { getToken } from '@/util/token';
 import { toStr } from '@/util/currency';
 import { debug, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool-client';
+import whirlpoolClient from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DecimalUtil, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
 /**
- * Withdraws liquidity from a {@link Position}.
+ * Decreases liquidity in a given {@link position}.
  *
- * @param position The {@link Position} to withdraw liquidity from.
- * @param amount The amount of liquidity to withdraw.
+ * @param position The {@link Position} to decrease the liquidity of.
+ * @param amount The amount of liquidity to withdraw from the {@link Position}.
  * @returns A {@link Promise} that resolves to the actual decrease in liquidity.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
@@ -38,14 +38,16 @@ export async function decreaseLiquidity(position: Position, amount: BN | Decimal
 /**
  * Creates a transaction to decrease liquidity in a given {@link position}.
  *
- * @param position The {@link Position} to decrease liquidity in.
- * @param amount The amount of liquidity to decrease.
+ * @param position The {@link Position} to decrease the liquidity of.
+ * @param amount The amount of liquidity to withdraw from the {@link Position}.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
 export async function decreaseLiquidityTx(
   position: Position,
   amount: BN | Decimal
 ): Promise<{ quote: DecreaseLiquidityQuote, tx: TransactionBuilder }> {
+  info('Creating Tx to decrease liquidity by:', toStr(amount));
+
   const tokenA = await getToken(position.getWhirlpoolData().tokenMintA);
   const tokenB = await getToken(position.getWhirlpoolData().tokenMintB);
 

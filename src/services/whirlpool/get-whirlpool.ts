@@ -1,6 +1,6 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import { debug, info } from '@/util/log';
-import whirlpoolClient from '@/util/whirlpool-client';
+import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
 import { type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type Whirlpool, type WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
@@ -32,7 +32,7 @@ export async function getWhirlpool(
   );
 
   const whirlpool = await whirlpoolClient().getPool(whirlpoolPDA.publicKey, opts);
-  info('Retrieved whirlpool with public key:', whirlpool.getAddress().toBase58());
+  info('Retrieved whirlpool:', formatWhirlpool(whirlpool));
 
   return whirlpool;
 }

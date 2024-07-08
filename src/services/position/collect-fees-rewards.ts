@@ -1,7 +1,7 @@
 import { getPositions } from '@/services/position/get-position';
-import anchor from '@/util/anchor';
 import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
+import wallet from '@/util/wallet';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
@@ -51,7 +51,7 @@ export async function collectFeesRewardsTx(position: Position): Promise<Transact
   const collectFeesTx = await position.collectFees(true);
   const collectRewardsTxs = await position.collectRewards();
 
-  const tx = new TransactionBuilder(rpc(), anchor().wallet);
+  const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(collectFeesTx.compressIx(true));
   collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
 

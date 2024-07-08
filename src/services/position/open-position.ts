@@ -1,10 +1,9 @@
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
-import { getWalletNFTAccount } from '@/services/wallet/get-token-account';
-import anchor from '@/util/anchor';
 import { toPrice } from '@/util/currency';
 import { debug, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool-client';
+import wallet from '@/util/wallet';
+import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
 import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
@@ -44,7 +43,7 @@ export async function openPositionTx(
   whirlpool: Whirlpool,
   priceMargin: Percentage
 ): Promise<{ tx: TransactionBuilder, address: PublicKey }> {
-  info('\n-- Open Position --');
+  info('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = _genPositionTickRange(whirlpool, priceMargin);
@@ -60,7 +59,7 @@ export async function openPositionTx(
   );
 
   // Get the position bundle token account (ATA) for the position bundle mint
-  const positionBundleTokenAccount = await getWalletNFTAccount(positionBundle.positionBundleMint);
+  const positionBundleTokenAccount = await wallet().getNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
 
   // Find an unoccupied bundle index for the new position
@@ -78,9 +77,9 @@ export async function openPositionTx(
   const openPositionIx = await WhirlpoolIx.openBundledPositionIx(
     whirlpoolClient().getContext().program,
     {
-      funder: anchor().wallet.publicKey,
+      funder: wallet().publicKey,
       positionBundle: positionBundlePda.publicKey,
-      positionBundleAuthority: anchor().wallet.publicKey,
+      positionBundleAuthority: wallet().publicKey,
       positionBundleTokenAccount: new PublicKey(positionBundleTokenAccount.address),
       bundleIndex,
       bundledPositionPda,
@@ -91,7 +90,7 @@ export async function openPositionTx(
   );
 
   // Create a transaction to open position inside bundle
-  const tx = new TransactionBuilder(rpc(), anchor().wallet);
+  const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(openPositionIx);
 
   return { address: bundledPositionPda.publicKey, tx };
@@ -111,6 +110,8 @@ function _genPositionTickRange(
   whirlpool: Whirlpool,
   priceMargin: Percentage,
 ): [number, number] {
+  info('Generating position tick range using price margin:', priceMargin.toString());
+
   // Extract necessary data from Whirlpool
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();

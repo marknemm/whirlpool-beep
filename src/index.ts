@@ -1,16 +1,13 @@
 import env from '@/util/env'; // Load and validate env variables ASAP
 
-import { getBundledPositions, getPositions } from '@/services/position/get-position';
-import { increaseLiquidity } from '@/services/position/increase-liquidity';
+import { getBundledPositions } from '@/services/position/get-position';
 import { getTickArray } from '@/services/tick-array/get-tick-array';
-import { getTokenPair } from '@/services/token/get-token';
-import { getWalletBalance } from '@/services/wallet/get-balance';
 import { getWhirlpool } from '@/services/whirlpool/get-whirlpool';
 import { toPrice } from '@/util/currency';
 import { debug, error } from '@/util/log';
-import Decimal from 'decimal.js';
-import { collectAllFeesRewards } from './services/position/collect-fees-rewards';
+import { getTokenPair } from '@/util/token';
 import { closePosition } from './services/position/close-position';
+import wallet from './util/wallet';
 
 /**
  * Main entry point.
@@ -20,8 +17,8 @@ async function main() {
 
   const [tokenA, tokenB] = await getTokenPair(env.TOKEN_A, env.TOKEN_B); // throws error if not found
 
-  await getWalletBalance(tokenA.mint.publicKey);
-  await getWalletBalance(tokenB.mint.publicKey);
+  await wallet().getBalance(tokenA.mint.publicKey);
+  await wallet().getBalance(tokenB.mint.publicKey);
 
   const whirlpool = await getWhirlpool(tokenA.mint.publicKey, tokenB.mint.publicKey, env.TICK_SPACING);
 

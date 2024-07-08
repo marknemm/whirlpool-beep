@@ -1,7 +1,7 @@
-import anchor from '@/util/anchor';
 import { debug, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool-client';
+import wallet from '@/util/wallet';
+import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleData, WhirlpoolIx } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
@@ -31,15 +31,15 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
   const positionBundleMetadataPda = PDAUtil.getPositionBundleMetadata(positionBundleMintKeypair.publicKey);
   const positionBundleTokenAccount = await getAssociatedTokenAddress(
     positionBundleMintKeypair.publicKey,
-    anchor().wallet.publicKey
+    wallet().publicKey
   );
 
   // Create instruction
   const initPositionBundleIx = WhirlpoolIx.initializePositionBundleWithMetadataIx(
     whirlpoolClient().getContext().program,
     {
-      funder: anchor().wallet.publicKey,
-      owner: anchor().wallet.publicKey,
+      funder: wallet().publicKey,
+      owner: wallet().publicKey,
       positionBundleMintKeypair,
       positionBundlePda,
       positionBundleMetadataPda,
@@ -48,7 +48,7 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
   );
 
   // Crate transaction
-  const txBuilder = new TransactionBuilder(rpc(), anchor().wallet);
+  const txBuilder = new TransactionBuilder(rpc(), wallet());
   txBuilder.addInstruction(initPositionBundleIx);
 
   // Execute and verify transaction

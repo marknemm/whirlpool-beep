@@ -1,11 +1,10 @@
 import { BundledPosition } from '@/interfaces/position';
 import { collectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
-import { decreaseLiquidity } from '@/services/position/decrease-liquidity';
-import { getWalletNFTAccount } from '@/services/wallet/get-token-account';
-import anchor from '@/util/anchor';
+import { decreaseLiquidityTx } from '@/services/position/decrease-liquidity';
 import { info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool-client';
+import wallet from '@/util/wallet';
+import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
@@ -24,10 +23,10 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
   const collectTx = await collectFeesRewardsTx(position);
 
   if (!position.getData().liquidity.isZero()) {
-    await decreaseLiquidity(position, position.getData().liquidity);
+    await decreaseLiquidityTx(position, position.getData().liquidity);
   }
 
-  const positionBundleATA = await getWalletNFTAccount(positionBundle.positionBundleMint);
+  const positionBundleATA = await wallet().getNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleATA) throw new Error('Position bundle token account (ATA) cannot be found');
 
   const positionBundlePda = PDAUtil.getPositionBundle(ORCA_WHIRLPOOL_PROGRAM_ID, positionBundle.positionBundleMint);
@@ -36,16 +35,16 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
     whirlpoolClient().getContext().program,
     {
       bundledPosition: position.getAddress(),
-      positionBundleAuthority: anchor().wallet.publicKey,
+      positionBundleAuthority: wallet().publicKey,
       positionBundleTokenAccount: new PublicKey(positionBundleATA.address),
       positionBundle: positionBundlePda.publicKey,
       bundleIndex,
-      receiver: anchor().wallet.publicKey,
+      receiver: wallet().publicKey,
     }
   );
 
-  const tx = new TransactionBuilder(rpc(), anchor().wallet);
-  tx.addInstruction(collectTx.compressIx(true))
+  const tx = new TransactionBuilder(rpc(), wallet())
+    .addInstruction(collectTx.compressIx(true))
     .addInstruction(closeBundledPositionIx);
 
   info('Executing close position transaction...');

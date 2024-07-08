@@ -1,8 +1,8 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { getTokenPair } from '@/services/token/get-token';
+import { getTokenPair } from '@/util/token';
 import { debug } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool-client';
+import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
 import { type Address } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
@@ -43,7 +43,9 @@ export async function createWhirlpool(
   debug('Creating whirlpool...');
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
-  debug('Whirlpool created with address:', poolKey);
 
-  return whirlpoolClient().getPool(poolKey);
+  const whirlpool = await whirlpoolClient().getPool(poolKey);
+  debug('Created whirlpool:', formatWhirlpool(whirlpool));
+
+  return whirlpool;
 }

@@ -1,6 +1,6 @@
 import { BundledPosition } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
-import whirlpoolClient from '@/util/whirlpool-client';
+import whirlpoolClient from '@/util/whirlpool';
 import { type Wallet } from '@coral-xyz/anchor';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
