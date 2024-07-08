@@ -29,7 +29,7 @@ export default function rpc(): Connection {
  * @throws An {@link Error} if the transaction cannot be confirmed.
  */
 export async function verifyTransaction(signature: string, commitment: Commitment = 'finalized'): Promise<void> {
-  info('Verifying Tx with signature:', signature);
+  info('Verifying Tx...');
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc().getLatestBlockhash();

@@ -1,3 +1,4 @@
+import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { toPrice } from '@/util/currency';
 import { debug, info } from '@/util/log';
@@ -15,10 +16,10 @@ import { PublicKey } from '@solana/web3.js';
  * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage): Promise<Position> {
+export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage): Promise<BundledPosition> {
   info('\n-- Open Position --');
 
-  const { address, tx } = await openPositionTx(whirlpool, priceMargin);
+  const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(whirlpool, priceMargin);
 
   // Execute and verify the transaction
   info('Executing open position transaction...');
@@ -29,7 +30,7 @@ export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage
   // Get and return the newly opened position
   const position = await whirlpoolClient().getPosition(address);
   debug('Position opened:', position);
-  return position;
+  return { bundleIndex, position, positionBundle };
 }
 
 /**
@@ -39,10 +40,10 @@ export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage
  * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-export async function openPositionTx(
+export async function genOpenPositionTx(
   whirlpool: Whirlpool,
   priceMargin: Percentage
-): Promise<{ tx: TransactionBuilder, address: PublicKey }> {
+): Promise<GenOptionPositionTxReturn> {
   info('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
 
   // Use Whirlpool price data to generate position tick range
@@ -93,7 +94,7 @@ export async function openPositionTx(
   const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(openPositionIx);
 
-  return { address: bundledPositionPda.publicKey, tx };
+  return { address: bundledPositionPda.publicKey, bundleIndex, positionBundle, tx };
 }
 
 /**

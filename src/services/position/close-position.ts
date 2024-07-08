@@ -1,6 +1,6 @@
-import { BundledPosition } from '@/interfaces/position';
-import { collectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
-import { decreaseLiquidityTx } from '@/services/position/decrease-liquidity';
+import type { BundledPosition } from '@/interfaces/position';
+import { genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
+import { genDecreaseLiquidityTx } from '@/services/position/decrease-liquidity';
 import { info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
@@ -18,18 +18,42 @@ import { PublicKey } from '@solana/web3.js';
 export async function closePosition(bundledPosition: BundledPosition): Promise<void> {
   info('\n-- Close Position --');
 
+  const tx = await genClosePositionTx(bundledPosition);
+
+  info('Executing close position transaction...');
+  const signature = await tx.buildAndExecute();
+  await verifyTransaction(signature);
+
+  info('Position closed:', bundledPosition.position.getAddress().toBase58());
+}
+
+/**
+ * Creates a transaction to close a {@link Position} in a {@link Whirlpool}.
+ *
+ * @param bundledPosition The {@link BundledPosition} to close.
+ * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ */
+export async function genClosePositionTx(bundledPosition: BundledPosition): Promise<TransactionBuilder> {
+  const tx = new TransactionBuilder(rpc(), wallet());
   const { bundleIndex, position, positionBundle } = bundledPosition;
 
-  const collectTx = await collectFeesRewardsTx(position);
+  info('Creating close position transaction for position:', position.getAddress().toBase58());
+
+  const collectTx = await genCollectFeesRewardsTx(position);
+  tx.addInstruction(collectTx.compressIx(true));
 
   if (!position.getData().liquidity.isZero()) {
-    await decreaseLiquidityTx(position, position.getData().liquidity);
+    const { tx: decreaseLiquidityTx } = await genDecreaseLiquidityTx(position, position.getData().liquidity);
+    tx.addInstruction(decreaseLiquidityTx.compressIx(true));
   }
 
   const positionBundleATA = await wallet().getNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleATA) throw new Error('Position bundle token account (ATA) cannot be found');
 
-  const positionBundlePda = PDAUtil.getPositionBundle(ORCA_WHIRLPOOL_PROGRAM_ID, positionBundle.positionBundleMint);
+  const positionBundlePda = PDAUtil.getPositionBundle(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    positionBundle.positionBundleMint
+  );
 
   const closeBundledPositionIx = WhirlpoolIx.closeBundledPositionIx(
     whirlpoolClient().getContext().program,
@@ -43,13 +67,5 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
     }
   );
 
-  const tx = new TransactionBuilder(rpc(), wallet())
-    .addInstruction(collectTx.compressIx(true))
-    .addInstruction(closeBundledPositionIx);
-
-  info('Executing close position transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
-
-  info('Position closed:', position.getAddress().toBase58());
+  return tx.addInstruction(closeBundledPositionIx);
 }

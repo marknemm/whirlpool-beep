@@ -31,7 +31,7 @@ export async function collectAllFeesRewards(): Promise<void> {
 export async function collectFeesRewards(position: Position): Promise<void> {
   info('\n-- Collect Fees and Rewards --');
 
-  const tx = await collectFeesRewardsTx(position);
+  const tx = await genCollectFeesRewardsTx(position);
 
   info('Executing collect fees and rewards transaction...');
   const signature = await tx.buildAndExecute();
@@ -47,7 +47,9 @@ export async function collectFeesRewards(position: Position): Promise<void> {
  * @param position The {@link Position} to collect fees and rewards for.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-export async function collectFeesRewardsTx(position: Position): Promise<TransactionBuilder> {
+export async function genCollectFeesRewardsTx(position: Position): Promise<TransactionBuilder> {
+  info('Creating collect fees and rewards transaction for position:', position.getAddress().toBase58());
+
   const collectFeesTx = await position.collectFees(true);
   const collectRewardsTxs = await position.collectRewards();
 

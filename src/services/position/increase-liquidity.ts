@@ -1,11 +1,11 @@
-import { getToken } from '@/util/token';
+import type { LiquidityUnit } from '@/interfaces/position';
 import { toStr } from '@/util/currency';
 import { debug, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
-import whirlpoolClient from '@/util/whirlpool';
+import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DecimalUtil, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
@@ -13,14 +13,19 @@ import type Decimal from 'decimal.js';
  * Increases liquidity in a given {@link position}.
  *
  * @param position The {@link Position} to increase the liquidity of.
- * @param amount The amount of liquidity to deposit in the {@link Position} in terms of `token B`.
- * @returns A {@link Promise} that resolves to the actual increase in liquidity.
+ * @param amount The amount of liquidity to deposit in the {@link Position}.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
+ * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
-export async function increaseLiquidity(position: Position, amount: BN | Decimal): Promise<BN> {
+export async function increaseLiquidity(
+  position: Position,
+  amount: BN | Decimal,
+  unit: LiquidityUnit = 'tokenB'
+): Promise<IncreaseLiquidityQuote> {
   info('\n-- Increasing liquidity --');
 
-  const { tx } = await increaseLiquidityTx(position, amount);
+  const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
 
   // Execute and verify the transaction
   info('Executing increase liquidity transaction...');
@@ -33,7 +38,7 @@ export async function increaseLiquidity(position: Position, amount: BN | Decimal
   const deltaLiquidity = position.getData().liquidity.sub(initLiquidity);
   info('Increased liquidity by:', toStr(deltaLiquidity));
 
-  return deltaLiquidity;
+  return quote;
 }
 
 /**
@@ -41,46 +46,23 @@ export async function increaseLiquidity(position: Position, amount: BN | Decimal
  *
  * @param position The {@link Position} to increase liquidity of.
  * @param amount The amount of liquidity to deposit in the {@link Position} in terms of `token B`.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-export async function increaseLiquidityTx(
+export async function genIncreaseLiquidityTx(
   position: Position,
-  amount: BN | Decimal
+  amount: BN | Decimal,
+  unit: LiquidityUnit = 'tokenB'
 ): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
-  const tokenA = await getToken(position.getWhirlpoolData().tokenMintA);
-  const tokenB = await getToken(position.getWhirlpoolData().tokenMintB);
+  info('Creating tx to increase liquidity in position:', position.getAddress().toBase58());
 
+  // Get quote either using raw liquidity as unit or token A/B as unit
+  const quote = (unit === 'liquidity')
+    ? await _genQuoteViaLiquidity(position, amount)
+    : await _genQuoteViaInputToken(position, amount, unit);
+
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
   if (!tokenA || !tokenB) throw new Error('Token not found');
-
-  info('Creating Tx to increase liquidity by:', toStr(amount, tokenB.mint.decimals));
-
-  const tokenMintA = new PublicKey(tokenA.mint.publicKey);
-  const tokenMintB = new PublicKey(tokenB.mint.publicKey);
-
-  const tokenExtensionCtx = await TokenExtensionUtil.buildTokenExtensionContext(
-    whirlpoolClient().getFetcher(),
-    position.getWhirlpoolData(),
-    IGNORE_CACHE
-  );
-
-  const quote = increaseLiquidityQuoteByInputTokenWithParams({
-    // Pass the pool definition and state
-    tokenMintA,
-    tokenMintB,
-    tokenExtensionCtx,
-    sqrtPrice: position.getWhirlpoolData().sqrtPrice,
-    tickCurrentIndex: position.getWhirlpoolData().tickCurrentIndex,
-    // Position tick (price) range
-    tickLowerIndex: position.getData().tickLowerIndex,
-    tickUpperIndex: position.getData().tickUpperIndex,
-    // Input token and amount
-    inputTokenMint: tokenMintB,
-    inputTokenAmount: (amount instanceof BN)
-      ? amount
-      : DecimalUtil.toBN(amount, tokenB.mint.decimals),
-    // Acceptable slippage
-    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
-  });
 
   debug('Increase liquidity quote:', quote);
   info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
@@ -88,4 +70,74 @@ export async function increaseLiquidityTx(
 
   const tx = await position.increaseLiquidity(quote);
   return { quote, tx };
+}
+
+async function _genQuoteViaLiquidity(
+  position: Position,
+  amount: BN | Decimal,
+): Promise<IncreaseLiquidityQuote> {
+  const { sqrtPrice, tickCurrentIndex } = position.getWhirlpoolData();
+  const { tickLowerIndex, tickUpperIndex } = position.getData();
+
+  return increaseLiquidityQuoteByLiquidityWithParams({
+    liquidity: (amount instanceof BN)
+      ? amount
+      : DecimalUtil.toBN(amount),
+    // Pool state
+    tickCurrentIndex,
+    sqrtPrice,
+    // Position tick (price) range
+    tickLowerIndex,
+    tickUpperIndex,
+    // Acceptable slippage
+    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
+    // Token ext
+    tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
+      whirlpoolClient().getFetcher(),
+      position.getWhirlpoolData(),
+      IGNORE_CACHE
+    ),
+  });
+}
+
+async function _genQuoteViaInputToken(
+  position: Position,
+  amount: BN | Decimal,
+  unit: LiquidityUnit
+): Promise<IncreaseLiquidityQuote> {
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+  if (!tokenA || !tokenB) throw new Error('Token not found');
+
+  const inputToken = (unit === 'tokenA')
+    ? tokenA
+    : tokenB;
+
+  info('Getting increase liquidity quote:', toStr(amount, inputToken.mint.decimals), inputToken.metadata.symbol);
+
+  const tokenMintA = new PublicKey(tokenA.mint.publicKey);
+  const tokenMintB = new PublicKey(tokenB.mint.publicKey);
+
+  return increaseLiquidityQuoteByInputTokenWithParams({
+    // Pool definition and state
+    tokenMintA,
+    tokenMintB,
+    sqrtPrice: position.getWhirlpoolData().sqrtPrice,
+    tickCurrentIndex: position.getWhirlpoolData().tickCurrentIndex,
+    // Position tick (price) range
+    tickLowerIndex: position.getData().tickLowerIndex,
+    tickUpperIndex: position.getData().tickUpperIndex,
+    // Input token and amount
+    inputTokenMint: new PublicKey(inputToken.mint.publicKey),
+    inputTokenAmount: (amount instanceof BN)
+      ? amount
+      : DecimalUtil.toBN(amount, inputToken.mint.decimals),
+    // Acceptable slippage
+    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
+    // Token ext
+    tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
+      whirlpoolClient().getFetcher(),
+      position.getWhirlpoolData(),
+      IGNORE_CACHE
+    ),
+  });
 }
