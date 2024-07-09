@@ -1,6 +1,8 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { Position, PositionBundleData } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
+import { GetWhirlpoolCliArgs } from './whirlpool';
+import { Options } from 'yargs';
 
 /**
  * A bundled {@link Position}.
@@ -21,6 +23,18 @@ export interface BundledPosition {
    * The {@link PositionBundleData} containing the {@link Position}.
    */
   positionBundle: PositionBundleData;
+
+}
+
+/**
+ * CLI arguments for closing a {@link Position}.
+ */
+export interface ClosePositionCliArgs extends GetWhirlpoolCliArgs {
+
+  /**
+   * The bundle index of the {@link Position} to close.
+   */
+  bundleIndex: number;
 
 }
 
@@ -55,3 +69,27 @@ export interface GenOptionPositionTxReturn {
  * The unit to use for an amount of liquidity.
  */
 export type LiquidityUnit = 'liquidity' | 'tokenA' | 'tokenB';
+
+/**
+ * CLI arguments for opening a position.
+ */
+export interface OpenPositionCliArgs extends GetWhirlpoolCliArgs {
+
+  /**
+   * The amount of liquidity to provide.
+   */
+  liquidity?: number;
+
+  /**
+   * The {@link LiquidityUnit} to use for the liquidity amount.
+   */
+  liquidityUnit?: LiquidityUnit;
+
+  /**
+   * The price margin percentage to use for the {@link Position}.
+   *
+   * Should be a number between `0` and `100`.
+   */
+  priceMargin: number;
+
+}

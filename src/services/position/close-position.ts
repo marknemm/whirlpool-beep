@@ -1,13 +1,37 @@
 import type { BundledPosition } from '@/interfaces/position';
 import { genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
 import { genDecreaseLiquidityTx } from '@/services/position/decrease-liquidity';
-import { info } from '@/util/log';
+import { getBundledPositions } from '@/services/position/get-position';
+import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
 import whirlpoolClient from '@/util/whirlpool';
-import { TransactionBuilder } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position } from '@orca-so/whirlpools-sdk';
+import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
+
+/**
+ * Closes all {@link Position}s in a {@link Whirlpool}.
+ *
+ * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to close all positions in.
+ * @returns A {@link Promise} that resolves once all positions are closed.
+ */
+export async function closeAllPositions(whirlpoolAddress: Address): Promise<void> {
+  info('\n-- Close All Positions --');
+
+  const bundledPositions = await getBundledPositions(whirlpoolAddress);
+
+  bundledPositions.length
+    ? info(`Closing ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
+    : info('No positions to close in whirlpool:', whirlpoolAddress);
+
+  const promises = bundledPositions.map(
+    (bundledPosition) => closePosition(bundledPosition)
+      .catch((err) => error(err))
+  );
+
+  await Promise.all(promises);
+}
 
 /**
  * Closes a {@link Position} in a {@link Whirlpool}.

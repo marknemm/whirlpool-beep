@@ -1,4 +1,4 @@
-import { getPositions } from '@/services/position/get-position';
+import { getBundledPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
@@ -11,8 +11,8 @@ import { type Position } from '@orca-so/whirlpools-sdk';
 export async function collectAllFeesRewards(): Promise<void> {
   info('\n-- Collect All Fees and Rewards --');
 
-  const positions = await getPositions();
-  for (const position of positions) {
+  const positionBundles = await getBundledPositions();
+  for (const { position } of positionBundles) {
     try {
       await collectFeesRewards(position);
     } catch (err) {

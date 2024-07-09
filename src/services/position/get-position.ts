@@ -1,20 +1,36 @@
 import { BundledPosition } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
+import { info } from '@/util/log';
 import whirlpoolClient from '@/util/whirlpool';
 import { type Wallet } from '@coral-xyz/anchor';
+import { type Address } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 
 /**
- * Get all {@link Position}s in the `PositionBundle` associated with the {@link Wallet}.
+ * Gets a {@link BundledPosition} at a specific `PositionBundle` index.
  *
- * @param whirlpoolAddress The {@link PublicKey} address of the {@link Whirlpool} to get the {@link Position}s for.
- * If not provided, all {@link Position}s in the `PositionBundle` will be returned.
- * @returns A {@link Promise} that resolves to an array of {@link Position}s.
+ * @param bundleIndex The index of the {@link Position} in the `PositionBundle`.
+ * @returns A {@link Promise} that resolves to the {@link BundledPosition}.
  */
-export async function getPositions(whirlpoolAddress?: PublicKey): Promise<Position[]> {
-  const bundledPositions = await getBundledPositions(whirlpoolAddress);
-  return bundledPositions.map((bundledPosition) => bundledPosition.position);
+export async function getBundledPosition(bundleIndex: number): Promise<BundledPosition> {
+  const positionBundle = await getPositionBundle();
+  if (!positionBundle) throw new Error('Position bundle not available');
+
+  const positionPda = PDAUtil.getBundledPosition(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    positionBundle.positionBundleMint,
+    bundleIndex
+  );
+
+  const position = await whirlpoolClient().getPosition(positionPda.publicKey);
+  if (!position) throw new Error('Position not found');
+
+  return {
+    bundleIndex,
+    position,
+    positionBundle
+  };
 }
 
 /**
@@ -24,7 +40,11 @@ export async function getPositions(whirlpoolAddress?: PublicKey): Promise<Positi
  * If not provided, all {@link Position}s in the `PositionBundle` will be returned.
  * @returns A {@link Promise} that resolves to an array of {@link BundledPosition}s.
  */
-export async function getBundledPositions(whirlpoolAddress?: PublicKey): Promise<BundledPosition[]> {
+export async function getBundledPositions(whirlpoolAddress?: Address): Promise<BundledPosition[]> {
+  whirlpoolAddress
+    ? info('Getting all bundled positions in whirlpool:', whirlpoolAddress)
+    : info('Getting all bundled positions...');
+
   const positions: BundledPosition[] = [];
 
   const positionBundle = await getPositionBundle();
@@ -39,7 +59,7 @@ export async function getBundledPositions(whirlpoolAddress?: PublicKey): Promise
     );
 
     const position = await whirlpoolClient().getPosition(positionPda.publicKey);
-    if (position && (!whirlpoolAddress || whirlpoolAddress.equals(position.getData().whirlpool))) {
+    if (position && (!whirlpoolAddress || new PublicKey(whirlpoolAddress).equals(position.getData().whirlpool))) {
       positions.push({
         bundleIndex: idx,
         position,

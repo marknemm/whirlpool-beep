@@ -1,5 +1,6 @@
 import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
 import env from '@/util/env';
+import { PublicKey } from '@solana/web3.js';
 import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'util';
 import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
@@ -31,13 +32,13 @@ const logger = createLogger({
       level = `[${level}] ${level.match(/info|warn/)?.length ? ' ' : ''}`;
 
       // Generate formatted and colored base log message
-      message = formatMessage(message);
+      message = _formatMessage(message);
 
       // Append formatted and colored rest message values to log message
-      message += formatRestMessages(rest[Symbol.for('splat')]);
+      message += _formatRestMessages(rest[Symbol.for('splat')]);
 
       // Extract leading newlines from message
-      const newlines = getLeadingNewlines(message);
+      const newlines = _getLeadingNewlines(message);
       message = message.substring(newlines.length);
 
       // Generate formatted and colored stack trace
@@ -64,7 +65,9 @@ const logger = createLogger({
  * @param message The message to format.
  * @returns The formatted message.
  */
-function formatMessage(message: object | string): string {
+function _formatMessage(message: object | string): string {
+  message = _transformMessage(message);
+
   return (typeof message === 'string')
     ? env.LOG_COLOR
       ? message.replaceAll(DECIMAL_REGEX, `${yellow('$1')}`)
@@ -78,18 +81,32 @@ function formatMessage(message: object | string): string {
  * @param messages The messages to format.
  * @returns The formatted messages as a single `string`.
  */
-function formatRestMessages(messages: (object | string)[]): string {
+function _formatRestMessages(messages: (object | string)[]): string {
   if (!messages?.length) return '';
 
   // Treat only rest message as a data value that will receive syntax highlighting according to its type.
   if (messages.length === 1) {
-    return ` ${inspect(messages[0], _inspectOpts)}`;
+    const message = _transformMessage(messages[0]);
+    return ` ${inspect(message, _inspectOpts)}`;
   }
 
   // Treat rest of messages as concatenated parts of base message.
   return messages.reduce<string>((acc, message) =>
-    `${acc} ${formatMessage(message)}`
+    `${acc} ${_formatMessage(message)}`
   , '');
+}
+
+/**
+ * Transforms a message from one data type to another preferred one.
+ * If already in preferred type, returns the message as is.
+ *
+ * @param message The message to transform.
+ * @returns The transformed message.
+ */
+function _transformMessage(message: object | string): object | string {
+  return (message instanceof PublicKey)
+    ? message.toBase58()
+    : message;
 }
 
 /**
@@ -98,7 +115,7 @@ function formatRestMessages(messages: (object | string)[]): string {
  * @param message The message to get the leading newlines from.
  * @returns The leading newlines.
  */
-function getLeadingNewlines(message: string): string {
+function _getLeadingNewlines(message: string): string {
   let newlines = '';
   for (let i = 0; i < message.length && message.charAt(i) === '\n'; i++) {
     newlines += '\n';

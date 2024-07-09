@@ -1,10 +1,10 @@
 import type { LiquidityUnit } from '@/interfaces/position';
-import { toStr } from '@/util/currency';
+import { toBN, toStr } from '@/util/currency';
 import { debug, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
-import { DecimalUtil, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
+import { Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
@@ -20,7 +20,7 @@ import type Decimal from 'decimal.js';
  */
 export async function increaseLiquidity(
   position: Position,
-  amount: BN | Decimal,
+  amount: BN | Decimal | number,
   unit: LiquidityUnit = 'tokenB'
 ): Promise<IncreaseLiquidityQuote> {
   info('\n-- Increasing liquidity --');
@@ -51,7 +51,7 @@ export async function increaseLiquidity(
  */
 export async function genIncreaseLiquidityTx(
   position: Position,
-  amount: BN | Decimal,
+  amount: BN | Decimal | number,
   unit: LiquidityUnit = 'tokenB'
 ): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
   info('Creating tx to increase liquidity in position:', position.getAddress().toBase58());
@@ -74,15 +74,13 @@ export async function genIncreaseLiquidityTx(
 
 async function _genQuoteViaLiquidity(
   position: Position,
-  amount: BN | Decimal,
+  amount: BN | Decimal | number,
 ): Promise<IncreaseLiquidityQuote> {
   const { sqrtPrice, tickCurrentIndex } = position.getWhirlpoolData();
   const { tickLowerIndex, tickUpperIndex } = position.getData();
 
   return increaseLiquidityQuoteByLiquidityWithParams({
-    liquidity: (amount instanceof BN)
-      ? amount
-      : DecimalUtil.toBN(amount),
+    liquidity: toBN(amount),
     // Pool state
     tickCurrentIndex,
     sqrtPrice,
@@ -102,7 +100,7 @@ async function _genQuoteViaLiquidity(
 
 async function _genQuoteViaInputToken(
   position: Position,
-  amount: BN | Decimal,
+  amount: BN | Decimal | number,
   unit: LiquidityUnit
 ): Promise<IncreaseLiquidityQuote> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
@@ -128,9 +126,7 @@ async function _genQuoteViaInputToken(
     tickUpperIndex: position.getData().tickUpperIndex,
     // Input token and amount
     inputTokenMint: new PublicKey(inputToken.mint.publicKey),
-    inputTokenAmount: (amount instanceof BN)
-      ? amount
-      : DecimalUtil.toBN(amount, inputToken.mint.decimals),
+    inputTokenAmount: toBN(amount, inputToken.mint.decimals),
     // Acceptable slippage
     slippageTolerance: Percentage.fromFraction(1, 100), // 1%
     // Token ext

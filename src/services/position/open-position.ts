@@ -1,10 +1,9 @@
 import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
-import { toPrice } from '@/util/currency';
-import { debug, info } from '@/util/log';
+import { info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
-import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
 import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
@@ -29,7 +28,6 @@ export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage
 
   // Get and return the newly opened position
   const position = await whirlpoolClient().getPosition(address);
-  debug('Position opened:', position);
   return { bundleIndex, position, positionBundle };
 }
 
@@ -117,7 +115,7 @@ function _genPositionTickRange(
   const tokenA = whirlpool.getTokenAInfo();
   const tokenB = whirlpool.getTokenBInfo();
   const { tickSpacing } = whirlpool.getData();
-  const price = toPrice(whirlpool);
+  const price = getWhirlpoolPrice(whirlpool);
 
   // Calculate price range based on priceMargin Percentage input
   const priceMarginValue = price.mul(priceMargin.toDecimal());
