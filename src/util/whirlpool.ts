@@ -1,5 +1,6 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { TokenQuery } from '@/interfaces/token';
+import type { Null } from '@/interfaces/nullable';
+import type { TokenQuery } from '@/interfaces/token';
 import { info } from '@/util/log';
 import rpc from '@/util/rpc';
 import { getTokenPair } from '@/util/token';
@@ -82,12 +83,12 @@ export async function getWhirlpoolKey(
  * @param whirlpool The {@link Whirlpool} to get the price of.
  * @returns The {@link Decimal} price of the {@link Whirlpool}.
  */
-export function getWhirlpoolPrice(whirlpool: Whirlpool): Decimal {
-  const { sqrtPrice } = whirlpool.getData();
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
+export async function getWhirlpoolPrice(whirlpool: Whirlpool | WhirlpoolData): Promise<Decimal> {
+  const whirlpoolData = _toWhirlpoolData(whirlpool);
+  const { sqrtPrice } = whirlpoolData;
+  const [tokenA, tokenB] = await getTokenPair(whirlpoolData.tokenMintA, whirlpoolData.tokenMintB);
 
-  return PriceMath.sqrtPriceX64ToPrice(sqrtPrice, tokenA.decimals, tokenB.decimals);
+  return PriceMath.sqrtPriceX64ToPrice(sqrtPrice, tokenA.mint.decimals, tokenB.mint.decimals);
 }
 
 /**
@@ -113,9 +114,11 @@ export async function getWhirlpoolTokenPair(
  * Formats a {@link Whirlpool} or {@link WhirlpoolData} into a human-readable log ID.
  *
  * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to format.
- * @returns A {@link Promise} that resolves to the formatted log ID.
+ * @returns A {@link Promise} that resolves to the formatted log ID. Returns an empty string if the whirlpool is `null`.
  */
-export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData): Promise<string> {
+export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Null): Promise<string> {
+  if (!whirlpool) return '';
+
   const whirlpoolData = _toWhirlpoolData(whirlpool);
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
 

@@ -1,8 +1,7 @@
-import { TransactionBuilder } from '@orca-so/common-sdk';
-import { Position, PositionBundleData } from '@orca-so/whirlpools-sdk';
-import { PublicKey } from '@solana/web3.js';
-import { GetWhirlpoolCliArgs } from './whirlpool';
-import { Options } from 'yargs';
+import type { GetWhirlpoolCliArgs } from '@/interfaces/whirlpool';
+import type { Address, TransactionBuilder } from '@orca-so/common-sdk';
+import type { Position, PositionBundleData, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
+import type { PublicKey } from '@solana/web3.js';
 
 /**
  * A bundled {@link Position}.
@@ -132,5 +131,19 @@ export interface OpenPositionCliArgs extends GetWhirlpoolCliArgs {
    * Should be a number between `0` and `100`.
    */
   priceMargin: number;
+
+}
+
+/**
+ * Fetch options for fetching {@link Position}s.
+ *
+ * @augments WhirlpoolAccountFetchOptions
+ */
+export interface PositionsFetchOptions extends WhirlpoolAccountFetchOptions {
+
+  /**
+   * The {@link Address} of the {@link Whirlpool} to get {@link Position}s for.
+   */
+  whirlpoolAddress?: Address;
 
 }

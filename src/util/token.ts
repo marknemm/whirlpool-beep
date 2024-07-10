@@ -1,3 +1,4 @@
+import type { Null } from '@/interfaces/nullable';
 import type { TokenMeta, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
 import { debug } from '@/util/log';
@@ -105,9 +106,21 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
     _cache.set(query, tokenAsset);
     _cache.set(tokenAsset.publicKey, tokenAsset);
   }
-  debug('Fetched token asset:', tokenAsset);
+  debug('Fetched token:', formatToken(tokenAsset));
 
   return tokenAsset;
+}
+
+/**
+ * Formats a token {@link DigitalAsset} into a human-readable log ID.
+ *
+ * @param token The token {@link DigitalAsset} to format.
+ * @returns The formatted log ID. If the token is `null`, an empty string is returned.
+ */
+export function formatToken(token: DigitalAsset | Null): string {
+  return token
+    ? `${token.metadata.symbol} - ${token.mint.publicKey}`
+    : '';
 }
 
 /**

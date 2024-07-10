@@ -1,6 +1,6 @@
 import type { LiquidityUnit } from '@/interfaces/position';
 import { getPositions } from '@/services/position/get-position';
-import { toBN, toDecimal, toStr } from '@/util/currency';
+import { toBN, toDecimal, toStr } from '@/util/number-conversion';
 import { debug, error, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
@@ -27,7 +27,7 @@ export async function increaseAllLiquidity(
 
   const quotes = new Map<string, IncreaseLiquidityQuote>();
 
-  const bundledPositions = await getPositions(whirlpoolAddress);
+  const bundledPositions = await getPositions({ whirlpoolAddress });
   const divAmount = toDecimal(amount).div(bundledPositions.length);
 
   bundledPositions.length

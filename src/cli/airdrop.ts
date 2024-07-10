@@ -1,4 +1,4 @@
-import { toLamports } from '@/util/currency';
+import { toLamports } from '@/util/number-conversion';
 import env from '@/util/env';
 import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';

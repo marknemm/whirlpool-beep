@@ -14,7 +14,7 @@ import { type Position } from '@orca-so/whirlpools-sdk';
 export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise<void> {
   info('\n-- Collect All Fees and Rewards --');
 
-  const bundledPositions = await getPositions(whirlpoolAddress);
+  const bundledPositions = await getPositions({ whirlpoolAddress });
 
   if (!bundledPositions.length) {
     whirlpoolAddress

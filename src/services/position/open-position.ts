@@ -1,11 +1,12 @@
 import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { info } from '@/util/log';
+import { toPriceRange, toTickRange } from '@/util/number-conversion';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
 import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, PriceMath, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 
 /**
@@ -45,7 +46,7 @@ export async function genOpenPositionTx(
   info('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
 
   // Use Whirlpool price data to generate position tick range
-  const tickRange = _genPositionTickRange(whirlpool, priceMargin);
+  const tickRange = await _genPositionTickRange(whirlpool, priceMargin);
 
   // Get the position bundle associated with configured wallet
   const positionBundle = await getPositionBundle();
@@ -105,29 +106,28 @@ export async function genOpenPositionTx(
  * @param priceMargin The price margin {@link Percentage} to use for the position.
  * @returns A tuple containing the lower and upper tick index of the position.
  */
-function _genPositionTickRange(
+async function _genPositionTickRange(
   whirlpool: Whirlpool,
   priceMargin: Percentage,
-): [number, number] {
+): Promise<[number, number]> {
   info('Generating position tick range using price margin:', priceMargin.toString());
 
   // Extract necessary data from Whirlpool
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
+  const { decimals: decimalsA } = whirlpool.getTokenAInfo();
+  const { decimals: decimalsB } = whirlpool.getTokenBInfo();
   const { tickSpacing } = whirlpool.getData();
-  const price = getWhirlpoolPrice(whirlpool);
+  const price = await getWhirlpoolPrice(whirlpool);
 
   // Calculate price range based on priceMargin Percentage input
   const priceMarginValue = price.mul(priceMargin.toDecimal());
   const lowerPrice = price.minus(priceMarginValue);
   const upperPrice = price.plus(priceMarginValue);
 
-  // Calculate tick index range based on price range (tick index range may not map exactly to price range due to tick spacing)
-  const lowerTick = PriceMath.priceToInitializableTickIndex(lowerPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
-  const upperTick = PriceMath.priceToInitializableTickIndex(upperPrice, tokenA.decimals, tokenB.decimals, tickSpacing);
+  // Calculate tick index range based on price range (may not map exactly to price range due to tick spacing)
+  const tickRange = toTickRange([lowerPrice, upperPrice], [decimalsA, decimalsB], tickSpacing);
 
-  _logPositionRange([lowerTick, upperTick], whirlpool);
-  return [lowerTick, upperTick]; // Subset of range [-443636, 443636]
+  _logPositionRange(tickRange, whirlpool);
+  return tickRange; // Subset of range [-443636, 443636]
 }
 
 /**
@@ -139,14 +139,12 @@ function _genPositionTickRange(
 function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
   if (!tickRange || !whirlpool) return;
 
-  const tokenA = whirlpool.getTokenAInfo();
-  const tokenB = whirlpool.getTokenBInfo();
+  const { decimals: decimalsA } = whirlpool.getTokenAInfo();
+  const { decimals: decimalsB } = whirlpool.getTokenBInfo();
 
-  const priceRange = [
-    PriceMath.tickIndexToPrice(tickRange[0], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-    PriceMath.tickIndexToPrice(tickRange[1], tokenA.decimals, tokenB.decimals).toFixed(tokenB.decimals),
-  ];
+  const priceRange = toPriceRange(tickRange, [decimalsA, decimalsB]);
+  const priceRangeStrs = priceRange.map((price) => price.toFixed(decimalsB));
 
-  info(`Lower & upper tick index: [${tickRange[0]}, ${tickRange[1]}]`);
-  info(`Lower & upper price: [${priceRange[0]}, ${priceRange[1]}]`);
+  info('Lower & upper tick index:', tickRange);
+  info('Lower & upper price:', priceRangeStrs);
 }

@@ -19,7 +19,7 @@ import { PublicKey } from '@solana/web3.js';
 export async function closeAllPositions(whirlpoolAddress: Address): Promise<void> {
   info('\n-- Close All Positions --');
 
-  const bundledPositions = await getPositions(whirlpoolAddress);
+  const bundledPositions = await getPositions({ whirlpoolAddress });
 
   bundledPositions.length
     ? info(`Closing ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)

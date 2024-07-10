@@ -1,5 +1,5 @@
 import { getPositions } from '@/services/position/get-position';
-import { toBN, toStr } from '@/util/currency';
+import { toBN, toStr } from '@/util/number-conversion';
 import { debug, error, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
@@ -22,7 +22,7 @@ export async function decreaseAllLiquidity(
 
   const quotes = new Map<string, DecreaseLiquidityQuote>();
 
-  const bundledPositions = await getPositions(whirlpoolAddress);
+  const bundledPositions = await getPositions({ whirlpoolAddress });
   const divAmount = toBN(amount).div(toBN(bundledPositions.length));
 
   bundledPositions.length

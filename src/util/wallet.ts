@@ -1,5 +1,5 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { toNum, toSol } from '@/util/currency';
+import { toNum, toSol } from '@/util/number-conversion';
 import { decodeBase58 } from '@/util/encode';
 import env from '@/util/env';
 import { info } from '@/util/log';
