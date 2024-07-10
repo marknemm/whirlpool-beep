@@ -1,25 +1,37 @@
-import { getBundledPositions } from '@/services/position/get-position';
+import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
-import { TransactionBuilder } from '@orca-so/common-sdk';
+import { Address, TransactionBuilder } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
  * Collects all fee rewards for all positions.
+ *
+ * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to collect fees and rewards from.
+ * @returns A {@link Promise} that resolves once all fees and rewards are collected.
  */
-export async function collectAllFeesRewards(): Promise<void> {
+export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise<void> {
   info('\n-- Collect All Fees and Rewards --');
 
-  const positionBundles = await getBundledPositions();
-  for (const { position } of positionBundles) {
-    try {
-      await collectFeesRewards(position);
-    } catch (err) {
-      error('Failed to collect fees and rewards for position:', position.getAddress().toBase58());
-      error(err);
-    }
+  const bundledPositions = await getPositions(whirlpoolAddress);
+
+  if (!bundledPositions.length) {
+    whirlpoolAddress
+      ? info('No positions to collect fees and rewards for in whirlpool:', whirlpoolAddress)
+      : info('No positions to collect fees and rewards for');
+  } else {
+    whirlpoolAddress
+      ? info(`Collecting fees and rewards for ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
+      : info(`Collecting fees and rewards for all ${bundledPositions.length} positions...`);
   }
+
+  const promises = bundledPositions.map(
+    (bundledPosition) => collectFeesRewards(bundledPosition.position)
+      .catch((err) => error(err))
+  );
+
+  await Promise.all(promises);
 }
 
 /**

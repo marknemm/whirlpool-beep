@@ -29,12 +29,22 @@ export interface BundledPosition {
 /**
  * CLI arguments for closing a {@link Position}.
  */
-export interface ClosePositionCliArgs extends GetWhirlpoolCliArgs {
+export interface ClosePositionCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {}
+
+/**
+ * CLI arguments for collecting fees and rewards from a {@link Position}.
+ */
+export interface CollectPositionCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {}
+
+/**
+ * CLI arguments for decreasing liquidity in a {@link Position}.
+ */
+export interface DecreaseLiquidityCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {
 
   /**
-   * The bundle index of the {@link Position} to close.
+   * The amount of liquidity to decrease.
    */
-  bundleIndex: number;
+  liquidity: number;
 
 }
 
@@ -62,6 +72,37 @@ export interface GenOptionPositionTxReturn {
    * The {@link TransactionBuilder} for creating the new {@link Position}.
    */
   tx: TransactionBuilder;
+
+}
+
+/**
+ * CLI arguments for getting a {@link Position}.
+ */
+export interface GetPositionCliArgs {
+
+  /**
+   * The bundle index of the {@link Position} to get.
+   */
+  bundleIndex?: number;
+
+  /**
+   * The address of the {@link Position} to get.
+   */
+  position?: string;
+
+}
+
+export interface IncreaseLiquidityCmdArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {
+
+  /**
+   * The amount of liquidity to provide.
+   */
+  liquidity: number;
+
+  /**
+   * The {@link LiquidityUnit} to use for the liquidity amount.
+   */
+  liquidityUnit: LiquidityUnit;
 
 }
 

@@ -1,26 +1,21 @@
-import genWhirlpoolOpts from '@/cli/common-opts/whirlpool-opts';
+import genGetWhirlpoolOpts from '@/cli/common-opts/whirlpool-opts';
 import type { ClosePositionCliArgs } from '@/interfaces/position';
 import { closeAllPositions, closePosition } from '@/services/position/close-position';
-import { getBundledPosition } from '@/services/position/get-position';
+import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { getWhirlpoolKey } from '@/util/whirlpool';
 import { PublicKey } from '@solana/web3.js';
 import { type Argv } from 'yargs';
+import genGetPositionOpts from '../common-opts/position-opts';
 
 export default {
   command: 'close',
-  describe: 'Close one or more position(s).\n\n'
+  describe: 'Close one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will be closed.\n'
     + 'Otherwise, the position at the specified bundle index or position address will be closed.',
   builder: (yargs: Argv<ClosePositionCliArgs>) =>
     yargs.options({
-      ...genWhirlpoolOpts('The address of the whirlpool to close all positions in'),
-      'bundle-index': {
-        alias: 'i',
-        describe: 'The bundle index of the position to close',
-        group: 'Position',
-        type: 'number',
-        conflicts: ['position', 'whirlpool', 'token-a', 'token-b', 'tick-spacing']
-      }
+      ...genGetWhirlpoolOpts('close all positions in'),
+      ...genGetPositionOpts('close'),
     }).check((argv) => {
       if (argv.whirlpool || argv.position || argv.bundleIndex) return true;
       if (argv.tokenA && argv.tokenB && argv.tickSpacing) return true;
@@ -41,8 +36,13 @@ async function openPositionCmd(argv: ClosePositionCliArgs) {
     return await closeAllPositions(whirlpool);
   }
 
+  if (argv.position) {
+    const bundledPosition = await getPosition(argv.position);
+    return await closePosition(bundledPosition);
+  }
+
   if (argv.bundleIndex) {
-    const bundledPosition = await getBundledPosition(argv.bundleIndex);
+    const bundledPosition = await getPositionAtIdx(argv.bundleIndex);
     return await closePosition(bundledPosition);
   }
 }

@@ -1,14 +1,14 @@
 /**
  * Generates the whirlpool options.
  *
- * @param description The description of the whirlpool. Defaults to `Address of whirlpool`.
+ * @param action The action to perform on the whirlpool, which will be appended to the end of descriptions.
  * @returns The whirlpool options.
  */
-export default function genWhirlpoolOpts(description = 'Address of whirlpool') {
+export default function genGetWhirlpoolOpts(action = '') {
   return {
     'whirlpool': {
       alias: 'w',
-      description,
+      description: `Address of the whirlpool${action ? ` to ${action}` : ''}`,
       group: 'Whirlpool',
       type: 'string' as 'string' | undefined,
       conflicts: ['token-a', 'token-b', 'tick-spacing'],

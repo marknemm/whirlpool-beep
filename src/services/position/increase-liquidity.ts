@@ -1,13 +1,51 @@
 import type { LiquidityUnit } from '@/interfaces/position';
-import { toBN, toStr } from '@/util/currency';
-import { debug, info } from '@/util/log';
+import { getPositions } from '@/services/position/get-position';
+import { toBN, toDecimal, toStr } from '@/util/currency';
+import { debug, error, info } from '@/util/log';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
-import { Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
+import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
+
+/**
+ * Increases liquidity of all {@link Position}s in a {@link Whirlpool}.
+ *
+ * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to increase liquidity in.
+ * @param amount The amount of liquidity to deposit in the {@link Whirlpool}. Divided evenly among open positions.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
+ * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ */
+export async function increaseAllLiquidity(
+  whirlpoolAddress: Address,
+  amount: BN | Decimal | number,
+  unit: LiquidityUnit = 'tokenB'
+): Promise<Map<string, IncreaseLiquidityQuote>> {
+  info('\n-- Increasing All liquidity --');
+
+  const quotes = new Map<string, IncreaseLiquidityQuote>();
+
+  const bundledPositions = await getPositions(whirlpoolAddress);
+  const divAmount = toDecimal(amount).div(bundledPositions.length);
+
+  bundledPositions.length
+    ? info(`Increasing liquidity of ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
+    : info('No positions to increase liquidity of in whirlpool:', whirlpoolAddress);
+
+  const promises = bundledPositions.map(async ({ position }) => {
+    const quote = await increaseLiquidity(position, divAmount, unit)
+      .catch((err) => { error(err); });
+
+    if (quote) {
+      quotes.set(position.getAddress().toBase58(), quote);
+    }
+  });
+
+  await Promise.all(promises);
+  return quotes;
+}
 
 /**
  * Increases liquidity in a given {@link position}.

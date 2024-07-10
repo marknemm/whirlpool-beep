@@ -1,7 +1,7 @@
 import type { BundledPosition } from '@/interfaces/position';
 import { genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
 import { genDecreaseLiquidityTx } from '@/services/position/decrease-liquidity';
-import { getBundledPositions } from '@/services/position/get-position';
+import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
@@ -19,7 +19,7 @@ import { PublicKey } from '@solana/web3.js';
 export async function closeAllPositions(whirlpoolAddress: Address): Promise<void> {
   info('\n-- Close All Positions --');
 
-  const bundledPositions = await getBundledPositions(whirlpoolAddress);
+  const bundledPositions = await getPositions(whirlpoolAddress);
 
   bundledPositions.length
     ? info(`Closing ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
