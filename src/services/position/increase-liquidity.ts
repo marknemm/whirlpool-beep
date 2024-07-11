@@ -92,7 +92,7 @@ export async function genIncreaseLiquidityTx(
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'tokenB'
 ): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
-  info('Creating tx to increase liquidity in position:', position.getAddress().toBase58());
+  info('Creating tx to increase liquidity in position:', position.getAddress());
 
   // Get quote either using raw liquidity as unit or token A/B as unit
   const quote = (unit === 'liquidity')

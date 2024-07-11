@@ -1,7 +1,8 @@
-import type { GetWhirlpoolCliArgs } from '@/interfaces/whirlpool';
-import type { Address, TransactionBuilder } from '@orca-so/common-sdk';
+import type { BN } from '@coral-xyz/anchor';
+import type { Address, Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import type { Position, PositionBundleData, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
+import type Decimal from 'decimal.js';
 
 /**
  * A bundled {@link Position}.
@@ -22,28 +23,6 @@ export interface BundledPosition {
    * The {@link PositionBundleData} containing the {@link Position}.
    */
   positionBundle: PositionBundleData;
-
-}
-
-/**
- * CLI arguments for closing a {@link Position}.
- */
-export interface ClosePositionCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {}
-
-/**
- * CLI arguments for collecting fees and rewards from a {@link Position}.
- */
-export interface CollectPositionCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {}
-
-/**
- * CLI arguments for decreasing liquidity in a {@link Position}.
- */
-export interface DecreaseLiquidityCliArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {
-
-  /**
-   * The amount of liquidity to decrease.
-   */
-  liquidity: number;
 
 }
 
@@ -91,55 +70,56 @@ export interface GetPositionCliArgs {
 
 }
 
-export interface IncreaseLiquidityCmdArgs extends GetPositionCliArgs, GetWhirlpoolCliArgs {
-
-  /**
-   * The amount of liquidity to provide.
-   */
-  liquidity: number;
-
-  /**
-   * The {@link LiquidityUnit} to use for the liquidity amount.
-   */
-  liquidityUnit: LiquidityUnit;
-
-}
-
 /**
  * The unit to use for an amount of liquidity.
  */
 export type LiquidityUnit = 'liquidity' | 'tokenA' | 'tokenB';
 
-/**
- * CLI arguments for opening a position.
- */
-export interface OpenPositionCliArgs extends GetWhirlpoolCliArgs {
+export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
 
   /**
-   * The amount of liquidity to provide.
+   * The {@link Address} of the {@link Whirlpool} to rebalance all {@link Position}s in.
    */
-  liquidity?: number;
+  whirlpoolAddress?: Address;
+
+}
+
+export interface RebalancePositionOptions {
+
+  /**
+   * The filter function to use for selecting which {@link Position}s to rebalance.
+   *
+   * @param position The {@link Position} to filter.
+   * @returns A {@link Promise} that resolves to `true` if the {@link Position} should be rebalanced, `false` otherwise.
+   */
+  filter: (position: Position) => Promise<boolean>;
+
+  /**
+   * The amount of liquidity to deposit into each {@link Position} where rebalancing is required.
+   */
+  liquidity: Decimal | BN | number;
 
   /**
    * The {@link LiquidityUnit} to use for the liquidity amount.
+   *
+   * Defaults to `'tokenB'`.
    */
   liquidityUnit?: LiquidityUnit;
 
   /**
-   * The price margin percentage to use for the {@link Position}.
-   *
-   * Should be a number between `0` and `100`.
+   * The price margin {@link Percentage} to use for the {@link Position}.
+   * Defaults to `3%`.
    */
-  priceMargin: number;
+  priceMargin?: Percentage;
 
 }
 
 /**
- * Fetch options for fetching {@link Position}s.
+ * Options for getting {@link Position}s.
  *
  * @augments WhirlpoolAccountFetchOptions
  */
-export interface PositionsFetchOptions extends WhirlpoolAccountFetchOptions {
+export interface GetPositionsOptions extends WhirlpoolAccountFetchOptions {
 
   /**
    * The {@link Address} of the {@link Whirlpool} to get {@link Position}s for.

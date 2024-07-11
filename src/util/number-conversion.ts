@@ -10,20 +10,20 @@ import Decimal from 'decimal.js';
  * @param value The value to convert.
  * @param shift The number of decimal places to `right shift` the decimal point by. Defaults to `0`.
  * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `10_000`.
+ * Will only shift the decimal point if the value is a {@link Decimal.Value}.
  * @returns The converted {@link BN}. If given a `falsey` value, `0` is returned.
  */
 export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
-  if (shift) {
-    value = toDecimal(value);
-
-    if (value instanceof Decimal) {
-      return DecimalUtil.toBN(value, shift);
-    }
+  if (typeof value === 'bigint') {
+    value = new BN(value.toString());
   }
 
-  return (value instanceof BN)
-    ? value
-    : new BN(value?.toString() ?? '0');
+  if (value instanceof BN || value == null) {
+    return value ?? new BN(0);
+  }
+
+  value = toDecimal(value);
+  return DecimalUtil.toBN(value, shift);
 }
 
 /**
@@ -32,27 +32,22 @@ export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
  * @param value The value to convert.
  * @param shift The number of decimal places to `left shift` the decimal point by. Defaults to `0`.
  * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `1.00`.
+ * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted {@link Decimal}. If given a `falsey` value, `0` is returned.
  */
 export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0): Decimal {
-  if (value instanceof Decimal || value == null) {
-    return value ?? new Decimal(0);
+  if (typeof value === 'number' || typeof value === 'string') {
+    value = new Decimal(value);
   }
 
-  if (typeof value === 'string') {
-    value = value.includes('.')
-      ? parseFloat(value)
-      : new BN(value);
+  if (value instanceof Decimal || value == null) {
+    return value ?? new Decimal(0);
   }
 
   if (typeof value === 'bigint') {
     value = new BN(value.toString());
   }
-  if (value instanceof BN) {
-    return DecimalUtil.fromBN(value, shift);
-  }
-
-  return DecimalUtil.fromNumber(value, shift);
+  return DecimalUtil.fromBN(value, shift);
 }
 
 /**

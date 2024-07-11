@@ -49,7 +49,7 @@ export async function collectFeesRewards(position: Position): Promise<void> {
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  info('Collected fees and rewards for position:', position.getAddress().toBase58());
+  info('Collected fees and rewards for position:', position.getAddress());
   await position.refreshData();
 }
 
@@ -60,7 +60,7 @@ export async function collectFeesRewards(position: Position): Promise<void> {
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
 export async function genCollectFeesRewardsTx(position: Position): Promise<TransactionBuilder> {
-  info('Creating collect fees and rewards transaction for position:', position.getAddress().toBase58());
+  info('Creating collect fees and rewards transaction for position:', position.getAddress());
 
   const collectFeesTx = await position.collectFees(true);
   const collectRewardsTxs = await position.collectRewards();

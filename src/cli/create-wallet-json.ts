@@ -16,7 +16,7 @@ const { out, privateKey } = yargs(process.argv.slice(2))
     },
     'private-key': {
       alias: 'pk',
-      describe: 'The private key to write to the output file.',
+      describe: 'The private key to write to the output file. Prompts if not provided.',
       type: 'string',
     }
   }).parseSync();

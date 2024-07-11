@@ -1,7 +1,7 @@
 import type { Null } from '@/interfaces/nullable';
 import type { TokenMeta, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
-import { debug } from '@/util/log';
+import { info } from '@/util/log';
 import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
@@ -52,7 +52,7 @@ export async function getTokenPair(
   const tokenB = await getToken(queryB);
 
   if (!tokenA || !tokenB) {
-    throw new Error(`Failed to fetch token for query: ${!tokenA ? queryA : queryB}`);
+    throw new Error(`Failed to fetch token using query: ${!tokenA ? queryA : queryB}`);
   }
 
   return [tokenA, tokenB];
@@ -73,7 +73,7 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
     return _cache.get(query)!;
   }
 
-  debug('Fetching token for query:', query);
+  info('Fetching token using query:', query);
 
   if (!PublicKeyUtils.isBase58(query)) {
     // Query token via standard token list API that is used by solana explorer.
@@ -106,7 +106,7 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
     _cache.set(query, tokenAsset);
     _cache.set(tokenAsset.publicKey, tokenAsset);
   }
-  debug('Fetched token:', formatToken(tokenAsset));
+  info('Fetched token:', formatToken(tokenAsset));
 
   return tokenAsset;
 }

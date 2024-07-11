@@ -5,7 +5,7 @@ import { toPriceRange, toTickRange } from '@/util/number-conversion';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
-import { TransactionBuilder, type Percentage } from '@orca-so/common-sdk';
+import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 
@@ -14,9 +14,13 @@ import { PublicKey } from '@solana/web3.js';
  *
  * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
  * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
+ * Defaults to `3%`.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage): Promise<BundledPosition> {
+export async function openPosition(
+  whirlpool: Whirlpool,
+  priceMargin = Percentage.fromFraction(3, 100)
+): Promise<BundledPosition> {
   info('\n-- Open Position --');
 
   const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(whirlpool, priceMargin);
@@ -37,11 +41,12 @@ export async function openPosition(whirlpool: Whirlpool, priceMargin: Percentage
  *
  * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
  * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
+ * Defaults to `3%`.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
 export async function genOpenPositionTx(
   whirlpool: Whirlpool,
-  priceMargin: Percentage
+  priceMargin = Percentage.fromFraction(3, 100)
 ): Promise<GenOptionPositionTxReturn> {
   info('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
 

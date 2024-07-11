@@ -1,55 +1,82 @@
-import type { DecreaseLiquidityCliArgs } from '@/interfaces/position';
+import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common-opts/position-opts';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common-opts/whirlpool-opts';
+import type { CliArgs } from '@/interfaces/cli';
 import { decreaseAllLiquidity, decreaseLiquidity } from '@/services/position/decrease-liquidity';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
-import { getWhirlpoolKey } from '@/util/whirlpool';
-import { PublicKey } from '@solana/web3.js';
 import { type Argv } from 'yargs';
-import genGetPositionOpts from '../common-opts/position-opts';
-import genGetWhirlpoolOpts from '../common-opts/whirlpool-opts';
 
-export default {
+const cli = {
   command: 'decrease-liquidity',
   describe: 'Decrease liquidity in one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will have their liquidity decreased.\n'
     + 'Otherwise, the position at the specified bundle index or position address will have its liquidity decreased.',
-  builder: (yargs: Argv<DecreaseLiquidityCliArgs>) =>
-    yargs.options({
-      ...genGetWhirlpoolOpts('decrease liquidity in'),
-      ...genGetPositionOpts('decrease liquidity in'),
-      'liquidity': {
-        alias: 'l',
-        describe: 'The amount of liquidity to decrease',
-        group: 'Position',
-        type: 'number',
-        demandOption: true,
+  options: {
+    ...genGetWhirlpoolCliOpts({
+      'whirlpool': {
+        description: 'The address of the whirlpool to decrease liquidity in',
+        implies: ['liquidity'],
+        conflicts: ['zero'],
       },
-    }).check((argv) => {
+      'token-a': {
+        implies: ['liquidity'],
+        conflicts: ['zero'],
+      },
+    }),
+    ...genGetPositionCliOpts({
+      'position': {
+        description: 'The address of the position to decrease liquidity in',
+      },
+      'bundle-index': {
+        description: 'The bundle index of the position to decrease liquidity in',
+      }
+    }),
+    ...genLiquidityCliOpts({
+      'liquidity': {
+        describe: 'The amount of liquidity to decrease',
+        conflicts: ['zero'],
+      },
+      'liquidity-unit': {
+        hidden: true, // Hide this option from the help menu - unit is locked to 'liquidity'
+      }
+    }),
+    'zero': {
+      alias: 'z',
+      describe: 'Decrease liquidity to zero',
+      group: 'Liquidity',
+      type: 'boolean' as const,
+      defaultDescription: 'false',
+      conflicts: ['liquidity', 'whirlpool', 'token-a', 'token-b', 'tick-spacing'],
+    },
+  },
+  builder(yargs: Argv) {
+    return yargs.options(cli.options).check((argv) => {
       if (argv.whirlpool || argv.position || argv.bundleIndex) return true;
       if (argv.tokenA && argv.tokenB && argv.tickSpacing) return true;
 
       throw new Error('Must provide Position, Whirlpool, or Whirlpool PDA options');
-    }),
+    });
+  },
   handler: collectPositionCmd,
 };
 
-async function collectPositionCmd(argv: DecreaseLiquidityCliArgs) {
-  const whirlpool = argv.whirlpool
-    ? new PublicKey(argv.whirlpool)
-    : (argv.tokenA && argv.tokenB && argv.tickSpacing)
-      ? await getWhirlpoolKey(argv.tokenA, argv.tokenB, argv.tickSpacing)
-      : null;
+async function collectPositionCmd(argv: CliArgs<typeof cli.options>) {
+  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
 
-  if (whirlpool) {
-    return await decreaseAllLiquidity(whirlpool, argv.liquidity);
+  if (whirlpoolAddress) {
+    return await decreaseAllLiquidity(whirlpoolAddress, argv.liquidity!);
   }
 
   if (argv.position) {
     const { position } = await getPosition(argv.position);
-    return await decreaseLiquidity(position, argv.liquidity);
+    const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
+    return await decreaseLiquidity(position, liquidity!);
   }
 
   if (argv.bundleIndex) {
     const { position } = await getPositionAtIdx(argv.bundleIndex);
-    return await decreaseLiquidity(position, argv.liquidity);
+    const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
+    return await decreaseLiquidity(position, liquidity!);
   }
 }
+
+export default cli;

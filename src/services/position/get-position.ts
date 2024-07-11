@@ -1,4 +1,4 @@
-import type { BundledPosition, PositionsFetchOptions } from '@/interfaces/position';
+import type { BundledPosition, GetPositionsOptions } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { info } from '@/util/log';
 import whirlpoolClient from '@/util/whirlpool';
@@ -81,10 +81,10 @@ export async function getPositionAtIdx(
 /**
  * Get all {@link BundledPosition}s in the `PositionBundle` associated with the {@link Wallet}.
  *
- * @param opts The {@link PositionsFetchOptions} to use when fetching the {@link Position}s.
+ * @param opts The {@link GetPositionsOptions} to use when fetching the {@link Position}s.
  * @returns A {@link Promise} that resolves to an array of {@link BundledPosition}s.
  */
-export async function getPositions(opts: PositionsFetchOptions = {}): Promise<BundledPosition[]> {
+export async function getPositions(opts: GetPositionsOptions = {}): Promise<BundledPosition[]> {
   const { whirlpoolAddress } = opts;
 
   whirlpoolAddress

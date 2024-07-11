@@ -48,7 +48,7 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  info('Position closed:', bundledPosition.position.getAddress().toBase58());
+  info('Position closed:', bundledPosition.position.getAddress());
 }
 
 /**
@@ -61,7 +61,7 @@ export async function genClosePositionTx(bundledPosition: BundledPosition): Prom
   const tx = new TransactionBuilder(rpc(), wallet());
   const { bundleIndex, position, positionBundle } = bundledPosition;
 
-  info('Creating close position transaction for position:', position.getAddress().toBase58());
+  info('Creating close position transaction for position:', position.getAddress());
 
   const collectTx = await genCollectFeesRewardsTx(position);
   tx.addInstruction(collectTx.compressIx(true));
