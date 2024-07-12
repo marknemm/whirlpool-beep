@@ -3,7 +3,7 @@ import env from '@/util/env'; // Load and validate env variables ASAP
 import { increaseAllLiquidity } from '@/services/position/increase-liquidity';
 import { genPriceRangeRebalanceFilter, rebalanceAllPositions } from '@/services/position/rebalance-position';
 import { debug, error } from '@/util/log';
-import { getWhirlpoolKey } from './util/whirlpool';
+import { getWhirlpoolKey } from '@/util/whirlpool';
 
 /**
  * Main entry point.

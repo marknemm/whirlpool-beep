@@ -1,18 +1,15 @@
-import type { RebalanceAllPositionsOptions } from '@/interfaces/position';
+import { genPriceRangeRebalanceFilter, rebalanceAllPositions } from '@/services/position/rebalance-position';
+import env from '@/util/env';
 import { info } from '@/util/log';
 
 /**
  * Entrypoint for the `serverless` rebalance cloud function.
  */
 export async function rebalance() {
-  info('-- Rebalance Fn --');
+  info('Environment variables loaded and validated:', { ...env });
 
-  // const rebalanceOptions: RebalanceAllPositionsOptions = {
-  //   whirlpoolAddress,
-  //   liquidity: argv.liquidity,
-  //   liquidityUnit: argv.liquidityUnit,
-  //   filter: genPriceRangeRebalanceFilter(
-  //     Percentage.fromFraction(argv.priceRangeMargin, 100)
-  //   )
-  // };
+  await rebalanceAllPositions({
+    filter: genPriceRangeRebalanceFilter(),
+    liquidity: 100,
+  });
 }

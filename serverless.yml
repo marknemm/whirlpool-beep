@@ -20,20 +20,19 @@ provider:
     NODE_ENV: ${env:NODE_ENV, sls:stage}
     RPC_ENDPOINT: ${env:RPC_ENDPOINT, ssm:/whirlpool-beep/${sls:stage}/RPC_ENDPOINT}
     TOKEN_LIST_API: ${env:TOKEN_LIST_API, ssm:/whirlpool-beep/${sls:stage}/TOKEN_LIST_API}
+    TOKEN_PRICE_API: ${env:TOKEN_PRICE_API, ssm:/whirlpool-beep/${sls:stage}/TOKEN_PRICE_API}
     WALLET_ADDRESS: ${env:WALLET_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WALLET_ADDRESS}
     WALLET_PRIVATE_KEY: ${env:WALLET_PRIVATE_KEY, ssm:/whirlpool-beep/${sls:stage}/WALLET_PRIVATE_KEY}
     WHIRLPOOL_CONFIG_ADDRESS: ${env:WHIRLPOOL_CONFIG_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_ADDRESS}
     WHIRLPOOL_CONFIG_EXTENSION_ADDRESS: ${env:WHIRLPOOL_CONFIG_EXTENSION_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_EXTENSION_ADDRESS}
 
 plugins:
-  - serverless-plugin-common-excludes       # Exclude common unwanted files from deployment package (e.g. README.md, .gitignore, etc.)
-  - serverless-plugin-include-dependencies  # Exclude node_modules from deployment package, and install dependencies on AWS Lambda
+  - serverless-plugin-common-excludes # Exclude common unwanted files from deployment package (e.g. README.md, .gitignore, etc.)
 
 build:                      # Config for building functions before packaging and deploying to AWS
   esbuild:
     bundle: true            # Bundle all functions into a single file
     minify: true            # Minify the output
-    packages: external      # Do not bundle node_modules
     sourcemap:
       type: inline          # Inline sourcemaps for debugging
       setNodeOptions: true  # Set NODE_OPTIONS=--enable-source-maps to enable sourcemaps on AWS Lambda for debugging
