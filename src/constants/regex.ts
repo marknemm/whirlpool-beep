@@ -28,3 +28,8 @@ export const SECRETS_REGEX = new RegExp(
   + `|${env.WALLET_PRIVATE_KEY}`
   , 'g'
 );
+
+/**
+ * {@link RegExp} to detect stablecoin symbols via exact case-insensitive match.
+ */
+export const STABLECOIN_SYMBOL_REGEX = /^USDC|USDT|PAX|HUSD|DAI|UST|devUSDC|devUSDT$/i;

@@ -1,4 +1,4 @@
-import type { CliArgs, CliOpts } from '@/interfaces/cli';
+import type { CliArgs, CliOpts } from '@/cli/interfaces/cli';
 import deepmerge from 'deepmerge';
 import type { DeepPartial } from 'utility-types';
 
@@ -29,10 +29,10 @@ const _liquidityCliOpts = {
   'liquidity-unit': {
     alias: 'u',
     describe: 'The unit to use for the liquidity amount',
-    defaultDescription: 'tokenB',
+    defaultDescription: 'usd',
     group: 'Liquidity',
     type: 'string' as const,
-    choices: ['liquidity', 'tokenA', 'tokenB'] as const,
+    choices: ['liquidity', 'tokenA', 'tokenB', 'usd'] as const,
     implies: ['liquidity'],
   }
 };

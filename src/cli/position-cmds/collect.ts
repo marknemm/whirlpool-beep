@@ -1,6 +1,6 @@
 import { genGetPositionCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/interfaces/cli';
+import type { CliArgs } from '@/cli/interfaces/cli';
 import { collectAllFeesRewards, collectFeesRewards } from '@/services/position/collect-fees-rewards';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { type Argv } from 'yargs';

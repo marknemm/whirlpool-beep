@@ -60,3 +60,19 @@ export interface TokenQueryResponse {
  * Can be a token `symbol` or mint {@link Address}.
  */
 export type TokenQuery = string | Address;
+
+/**
+ * The response of a token price query.
+ */
+export interface TokenPriceResponse {
+
+  [token: string]: {
+
+    /**
+     * The price of the token in USD.
+     */
+    usd: number;
+
+  }
+
+}

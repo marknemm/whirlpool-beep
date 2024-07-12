@@ -1,10 +1,13 @@
+import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
 import type { LiquidityUnit } from '@/interfaces/position';
 import { getPositions } from '@/services/position/get-position';
-import { toBN, toDecimal, toStr } from '@/util/number-conversion';
 import { debug, error, info } from '@/util/log';
+import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
 import { verifyTransaction } from '@/util/rpc';
+import { getTokenPrice } from '@/util/token';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
+import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type IncreaseLiquidityQuote, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
@@ -15,13 +18,13 @@ import type Decimal from 'decimal.js';
  *
  * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to increase liquidity in.
  * @param amount The amount of liquidity to deposit in the {@link Whirlpool}. Divided evenly among open positions.
- * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
  * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
  */
 export async function increaseAllLiquidity(
   whirlpoolAddress: Address,
   amount: BN | Decimal | number,
-  unit: LiquidityUnit = 'tokenB'
+  unit: LiquidityUnit = 'usd'
 ): Promise<Map<string, IncreaseLiquidityQuote>> {
   info('\n-- Increasing All liquidity --');
 
@@ -52,14 +55,14 @@ export async function increaseAllLiquidity(
  *
  * @param position The {@link Position} to increase the liquidity of.
  * @param amount The amount of liquidity to deposit in the {@link Position}.
- * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
  * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
 export async function increaseLiquidity(
   position: Position,
   amount: BN | Decimal | number,
-  unit: LiquidityUnit = 'tokenB'
+  unit: LiquidityUnit = 'usd'
 ): Promise<IncreaseLiquidityQuote> {
   info('\n-- Increasing liquidity --');
 
@@ -83,24 +86,29 @@ export async function increaseLiquidity(
  * Creates a transaction to increase liquidity in a given {@link position}.
  *
  * @param position The {@link Position} to increase liquidity of.
- * @param amount The amount of liquidity to deposit in the {@link Position} in terms of `token B`.
- * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `tokenB`.
+ * @param amount The amount of liquidity to deposit in the {@link Position}.
+ * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
 export async function genIncreaseLiquidityTx(
   position: Position,
   amount: BN | Decimal | number,
-  unit: LiquidityUnit = 'tokenB'
+  unit: LiquidityUnit = 'usd'
 ): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
   info('Creating tx to increase liquidity in position:', position.getAddress());
+
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+  if (!tokenA || !tokenB) throw new Error('Token not found');
+
+  // If unit is USD, convert to token amount
+  if (unit === 'usd') {
+    ({ amount, unit } = await _toTokenAmount([tokenA, tokenB], amount));
+  }
 
   // Get quote either using raw liquidity as unit or token A/B as unit
   const quote = (unit === 'liquidity')
     ? await _genQuoteViaLiquidity(position, amount)
     : await _genQuoteViaInputToken(position, amount, unit);
-
-  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-  if (!tokenA || !tokenB) throw new Error('Token not found');
 
   debug('Increase liquidity quote:', quote);
   info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
@@ -108,6 +116,55 @@ export async function genIncreaseLiquidityTx(
 
   const tx = await position.increaseLiquidity(quote);
   return { quote, tx };
+}
+
+/**
+ * Converts a given {@link usd} amount to a token amount of either token
+ * in the given {@link tokenPair} with priority for a stablecoin.
+ *
+ * @param tokenPair The token pair containing the tokens that the {@link usd} amount may be converted to.
+ * @param usd The amount of `USD` to convert.
+ * @returns A {@link Promise} that resolves to the token amount and the {@link LiquidityUnit} of the token.
+ */
+export async function _toTokenAmount(
+  tokenPair: [DigitalAsset, DigitalAsset],
+  usd: BN | Decimal | number,
+): Promise<{ amount: Decimal, unit: 'tokenA' | 'tokenB' }> {
+  const [tokenA, tokenB] = tokenPair;
+
+  info(`Converting USD (${toStr(usd)}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
+
+  // If either token is a stablecoin, prioritize that token
+  if (STABLECOIN_SYMBOL_REGEX.test(tokenA.metadata.symbol)) {
+    return {
+      amount: toTokenAmount(usd, 1),
+      unit: 'tokenA'
+    };
+  }
+  if (STABLECOIN_SYMBOL_REGEX.test(tokenB.metadata.symbol)) {
+    return {
+      amount: toTokenAmount(usd, 1),
+      unit: 'tokenB'
+    };
+  }
+
+  // Otherwise, query the USD price of both tokens via API
+  const usdTokenA = await getTokenPrice(tokenA);
+  if (usdTokenA) {
+    return {
+      amount: toTokenAmount(usd, usdTokenA),
+      unit: 'tokenA',
+    };
+  }
+  const usdTokenB = await getTokenPrice(tokenB);
+  if (usdTokenB) {
+    return {
+      amount: toTokenAmount(usd, usdTokenB),
+      unit: 'tokenB',
+    };
+  }
+
+  throw new Error(`USD price not found for '${tokenA.metadata.symbol}' or '${tokenB.metadata.symbol}'`);
 }
 
 async function _genQuoteViaLiquidity(

@@ -40,6 +40,7 @@ build:                      # Config for building functions before packaging and
 
 package:                    # Config for packaging service for upload to AWS S3 and deployment to AWS Lambda
   exclude:
+    - node_modules          # Exclude node_modules from deployment package; install dependencies on AWS Lambda
     - .env*                 # Exclude local .env files; use AWS SSM Parameter Store for deployment
 
 functions:

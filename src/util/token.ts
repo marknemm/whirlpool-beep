@@ -1,11 +1,13 @@
+import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
 import type { Null } from '@/interfaces/nullable';
-import type { TokenMeta, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
+import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
 import { info } from '@/util/log';
 import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
+import { PublicKey } from '@solana/web3.js';
 import axios from 'axios';
 
 /**
@@ -16,7 +18,7 @@ import axios from 'axios';
 const _cache = new Map<string, DigitalAsset>();
 
 /**
- * Clears the {@link TokenMeta} cache.
+ * Clears the token cache.
  */
 export function clearTokenCache() {
   _cache.clear();
@@ -37,11 +39,11 @@ export async function getNFT(query: TokenQuery): Promise<DigitalAsset | null> {
 }
 
 /**
- * Fetches a pair of tokens {@link TokenMeta} by given queries.
+ * Fetches a pair of tokens by given queries.
  *
  * @param queryA The {@link TokenQuery} for token A.
  * @param queryB The {@link TokenQuery} for token B.
- * @returns A {@link Promise} that resolves to an array filled with the 2 {@link TokenMeta} pair entries.
+ * @returns A {@link Promise} that resolves to an array filled with the {@link DigitalAsset} token pair entries.
  * @throws An error if the GET request fails or either token could not be retrieved.
  */
 export async function getTokenPair(
@@ -59,10 +61,10 @@ export async function getTokenPair(
 }
 
 /**
- * Fetches a {@link TokenMeta} by a given {@link query}.
+ * Fetches a token by a given {@link query}.
  *
  * @param query The {@link TokenQuery} for the token to fetch.
- * @returns A {@link Promise} that resolves to the {@link TokenMeta} of the token, or `null` if the token is not found.
+ * @returns A {@link Promise} that resolves to the {@link DigitalAsset} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
@@ -109,6 +111,40 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
   info('Fetched token:', formatToken(tokenAsset));
 
   return tokenAsset;
+}
+
+/**
+ * Gets the price of a token in USD.
+ *
+ * @param token The token {@link DigitalAsset} or {@link TokenQuery} to get the price of.
+ * @returns A {@link Promise} that resolves to the price of the token in USD.
+ * If the token price cannot be fetched, `undefined` is returned.
+ * @throws An {@link Error} if the GET request fails or returns a non-200 status code.
+ * @see https://docs.coingecko.com
+ */
+export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<number | undefined> {
+  if (typeof token === 'string' || token instanceof PublicKey) {
+    token = (await getToken(token))!;
+    if (!token) throw new Error(`Failed to fetch token using query: ${token}`);
+  }
+
+  // Short circuit for common stablecoins.
+  if (STABLECOIN_SYMBOL_REGEX.test(token.metadata.symbol)) {
+    return 1;
+  }
+
+  const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
+    params: {
+      contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
+      vs_currencies: 'usd',                     // eslint-disable-line camelcase
+    }
+  });
+
+  if (response.status !== 200) {
+    throw new Error(`Failed to fetch token price (${response.status}): ${response.statusText}`);
+  }
+
+  return response.data[token.mint.publicKey]?.usd;
 }
 
 /**

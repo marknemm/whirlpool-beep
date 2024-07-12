@@ -13,6 +13,7 @@ const env = cleanEnv(process.env, {
   NODE_ENV: str({ choices: ['development', 'production', 'test'] }),
   RPC_ENDPOINT: url(),
   TOKEN_LIST_API: url(),
+  TOKEN_PRICE_API: url(),
   WALLET_ADDRESS: str(),
   WALLET_PRIVATE_KEY: str(),
   WHIRLPOOL_CONFIG_ADDRESS: str(),

@@ -1,5 +1,7 @@
 import type { Null } from '@/interfaces/nullable';
+import { getTokenPrice } from '@/util/token';
 import { BN } from '@coral-xyz/anchor';
+import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { PriceMath } from '@orca-so/whirlpools-sdk';
 import Decimal from 'decimal.js';
@@ -149,4 +151,18 @@ export function toTickRange(
       PriceMath.priceToTickIndex(priceRange[0], decimalsA, decimalsB),
       PriceMath.priceToTickIndex(priceRange[1], decimalsA, decimalsB),
     ];
+}
+
+/**
+ * Converts a given {@link usd} amount to a token amount based off of a given {@link tokenPrice}.
+ *
+ * @param usd The amount of `USD` to convert.
+ * @param tokenPrice The price of the token in `USD`.
+ * @returns The converted token amount.
+ */
+export function toTokenAmount(
+  usd: BN | Decimal | number,
+  tokenPrice: Decimal.Value
+): Decimal {
+  return toDecimal(usd).div(tokenPrice);
 }

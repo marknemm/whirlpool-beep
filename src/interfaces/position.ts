@@ -73,8 +73,13 @@ export interface GetPositionCliArgs {
 /**
  * The unit to use for an amount of liquidity.
  */
-export type LiquidityUnit = 'liquidity' | 'tokenA' | 'tokenB';
+export type LiquidityUnit = 'liquidity' | 'tokenA' | 'tokenB' | 'usd';
 
+/**
+ * Options for rebalancing all {@link Position}s.
+ *
+ * @augments RebalancePositionOptions
+ */
 export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
 
   /**
@@ -84,6 +89,9 @@ export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
 
 }
 
+/**
+ * Options for rebalancing a {@link Position}.
+ */
 export interface RebalancePositionOptions {
 
   /**
@@ -102,7 +110,7 @@ export interface RebalancePositionOptions {
   /**
    * The {@link LiquidityUnit} to use for the liquidity amount.
    *
-   * Defaults to `'tokenB'`.
+   * Defaults to `'usd'`.
    */
   liquidityUnit?: LiquidityUnit;
 
