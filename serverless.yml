@@ -1,0 +1,49 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: marknemm
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: whirlpool-beep
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: whirlpool-beep
+
+useDotenv: true # Load .env files for local run - includes .env and .env.${sls:stage}
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  environment: # On local run, load local .env; on AWS, load from SSM Parameter Store
+    CHAIN_ID: ${env:CHAIN_ID, ssm:/whirlpool-beep/${sls:stage}/CHAIN_ID}
+    LOG_BREAK_LEN: ${env:LOG_BREAK_LEN, ssm:/whirlpool-beep/${sls:stage}/LOG_BREAK_LEN}
+    LOG_COLOR: ${env:LOG_COLOR, ssm:/whirlpool-beep/${sls:stage}/LOG_COLOR}
+    LOG_DEPTH: ${env:LOG_DEPTH, ssm:/whirlpool-beep/${sls:stage}/LOG_DEPTH}
+    LOG_LEVEL: ${env:LOG_LEVEL, ssm:/whirlpool-beep/${sls:stage}/LOG_LEVEL}
+    LOG_TIMESTAMP: ${env:LOG_TIMESTAMP, ssm:/whirlpool-beep/${sls:stage}/LOG_TIMESTAMP}
+    NODE_ENV: ${env:NODE_ENV, sls:stage}
+    RPC_ENDPOINT: ${env:RPC_ENDPOINT, ssm:/whirlpool-beep/${sls:stage}/RPC_ENDPOINT}
+    TOKEN_LIST_API: ${env:TOKEN_LIST_API, ssm:/whirlpool-beep/${sls:stage}/TOKEN_LIST_API}
+    WALLET_ADDRESS: ${env:WALLET_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WALLET_ADDRESS}
+    WALLET_PRIVATE_KEY: ${env:WALLET_PRIVATE_KEY, ssm:/whirlpool-beep/${sls:stage}/WALLET_PRIVATE_KEY}
+    WHIRLPOOL_CONFIG_ADDRESS: ${env:WHIRLPOOL_CONFIG_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_ADDRESS}
+    WHIRLPOOL_CONFIG_EXTENSION_ADDRESS: ${env:WHIRLPOOL_CONFIG_EXTENSION_ADDRESS, ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_EXTENSION_ADDRESS}
+
+plugins:
+  - serverless-plugin-common-excludes       # Exclude common unwanted files from deployment package (e.g. README.md, .gitignore, etc.)
+  - serverless-plugin-include-dependencies  # Exclude node_modules from deployment package, and install dependencies on AWS Lambda
+
+build:                      # Config for building functions before packaging and deploying to AWS
+  esbuild:
+    bundle: true            # Bundle all functions into a single file
+    minify: true            # Minify the output
+    packages: external      # Do not bundle node_modules
+    sourcemap:
+      type: inline          # Inline sourcemaps for debugging
+      setNodeOptions: true  # Set NODE_OPTIONS=--enable-source-maps to enable sourcemaps on AWS Lambda for debugging
+
+package:                    # Config for packaging service for upload to AWS S3 and deployment to AWS Lambda
+  exclude:
+    - .env*                 # Exclude local .env files; use AWS SSM Parameter Store for deployment
+
+functions:
+  rebalance:
+    handler: src/functions/position.rebalance
+    events:
+      - schedule: rate(10 minutes)

@@ -1,5 +1,5 @@
-import { genGetPositionCliOpts } from '@/cli/common-opts/position-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common-opts/whirlpool-opts';
+import { genGetPositionCliOpts } from '@/cli/common/position-opts';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
 import { closeAllPositions, closePosition } from '@/services/position/close-position';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';

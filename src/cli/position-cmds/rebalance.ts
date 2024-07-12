@@ -1,5 +1,5 @@
-import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common-opts/position-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common-opts/whirlpool-opts';
+import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
 import type { RebalanceAllPositionsOptions } from '@/interfaces/position';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';

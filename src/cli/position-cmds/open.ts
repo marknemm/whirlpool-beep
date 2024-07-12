@@ -1,5 +1,5 @@
-import { genLiquidityCliOpts } from '@/cli/common-opts/position-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@/cli/common-opts/whirlpool-opts';
+import { genLiquidityCliOpts } from '@/cli/common/position-opts';
+import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
 import { increaseLiquidity } from '@/services/position/increase-liquidity';
 import { openPosition } from '@/services/position/open-position';

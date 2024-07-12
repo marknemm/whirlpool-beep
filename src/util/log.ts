@@ -2,7 +2,7 @@ import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
 import env from '@/util/env';
 import { PublicKey } from '@solana/web3.js';
 import { red, yellow } from 'colors';
-import { inspect, type InspectOptions } from 'util';
+import { inspect, type InspectOptions } from 'node:util';
 import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 
 const _inspectOpts: InspectOptions = {
