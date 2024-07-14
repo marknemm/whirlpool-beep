@@ -1,6 +1,6 @@
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import type { RebalanceAllPositionsOptions } from '@/interfaces/position';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@/services/position/rebalance-position';
@@ -11,7 +11,7 @@ const cli = {
   command: 'rebalance',
   description: 'Rebalance one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will be rebalanced.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will be rebalanced.',
+    + 'Otherwise, the position at the specified bundle index or position address will be rebalanced.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {
@@ -35,6 +35,7 @@ const cli = {
     'price-range-margin': {
       alias: 'm',
       describe: 'The price range margin percentage to use as a criteria for rebalancing; between 0 and 100',
+      group: 'Rebalance',
       type: 'number' as const,
       default: 20,
     }

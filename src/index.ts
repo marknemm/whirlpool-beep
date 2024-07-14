@@ -1,23 +1,35 @@
 import env from '@/util/env'; // Load and validate env variables ASAP
 
-import { increaseAllLiquidity } from '@/services/position/increase-liquidity';
-import { genPriceRangeRebalanceFilter, rebalanceAllPositions } from '@/services/position/rebalance-position';
-import { debug, error } from '@/util/log';
-import { getWhirlpoolKey } from '@/util/whirlpool';
+import { prompt, promptCliCommand, promptCliScript } from '@/util/cli';
+import { debug, error, info } from '@/util/log';
+import { blue } from 'colors';
 
 /**
  * Main entry point.
  */
 async function main() {
-  debug('Environment variables loaded and validated:', { ...env });
+  process.env.NO_EXEC_CLI = 'true'; // Prevent command execution in CLI modules
+  debug('Environment variables loaded and validated:', { ...env }, '\n');
 
-  const whirlpoolAddress = await getWhirlpoolKey('SOL', 'BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k', 64);
-  await increaseAllLiquidity(whirlpoolAddress, 3);
+  const { script, commandsDir } = await promptCliScript();
 
-  await rebalanceAllPositions({
-    filter: genPriceRangeRebalanceFilter(),
-    liquidity: 10,
-  });
+  const command = commandsDir
+    ? await promptCliCommand(script)
+    : '';
+
+  process.argv = [process.argv[0], script, command];
+  const cli = require(`@/cli/${script}.ts`).default; // eslint-disable-line @typescript-eslint/no-var-requires
+  const cliBuilder = cli.builder();
+  cliBuilder.showHelp();
+
+  const scriptCommand = `${script} ${command}`.trim();
+  const args = await prompt(`\nInput ${blue(scriptCommand)} arguments: `);
+  const argv = await cliBuilder.parse(`${command} ${args}`);
+
+  info(`\n${blue(scriptCommand)} ${args}\n`);
+
+  const handler = cli.handler ?? require(`@/cli/${script}-cmds/${command}.ts`).default.handler; // eslint-disable-line @typescript-eslint/no-var-requires
+  await handler?.(argv);
 }
 
 main()

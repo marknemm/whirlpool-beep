@@ -1,15 +1,15 @@
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { increaseAllLiquidity, increaseLiquidity } from '@/services/position/increase-liquidity';
 import { type Argv } from 'yargs';
 
 const cli = {
   command: 'increase-liquidity',
-  describe: 'Increase liquidity of one or more positions.\n\n'
+  description: 'Increase liquidity of one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will have their liquidity increased.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will have its liquidity increased.',
+    + 'Otherwise, the position at the specified bundle index or position address will have its liquidity increased.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {

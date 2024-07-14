@@ -1,6 +1,6 @@
 import { genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { increaseLiquidity } from '@/services/position/increase-liquidity';
 import { openPosition } from '@/services/position/open-position';
 import { Percentage } from '@orca-so/common-sdk';
@@ -8,7 +8,7 @@ import { type Argv } from 'yargs';
 
 const cli = {
   command: 'open',
-  description: 'Open a new position in a whirlpool with an optional initial liquidity amount.',
+  description: 'Open a new position in a whirlpool with an optional initial liquidity amount.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {

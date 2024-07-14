@@ -4,22 +4,35 @@ import { error, info } from '@/util/log';
 import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
 import yargs from 'yargs';
+import { CliArgs } from '@/interfaces/cli';
 
-const argv = yargs(process.argv.slice(2))
-  .usage('Usage: $0 <amount>')
-  .options({
+const cli = {
+  description: 'Airdrops SOL to the wallet configured via ENV vars.',
+  options: {
     amount: {
       alias: 'a',
       default: 1,
       describe: 'The amount of SOL to airdrop',
-      type: 'number',
+      type: 'number' as const,
     }
-  }).parseSync();
+  },
+  builder: () =>
+    yargs(process.argv.slice(2))
+      .usage('Usage: $0 <amount>')
+      .options(cli.options),
+  handler
+};
 
-async function main() {
+/**
+ * Airdrops SOL to the wallet configured via ENV vars.
+ *
+ * @param argv The CLI arguments passed to the command.
+ */
+async function handler(argv?: CliArgs<typeof cli.options>) {
   if (env.NODE_ENV !== 'development') {
     throw new Error('Airdrop is only available in development environment');
   }
+  argv ??= await cli.builder().parse();
 
   info(`Airdropping ${argv.amount} SOL to wallet:`, wallet().publicKey.toBase58());
 
@@ -30,9 +43,13 @@ async function main() {
   info('Airdrop complete - wallet balance:', await wallet().getBalance());
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    error(err);
-    process.exit(1);
-  });
+if (process.env.NO_EXEC_CLI !== 'true') {
+  handler()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      error(err);
+      process.exit(1);
+    });
+}
+
+export default cli;

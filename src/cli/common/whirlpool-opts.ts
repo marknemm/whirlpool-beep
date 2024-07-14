@@ -1,4 +1,4 @@
-import type { CliArgs, CliOpts } from '@/cli/interfaces/cli';
+import type { CliArgs, CliOpts } from '@/interfaces/cli';
 import whirlpoolClient, { getWhirlpoolKey } from '@/util/whirlpool';
 import { type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';

@@ -1,15 +1,15 @@
 import { genGetPositionCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { closeAllPositions, closePosition } from '@/services/position/close-position';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { type Argv } from 'yargs';
 
 const cli = {
   command: 'close',
-  describe: 'Close one or more positions.\n\n'
+  description: 'Close one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will be closed.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will be closed.',
+    + 'Otherwise, the position at the specified bundle index or position address will be closed.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {
@@ -33,10 +33,10 @@ const cli = {
       throw new Error('Must provide Position, Whirlpool, or Whirlpool PDA options');
     });
   },
-  handler: openPositionCmd,
+  handler,
 };
 
-async function openPositionCmd(argv: CliArgs<typeof cli.options>) {
+async function handler(argv: CliArgs<typeof cli.options>) {
   const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
 
   if (whirlpoolAddress) {

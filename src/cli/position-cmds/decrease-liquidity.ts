@@ -1,15 +1,15 @@
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { decreaseAllLiquidity, decreaseLiquidity } from '@/services/position/decrease-liquidity';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { type Argv } from 'yargs';
 
 const cli = {
   command: 'decrease-liquidity',
-  describe: 'Decrease liquidity in one or more positions.\n\n'
+  description: 'Decrease liquidity in one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will have their liquidity decreased.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will have its liquidity decreased.',
+    + 'Otherwise, the position at the specified bundle index or position address will have its liquidity decreased.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {
@@ -56,10 +56,10 @@ const cli = {
       throw new Error('Must provide Position, Whirlpool, or Whirlpool PDA options');
     });
   },
-  handler: collectPositionCmd,
+  handler,
 };
 
-async function collectPositionCmd(argv: CliArgs<typeof cli.options>) {
+async function handler(argv: CliArgs<typeof cli.options>) {
   const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
 
   if (whirlpoolAddress) {

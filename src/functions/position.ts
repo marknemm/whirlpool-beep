@@ -6,7 +6,7 @@ import { info } from '@/util/log';
  * Entrypoint for the `serverless` rebalance cloud function.
  */
 export async function rebalance() {
-  info('Environment variables loaded and validated:', { ...env });
+  info('Environment variables loaded and validated:', { ...env }, '\n');
 
   await rebalanceAllPositions({
     filter: genPriceRangeRebalanceFilter(),

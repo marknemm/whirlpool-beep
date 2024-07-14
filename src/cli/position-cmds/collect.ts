@@ -1,15 +1,15 @@
 import { genGetPositionCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/cli/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { collectAllFeesRewards, collectFeesRewards } from '@/services/position/collect-fees-rewards';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { type Argv } from 'yargs';
 
 const cli = {
   command: 'collect',
-  describe: 'Collect rewards from one or more positions.\n\n'
+  description: 'Collect rewards from one or more positions.\n\n'
     + 'If whirlpool args are provided, all positions in the whirlpool will have their rewards collected.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will have its rewards collected.',
+    + 'Otherwise, the position at the specified bundle index or position address will have its rewards collected.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {

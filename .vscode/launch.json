@@ -8,6 +8,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:dbg"],
       "outputCapture": "std",
+      "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**"
       ]
@@ -19,6 +20,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "prod:dbg"],
       "outputCapture": "std",
+      "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**"
       ]

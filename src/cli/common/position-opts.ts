@@ -1,4 +1,4 @@
-import type { CliArgs, CliOpts } from '@/cli/interfaces/cli';
+import type { CliArgs, CliOpts } from '@/interfaces/cli';
 import deepmerge from 'deepmerge';
 import type { DeepPartial } from 'utility-types';
 
