@@ -5,26 +5,19 @@ app: whirlpool-beep
 # "service" is the name of this project. This will also be added to your AWS resource names.
 service: whirlpool-beep
 
-useDotenv: true # Load .env files for local run - includes .env and .env.${sls:stage}
-
 provider:
   name: aws
   runtime: nodejs20.x
-  environment: # On local run, load local .env; on AWS, load from SSM Parameter Store
-    CHAIN_ID: ${ssm:/whirlpool-beep/${sls:stage}/CHAIN_ID}
-    LOG_BREAK_LEN: ${ssm:/whirlpool-beep/${sls:stage}/LOG_BREAK_LEN}
-    LOG_COLOR: ${ssm:/whirlpool-beep/${sls:stage}/LOG_COLOR}
-    LOG_DEPTH: ${ssm:/whirlpool-beep/${sls:stage}/LOG_DEPTH}
-    LOG_LEVEL: ${ssm:/whirlpool-beep/${sls:stage}/LOG_LEVEL}
-    LOG_TIMESTAMP: ${ssm:/whirlpool-beep/${sls:stage}/LOG_TIMESTAMP}
+  layers:
+    # Use AWS Lambda Extension for loading secrets and parameters from AWS SSM Parameter Store when running on AWS
+    - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
+  environment: # Hardcoded public environment variables for deployment and loading ENV variables from AWS SSM Parameter Store
+    ENV_PARAMS: CHAIN_ID,DB_HOST,DB_NAME,DB_PASSWORD,DB_PORT,DB_USER,LOG_BREAK_LEN,LOG_COLOR,LOG_DEPTH,LOG_LEVEL,LOG_TIMESTAMP,TOKEN_LIST_API,TOKEN_PRICE_API,WALLET_ADDRESS,WHIRLPOOL_CONFIG_ADDRESS,WHIRLPOOL_CONFIG_EXTENSION_ADDRESS
+    ENV_SECURE_PARAMS: RPC_ENDPOINT,WALLET_PRIVATE_KEY
     NODE_ENV: ${sls:stage}
-    RPC_ENDPOINT: ${ssm:/whirlpool-beep/${sls:stage}/RPC_ENDPOINT}
-    TOKEN_LIST_API: ${ssm:/whirlpool-beep/${sls:stage}/TOKEN_LIST_API}
-    TOKEN_PRICE_API: ${ssm:/whirlpool-beep/${sls:stage}/TOKEN_PRICE_API}
-    WALLET_ADDRESS: ${ssm:/whirlpool-beep/${sls:stage}/WALLET_ADDRESS}
-    WALLET_PRIVATE_KEY: ${ssm:/whirlpool-beep/${sls:stage}/WALLET_PRIVATE_KEY}
-    WHIRLPOOL_CONFIG_ADDRESS: ${ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_ADDRESS}
-    WHIRLPOOL_CONFIG_EXTENSION_ADDRESS: ${ssm:/whirlpool-beep/${sls:stage}/WHIRLPOOL_CONFIG_EXTENSION_ADDRESS}
+    PARAMETERS_SECRETS_EXTENSION_CACHE_ENABLED: TRUE
+    SECRETS_MANAGER_TTL: 3600
+    SSM_PARAMETER_STORE_TTL: 3600
 
 plugins:
   - serverless-plugin-common-excludes # Exclude common unwanted files from deployment package (e.g. README.md, .gitignore, etc.)

@@ -1,13 +1,13 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import type { Null } from '@/interfaces/nullable';
-import type { TokenQuery } from '@/interfaces/token';
+import type { GetWhirlpoolOpts, GetWhirlpoolKeyOpts } from '@/interfaces/whirlpool';
 import { info } from '@/util/log';
 import rpc from '@/util/rpc';
 import { getTokenPair } from '@/util/token';
 import wallet from '@/util/wallet';
-import { AnchorProvider, type Address } from '@coral-xyz/anchor';
+import { AnchorProvider } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, WhirlpoolAccountFetchOptions, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
+import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
@@ -34,36 +34,22 @@ export default function whirlpoolClient(): WhirlpoolClient {
 /**
  * Gets a {@link Whirlpool} via a Program Derived Address (PDA).
  *
- * @param tokenA The token A {@link Address}.
- * @param tokenB The token B {@link Address}.
- * @param tickSpacing The tick spacing defined for the {@link Whirlpool}.
- * @param opts The {@link WhirlpoolAccountFetchOptions} to use when fetching the {@link Whirlpool}.
- * Defaults to {@link IGNORE_CACHE}.
+ * @param opts The {@link GetWhirlpoolOpts} to use when fetching the {@link Whirlpool}.
  * @returns A {@link Promise} that resolves to the {@link Whirlpool}.
  */
-export async function getWhirlpool(
-  tokenA: TokenQuery,
-  tokenB: TokenQuery,
-  tickSpacing: number,
-  opts?: WhirlpoolAccountFetchOptions
-): Promise<Whirlpool> {
-  const whirlpoolKey = await getWhirlpoolKey(tokenA, tokenB, tickSpacing);
+export async function getWhirlpool(opts: GetWhirlpoolOpts): Promise<Whirlpool> {
+  const whirlpoolKey = await getWhirlpoolKey(opts);
   return whirlpoolClient().getPool(whirlpoolKey, opts);
 }
 
 /**
  * Gets the {@link PublicKey} (address) for a {@link Whirlpool} via PDA.
  *
- * @param tokenA The token A {@link Address}.
- * @param tokenB The token B {@link Address}.
- * @param tickSpacing The tick spacing defined for the {@link Whirlpool}.
+ * @param opts The {@link WhirlpoolPDAOpts} to use when fetching the {@link Whirlpool} key.
  * @returns The {@link PublicKey} (address) of the {@link Whirlpool}.
  */
-export async function getWhirlpoolKey(
-  tokenA: Address,
-  tokenB: Address,
-  tickSpacing: number
-): Promise<PublicKey> {
+export async function getWhirlpoolKey(opts: GetWhirlpoolKeyOpts): Promise<PublicKey> {
+  const { tokenA, tokenB, tickSpacing } = opts;
   const [{ mint: mintA }, { mint: mintB }] = await getTokenPair(tokenA, tokenB);
 
   return PDAUtil.getWhirlpool(

@@ -81,6 +81,10 @@ export async function getWhirlpoolAddressFromCliArgs(argv: GetWhirlpoolCliArgs):
   return argv.whirlpool
     ? new PublicKey(argv.whirlpool)
     : (argv.tokenA && argv.tokenB && argv.tickSpacing)
-      ? await getWhirlpoolKey(argv.tokenA, argv.tokenB, argv.tickSpacing)
+      ? await getWhirlpoolKey({
+        tokenA: argv.tokenA,
+        tokenB: argv.tokenB,
+        tickSpacing: argv.tickSpacing,
+      })
       : undefined;
 }

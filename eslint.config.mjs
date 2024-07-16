@@ -1,16 +1,18 @@
 import eslint from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
-import tseslint from 'typescript-eslint';
 import noFloatingPromise from 'eslint-plugin-no-floating-promise';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config({
   files: ['src/**/*.{js,mjs,cjs,ts}'],
+  ignores: ['node_modules', 'dist'],
   extends: [
     eslint.configs.recommended,
     jsdoc.configs['flat/recommended'],
     ...tseslint.configs.recommended,
   ],
   plugins: {
+    // @ts-ignore
     'no-floating-promise': noFloatingPromise,
   },
   rules: {

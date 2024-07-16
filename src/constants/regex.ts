@@ -26,6 +26,7 @@ export const SECRETS_REGEX = new RegExp(
     `${PRIVATE_KEY_REGEX.source}`
   + `|${PRIVATE_KEY_BYTE_ARRAY_REGEX.source}`
   + `|${env.WALLET_PRIVATE_KEY}`
+  + `|${env.DB_PASSWORD}`
   , 'g'
 );
 

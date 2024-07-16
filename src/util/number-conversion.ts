@@ -1,7 +1,5 @@
 import type { Null } from '@/interfaces/nullable';
-import { getTokenPrice } from '@/util/token';
 import { BN } from '@coral-xyz/anchor';
-import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { PriceMath } from '@orca-so/whirlpools-sdk';
 import Decimal from 'decimal.js';
