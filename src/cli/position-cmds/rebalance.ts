@@ -40,22 +40,13 @@ const cli = {
       default: 20,
     }
   },
-  builder(yargs: Argv) {
-    return yargs.options(cli.options).check((argv) => {
-      if (argv.whirlpool || argv.position || argv.bundleIndex) return true;
-      if (argv.tokenA && argv.tokenB && argv.tickSpacing) return true;
-
-      throw new Error('Must provide Position, Whirlpool, or Whirlpool PDA options');
-    });
-  },
+  builder: (yargs: Argv) => yargs.options(cli.options),
   handler
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
-
   const rebalanceOptions: RebalanceAllPositionsOptions = {
-    whirlpoolAddress,
+    whirlpoolAddress: await getWhirlpoolAddressFromCliArgs(argv),
     liquidity: argv.liquidity,
     liquidityUnit: argv.liquidityUnit,
     filter: genPriceRangeRebalanceFilter(
@@ -63,14 +54,14 @@ async function handler(argv: CliArgs<typeof cli.options>) {
     )
   };
 
-  if (whirlpoolAddress) {
-    await rebalanceAllPositions(rebalanceOptions);
-  } else {
+  if (argv.bundleIndex || argv.position) {
     const bundledPosition = argv.position
       ? await getPosition(argv.position)
       : await getPositionAtIdx(argv.bundleIndex!);
 
     await rebalancePosition(bundledPosition, rebalanceOptions);
+  } else {
+    await rebalanceAllPositions(rebalanceOptions);
   }
 }
 
