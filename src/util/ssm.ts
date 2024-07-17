@@ -1,4 +1,4 @@
-import { SSMParamResponse } from '@/interfaces/ssm';
+import type { SSMParamResponse } from '@/interfaces/ssm';
 import axios from 'axios';
 
 /**

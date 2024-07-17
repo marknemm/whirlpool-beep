@@ -1,4 +1,5 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
+import WhirlpoolDAO from '@/data/whirlpool-dao';
 import type { Null } from '@/interfaces/nullable';
 import type { GetWhirlpoolOpts, GetWhirlpoolKeyOpts } from '@/interfaces/whirlpool';
 import { info } from '@/util/log';
@@ -39,7 +40,11 @@ export default function whirlpoolClient(): WhirlpoolClient {
  */
 export async function getWhirlpool(opts: GetWhirlpoolOpts): Promise<Whirlpool> {
   const whirlpoolKey = await getWhirlpoolKey(opts);
-  return whirlpoolClient().getPool(whirlpoolKey, opts);
+
+  const whirlpool = await whirlpoolClient().getPool(whirlpoolKey, opts);
+  await WhirlpoolDAO.insert(whirlpool, { catchErrors: true });
+
+  return whirlpool;
 }
 
 /**
@@ -70,7 +75,7 @@ export async function getWhirlpoolKey(opts: GetWhirlpoolKeyOpts): Promise<Public
  * @returns The {@link Decimal} price of the {@link Whirlpool}.
  */
 export async function getWhirlpoolPrice(whirlpool: Whirlpool | WhirlpoolData): Promise<Decimal> {
-  const whirlpoolData = _toWhirlpoolData(whirlpool);
+  const whirlpoolData = toWhirlpoolData(whirlpool);
   const { sqrtPrice } = whirlpoolData;
   const [tokenA, tokenB] = await getTokenPair(whirlpoolData.tokenMintA, whirlpoolData.tokenMintB);
 
@@ -88,7 +93,7 @@ export async function getWhirlpoolPrice(whirlpool: Whirlpool | WhirlpoolData): P
 export async function getWhirlpoolTokenPair(
   whirlpool: Whirlpool | WhirlpoolData
 ): Promise<[DigitalAsset, DigitalAsset]> {
-  const whirlpoolData = _toWhirlpoolData(whirlpool);
+  const whirlpoolData = toWhirlpoolData(whirlpool);
 
   return getTokenPair(
     whirlpoolData.tokenMintA,
@@ -105,13 +110,19 @@ export async function getWhirlpoolTokenPair(
 export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Null): Promise<string> {
   if (!whirlpool) return '';
 
-  const whirlpoolData = _toWhirlpoolData(whirlpool);
+  const whirlpoolData = toWhirlpoolData(whirlpool);
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
 
   return `${_getWhirlpoolAddress(whirlpool)} ( ${tokenA.metadata.symbol} <-> ${tokenB.metadata.symbol} )`.trim();
 }
 
-function _toWhirlpoolData(whirlpool: Whirlpool | WhirlpoolData): WhirlpoolData {
+/**
+ * Converts a {@link Whirlpool} or {@link WhirlpoolData} into a {@link WhirlpoolData}.
+ *
+ * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to convert.
+ * @returns The {@link WhirlpoolData} representation of the whirlpool.
+ */
+export function toWhirlpoolData(whirlpool: Whirlpool | WhirlpoolData): WhirlpoolData {
   return (whirlpool as Whirlpool)?.getData?.() ?? whirlpool;
 }
 

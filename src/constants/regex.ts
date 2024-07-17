@@ -20,13 +20,18 @@ export const PRIVATE_KEY_REGEX = /[1-9A-HJ-NP-Za-km-z]{80,}/g;
 export const PRIVATE_KEY_BYTE_ARRAY_REGEX = /(?:\[\s*)?((?:[0-9]{1,3}\s*,\s*){60,}[0-9]{1,3})(?:\s*\])?/g;
 
 /**
+ * {@link RegExp} to detect `regex` escape characters.
+ */
+export const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+/**
  * {@link RegExp} to detect secret strings such as private keys.
  */
 export const SECRETS_REGEX = new RegExp(
     `${PRIVATE_KEY_REGEX.source}`
   + `|${PRIVATE_KEY_BYTE_ARRAY_REGEX.source}`
   + `|${env.WALLET_PRIVATE_KEY}`
-  + `|${env.DB_PASSWORD}`
+  + `|${env.DB_PASSWORD.replace(REGEX_ESCAPE, '\\$&')}`
   , 'g'
 );
 

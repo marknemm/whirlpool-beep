@@ -4,8 +4,8 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_DB: whirlpool_beep_dev
-      POSTGRES_PASSWORD: whirlpool_beep_password
+      POSTGRES_DB: wpnpc
+      POSTGRES_PASSWORD: password;)
       POSTGRES_USER: postgres
     ports:
       - "5432:5432"

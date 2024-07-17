@@ -30,6 +30,9 @@ Consists of the following executables:
 - `dev:dbg`: Run the **CLI** in interactive mode with debugger against **devnet**.
 - `dev:deploy`: Package & deploy **λ Functions** to cloud provider for **devnet**.
 - `dev:env`: Setup dev env for running **CLI** locally against **devnet**.
+- `dev:kysely`: Run **kysely** CLI for dev **Postgres** database migration management.
+- `dev:kysely:codegen`: Run **kysely-codegen** CLI for **TS** interface generation using the dev **Postgres** database. Outputs to file [db.ts](src/interfaces/db.ts).
+- `dev:kysely:migrate`: Run **kysely** CLI for dev **Postgres** database to migrate to the latest migration. Then, run **kysely-codegen** CLI for **TS** interface generation using the dev **Postgres** database. Outputs to file [db.ts](src/interfaces/db.ts).
 - `dev:package`: Package **λ Functions** for **devnet** and output artifacts under [.serverless](.serverless).
 - `dev:sls`: Run **λ Functions** against **devnet** using a local simulated cloud provider.
 - `lint`: Run **eslint** against TS files under [src](src).
@@ -40,6 +43,9 @@ Consists of the following executables:
 - `prod:dbg`: Run the **CLI** in interactive mode with debugger against **mainnet**.
 - `prod:deploy`: Package & deploy **λ Functions** to cloud provider for **mainnet**.
 - `prod:env`: Setup prod env for running **CLI** locally against **mainnet**.
+- `prod:kysely`: Run **kysely** CLI for prod **Postgres** database migration management. Migrations are found under [migrations](migrations).
+- `prod:kysely:codegen`: Run **kysely-codegen** CLI for **TS** interface generation using the prod **Postgres** database. Outputs to file [db.ts](src/interfaces/db.ts).
+- `prod:kysely:migrate`: Run **kysely** CLI for prod **Postgres** database to migrate to the latest migration. Then, run **kysely-codegen** CLI for **TS** interface generation using the prod **Postgres** database. Outputs to file [db.ts](src/interfaces/db.ts).
 - `prod:package`: Package **λ Functions** for **mainnet** and output artifacts under [.serverless](.serverless).
 - `prod:sls`: Run **λ Functions** against **mainnet** using a local simulated cloud provider.
 - `start`: Run **CLI** JS program with entrypoint [dist/index.js](dist/index.js).

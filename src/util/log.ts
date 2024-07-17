@@ -1,5 +1,5 @@
 import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
-import env from './env';
+import env from '@/util/env';
 import { PublicKey } from '@solana/web3.js';
 import { red, yellow } from 'colors';
 import { inspect, type InspectOptions } from 'node:util';

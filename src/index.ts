@@ -1,8 +1,8 @@
-import env from '@/util/env'; // Load and validate env variables ASAP
+import env from './util/env'; // Load and validate env variables ASAP
 
-import { prompt, promptCliCommand, promptCliScript } from '@/util/cli';
-import { debug, error, info } from '@/util/log';
 import { blue } from 'colors';
+import { prompt, promptCliCommand, promptCliScript } from './util/cli';
+import { debug, error, info } from './util/log';
 
 /**
  * Main entry point.
@@ -18,7 +18,7 @@ async function main() {
     : '';
 
   process.argv = [process.argv[0], script, command];
-  const cli = require(`@/cli/${script}.ts`).default; // eslint-disable-line @typescript-eslint/no-var-requires
+  const cli = require(`./cli/${script}.ts`).default; // eslint-disable-line @typescript-eslint/no-var-requires
   const cliBuilder = cli.builder();
   cliBuilder.showHelp();
 
@@ -28,7 +28,7 @@ async function main() {
 
   info(`\n${blue(scriptCommand)} ${args}\n`);
 
-  const handler = cli.handler ?? require(`@/cli/${script}-cmds/${command}.ts`).default.handler; // eslint-disable-line @typescript-eslint/no-var-requires
+  const handler = cli.handler ?? require(`./cli/${script}-cmds/${command}.ts`).default.handler; // eslint-disable-line @typescript-eslint/no-var-requires
   await handler?.(argv);
 }
 

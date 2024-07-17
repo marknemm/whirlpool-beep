@@ -1,8 +1,9 @@
 import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
+import TokenDAO from '@/data/token-dao';
 import type { Null } from '@/interfaces/nullable';
 import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from '@/interfaces/token';
 import env from '@/util/env';
-import { info } from '@/util/log';
+import { info, warn } from '@/util/log';
 import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
@@ -107,8 +108,12 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
   if (tokenAsset) {
     _cache.set(query, tokenAsset);
     _cache.set(tokenAsset.publicKey, tokenAsset);
+
+    info('Fetched token:', formatToken(tokenAsset));
+    await TokenDAO.insert(tokenAsset, { catchErrors: true });
+  } else {
+    warn('Failed to fetch token using query:', query);
   }
-  info('Fetched token:', formatToken(tokenAsset));
 
   return tokenAsset;
 }

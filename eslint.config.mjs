@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config({
   files: ['src/**/*.{js,mjs,cjs,ts}'],
-  ignores: ['node_modules', 'dist'],
+  ignores: ['node_modules', 'dist', 'src/interfaces/db.ts'],
   extends: [
     eslint.configs.recommended,
     jsdoc.configs['flat/recommended'],
@@ -79,7 +79,9 @@ export default tseslint.config({
     'no-console': 'error',                                      // Disallow the use of console.log - IMPORTANT to prevent leaking secrets!
     'no-else-return': 'warn',                                   // Enable the warning about using else return
     'no-empty': 'warn',                                         // Enable the warning about empty blocks
-    'no-empty-function': 'warn',                                // Enable the warning about empty functions
+    'no-empty-function': ['warn', {                             // Enable the warning about empty functions
+      allow: ['arrowFunctions', 'constructors'],                // Allow empty arrow functions, functions, and methods
+    }],
     'no-extra-parens': ['warn', 'all', {                        // Enable the warning about extra parentheses
       conditionalAssign: false,                                 // Allow extra parentheses in conditional assignments
       enforceForArrowConditionals: false,                       // Allow extra parentheses in arrow function conditionals

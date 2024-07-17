@@ -32,6 +32,17 @@
       "database": "wpnpc",
       "username": "postgres",
       "connectionTimeout": 5
+    },
+    {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "local",
+      "group": "wpnpc",
+      "database": "wpnpc",
+      "password": "password;)",
+      "username": "postgres"
     }
   ]
 }
