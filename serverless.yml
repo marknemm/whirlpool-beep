@@ -8,16 +8,28 @@ service: whirlpool-beep
 provider:
   name: aws
   runtime: nodejs20.x
+  timeout: 120 # (2 min) Maximum execution time for all functions in seconds
   layers:
     # Use AWS Lambda Extension for loading secrets and parameters from AWS SSM Parameter Store when running on AWS
     - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+          Resource: arn:aws:ssm:us-east-1:211125566448:parameter/whirlpool-beep/${sls:stage}/*
+        - Effect: Allow
+          Action:
+            - kms:Decrypt
+          Resource: arn:aws:ssm:us-east-1:211125566448:parameter/whirlpool-beep/${sls:stage}/*
   environment: # Hardcoded public environment variables for deployment and loading ENV variables from AWS SSM Parameter Store
     ENV_PARAMS: CHAIN_ID,DB_HOST,DB_NAME,DB_PASSWORD,DB_PORT,DB_SSL,DB_USER,LOG_BREAK_LEN,LOG_COLOR,LOG_DEPTH,LOG_LEVEL,LOG_TIMESTAMP,TOKEN_LIST_API,TOKEN_PRICE_API,WALLET_ADDRESS,WHIRLPOOL_CONFIG_ADDRESS,WHIRLPOOL_CONFIG_EXTENSION_ADDRESS
     ENV_SECURE_PARAMS: RPC_ENDPOINT,WALLET_PRIVATE_KEY
     NODE_ENV: ${sls:stage}
     PARAMETERS_SECRETS_EXTENSION_CACHE_ENABLED: TRUE
-    SECRETS_MANAGER_TTL: 3600
-    SSM_PARAMETER_STORE_TTL: 3600
+    SECRETS_MANAGER_TTL: 300
+    SSM_PARAMETER_STORE_TTL: 300
 
 plugins:
   - serverless-plugin-common-excludes # Exclude common unwanted files from deployment package (e.g. README.md, .gitignore, etc.)
