@@ -1,0 +1,37 @@
+{
+  "sqltools.connections": [
+    {
+      "pgOptions": {
+        "ssl": {
+          "rejectUnauthorized": true
+        }
+      },
+      "previewLimit": 50,
+      "server": "rough-bulldog-15398.7tt.aws-us-east-1.cockroachlabs.cloud",
+      "port": 26257,
+      "driver": "PostgreSQL",
+      "name": "dev",
+      "group": "wpnpc",
+      "username": "postgres",
+      "database": "defaultdb",
+      "connectionTimeout": 5
+    },
+    {
+      "pgOptions": {
+        "ssl": {
+          "rejectUnauthorized": true,
+          "ca": "/Users/marknemmer/Downloads/us-east-1-bundle.pem"
+        }
+      },
+      "previewLimit": 50,
+      "server": "database-prod.c12a4y8y0iay.us-east-1.rds.amazonaws.com",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "prod",
+      "group": "wpnpc",
+      "database": "wpnpc",
+      "username": "postgres",
+      "connectionTimeout": 5
+    }
+  ]
+}

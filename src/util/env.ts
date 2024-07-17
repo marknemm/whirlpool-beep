@@ -20,6 +20,7 @@ const env = cleanEnv(process.env, {
   DB_PASSWORD: str(),
   DB_PORT: num({ default: 5432 }),
   DB_USER: str(),
+  DB_SSL: bool({ default: true }),
   LOG_BREAK_LEN: num({ default: 40 }),
   LOG_COLOR: bool({ default: false }),
   LOG_DEPTH: num({ default: 3 }),

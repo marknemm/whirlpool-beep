@@ -8,6 +8,7 @@ const dialect = new PostgresDialect({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
     port: env.DB_PORT,
+    ssl: env.DB_SSL,
     user: env.DB_USER,
   })
 });
