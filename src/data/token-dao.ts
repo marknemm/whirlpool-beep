@@ -1,11 +1,11 @@
-import { DAOOptions } from '@/interfaces/dao';
+import type { DAOOptions } from '@/interfaces/dao';
 import type { Null } from '@/interfaces/nullable';
 import db from '@/util/db';
 import { error, info } from '@/util/log';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 
 /**
- * Pure static data access object for token operations.
+ * Pure static data access object for token DB operations.
  */
 export default class TokenDAO {
 

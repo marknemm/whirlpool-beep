@@ -5,6 +5,29 @@ import { PriceMath } from '@orca-so/whirlpools-sdk';
 import Decimal from 'decimal.js';
 
 /**
+ * Converts a given currency `value` to a {@link bigint}.
+ *
+ * @param value The value to convert.
+ * @param shift The number of decimal places to `right shift` the decimal point by. Defaults to `0`.
+ * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `10_000`.
+ * Will only shift the decimal point if the value is a {@link Decimal.Value}.
+ * @returns The converted {@link bigint}. If given a `falsey` value, `0` is returned.
+ */
+export function toBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): bigint {
+  if (value instanceof BN) {
+    value = BigInt(value.toString());
+  }
+
+  if (typeof value === 'bigint' || value == null) {
+    return value ?? 0n;
+  }
+
+  value = toDecimal(value);
+  value = DecimalUtil.toBN(value, shift);
+  return BigInt(value.toString());
+}
+
+/**
  * Converts a given currency `value` to a {@link BN}.
  *
  * @param value The value to convert.

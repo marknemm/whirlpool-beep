@@ -6,20 +6,25 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type Numeric = ColumnType<string, number | string, number | string>;
-
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export interface Liquidity {
+  address: string;
+  liquidity: Int8;
+  position: string;
+  tokenAmountA: Int8;
+  tokenAmountB: Int8;
+}
 
 export interface Position {
   address: string;
   createdAt: Generated<Timestamp>;
-  liquidity: Int8;
-  priceLower: Numeric;
-  priceUpper: Numeric;
-  tickLower: number;
-  tickUpper: number;
-  tokenAmountA: Int8;
-  tokenAmountB: Int8;
+  priceLower: Int8;
+  priceMargin: number;
+  priceOrigin: Int8;
+  priceUpper: Int8;
+  tickLowerIndex: number;
+  tickUpperIndex: number;
   whirlpool: string;
 }
 
@@ -44,7 +49,7 @@ export interface Token {
 
 export interface Whirlpool {
   address: string;
-  feeRate: Numeric;
+  feeRate: number;
   tickSpacing: number;
   tokenA: string;
   tokenB: string;
@@ -53,6 +58,7 @@ export interface Whirlpool {
 }
 
 export interface DB {
+  liquidity: Liquidity;
   position: Position;
   rebalanceTx: RebalanceTx;
   token: Token;

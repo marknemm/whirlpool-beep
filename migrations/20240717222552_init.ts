@@ -21,7 +21,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 
   await db.schema.createTable('whirlpool').ifNotExists()
     .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
-    .addColumn('feeRate', 'numeric(4, 9)', (col) => col.notNull())
+    .addColumn('feeRate', 'real', (col) => col.notNull())
     .addColumn('tokenA', 'varchar(100)', (col) => col.references('token.address').notNull())
     .addColumn('tokenB', 'varchar(100)', (col) => col.references('token.address').notNull())
     .addColumn('tokenVaultA', 'varchar(100)', (col) => col.notNull())
@@ -38,15 +38,22 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.createTable('position').ifNotExists()
     .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
+    .addColumn('priceLower', 'bigint', (col) => col.notNull())
+    .addColumn('priceMargin', 'integer', (col) => col.notNull())
+    .addColumn('priceOrigin', 'bigint', (col) => col.notNull())
+    .addColumn('priceUpper', 'bigint', (col) => col.notNull())
+    .addColumn('tickLowerIndex', 'integer', (col) => col.notNull())
+    .addColumn('tickUpperIndex', 'integer', (col) => col.notNull())
     .addColumn('whirlpool', 'varchar(100)', (col) => col.references('whirlpool.address').notNull())
+		.execute();
+
+  await db.schema.createTable('liquidity').ifNotExists()
+    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
     .addColumn('liquidity', 'bigint', (col) => col.notNull())
-    .addColumn('priceLower', 'numeric(10, 9)', (col) => col.notNull())
-    .addColumn('priceUpper', 'numeric(10, 9)', (col) => col.notNull())
+    .addColumn('position', 'varchar(100)', (col) => col.references('position.address').notNull())
     .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
     .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
-    .addColumn('tickLower', 'integer', (col) => col.notNull())
-    .addColumn('tickUpper', 'integer', (col) => col.notNull())
-		.execute();
+    .execute();
 
   await db.schema.createTable('rebalanceTx').ifNotExists()
     .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
@@ -69,6 +76,7 @@ export async function up(db: Kysely<any>): Promise<void> {
  */
 export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('rebalanceTx').ifExists().execute();
+  await db.schema.dropTable('liquidity').ifExists().execute();
   await db.schema.dropTable('position').ifExists().execute();
   await db.schema.dropIndex('whirlpool_tokenA_tokenB_tickSpacing').ifExists().execute();
   await db.schema.dropTable('whirlpool').ifExists().execute();

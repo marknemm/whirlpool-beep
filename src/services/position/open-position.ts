@@ -1,3 +1,4 @@
+import PositionDAO from '@/data/position-dao';
 import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { info } from '@/util/log';
@@ -31,8 +32,10 @@ export async function openPosition(
   await verifyTransaction(signature);
   info('Whirlpool position opened with address:', address.toBase58());
 
-  // Get and return the newly opened position
+  // Get, store, and return the newly opened position
   const position = await whirlpoolClient().getPosition(address);
+  await PositionDAO.insert(position, { catchErrors: true });
+
   return { bundleIndex, position, positionBundle };
 }
 

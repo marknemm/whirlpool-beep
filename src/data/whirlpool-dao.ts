@@ -1,14 +1,14 @@
-import { DAOOptions } from '@/interfaces/dao';
+import type { DAOOptions } from '@/interfaces/dao';
 import type { Null } from '@/interfaces/nullable';
 import db from '@/util/db';
 import { error, info } from '@/util/log';
-import { toWhirlpoolData } from '@/util/whirlpool';
-import { Address, AddressUtil } from '@orca-so/common-sdk';
-import { Whirlpool, WhirlpoolData } from '@orca-so/whirlpools-sdk';
+import { getWhirlpoolTokenPair, toWhirlpoolData } from '@/util/whirlpool';
+import { type Address, AddressUtil } from '@orca-so/common-sdk';
+import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 
 /**
- * Pure static data access object for {@link Whirlpool} operations.
+ * Pure static data access object for {@link Whirlpool} DB operations.
  */
 export default class WhirlpoolDAO {
 
@@ -24,7 +24,7 @@ export default class WhirlpoolDAO {
      * @param whirlpool The {@link Whirlpool} to insert.
      * @param opts The {@link DAOOptions} to use for the operation.
      * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
-     * If the whirlpool is {@link Null}, an empty string is returned.
+     * If the {@link Whirlpool} is {@link Null}, an empty string is returned.
      */
     static async insert(whirlpool: Whirlpool | Null, opts?: DAOOptions): Promise<string>;
 
@@ -44,6 +44,8 @@ export default class WhirlpoolDAO {
      * Inserts a whirlpool into the database.
      * If the whirlpool already exists, the operation is a no-op.
      *
+     * `Note`: This method also inserts the token pair associated with the whirlpool into the database.
+     *
      * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to insert.
      * @param address The {@link Address} of the whirlpool to insert. Required if `whirlpool` is a {@link WhirlpoolData}.
      * @param opts The {@link DAOOptions} to use for the operation.
@@ -57,21 +59,24 @@ export default class WhirlpoolDAO {
     ): Promise<string> {
       if (!whirlpool) return '';
 
-      // Process variadic arguments and coalesce to correct types.
-      opts ??= (address && typeof address !== 'string' && !(address instanceof PublicKey)) ? address : {};
-      address ??= (whirlpool as Whirlpool).getAddress();
-      address = AddressUtil.toString(address as Address);
-      const whirlpoolData = toWhirlpoolData(whirlpool);
+      // Get token pair from whirlpool data, and implicitly store tokens in database if not already present.
+      const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
 
       info('Inserting whirlpool into database:', address);
 
       try {
+        // Process variadic arguments and coalesce to correct types.
+        opts ??= (address && typeof address !== 'string' && !(address instanceof PublicKey)) ? address : {};
+        address ??= (whirlpool as Whirlpool).getAddress();
+        address = AddressUtil.toString(address as Address);
+        const whirlpoolData = toWhirlpoolData(whirlpool);
+
         const result = await db().insertInto('whirlpool')
           .values({
             address,
             feeRate: whirlpoolData.feeRate,
-            tokenA: whirlpoolData.tokenMintA.toBase58(),
-            tokenB: whirlpoolData.tokenMintB.toBase58(),
+            tokenA: tokenA.mint.publicKey,
+            tokenB: tokenB.mint.publicKey,
             tokenVaultA: whirlpoolData.tokenVaultA.toBase58(),
             tokenVaultB: whirlpoolData.tokenVaultB.toBase58(),
             tickSpacing: whirlpoolData.tickSpacing,
@@ -89,6 +94,7 @@ export default class WhirlpoolDAO {
           throw err;
         }
         error('Failed to insert whirlpool into database:', address);
+        error(err);
       }
 
       return '';
