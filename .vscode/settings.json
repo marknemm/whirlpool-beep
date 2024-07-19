@@ -17,10 +17,21 @@
       "connectionTimeout": 5
     },
     {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "local",
+      "group": "wpnpc",
+      "database": "wpnpc",
+      "password": "password;)",
+      "username": "postgres"
+    },
+    {
       "pgOptions": {
         "ssl": {
           "rejectUnauthorized": true,
-          "ca": "/Users/marknemmer/Downloads/us-east-1-bundle.pem"
+          "ca": "/Users/marknemmer/.ssh/us-east-1-bundle.pem"
         }
       },
       "previewLimit": 50,
@@ -32,17 +43,6 @@
       "database": "wpnpc",
       "username": "postgres",
       "connectionTimeout": 5
-    },
-    {
-      "previewLimit": 50,
-      "server": "localhost",
-      "port": 5432,
-      "driver": "PostgreSQL",
-      "name": "local",
-      "group": "wpnpc",
-      "database": "wpnpc",
-      "password": "password;)",
-      "username": "postgres"
     }
   ]
 }

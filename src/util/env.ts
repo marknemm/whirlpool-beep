@@ -5,6 +5,7 @@ import { bool, cleanEnv, num, str, url } from 'envalid';
  */
 const env = cleanEnv(process.env, {
   CHAIN_ID: num(),
+  DB_CA: str({ default: undefined }),
   DB_HOST: str(),
   DB_NAME: str(),
   DB_PASSWORD: str(),

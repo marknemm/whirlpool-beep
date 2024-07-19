@@ -23,7 +23,10 @@ export default function db(): Kysely<DB> {
           host: env.DB_HOST,
           password: env.DB_PASSWORD,
           port: env.DB_PORT,
-          ssl: env.DB_SSL,
+          ssl: {
+            ca: env.DB_CA,
+            rejectUnauthorized: env.DB_SSL,
+          },
           user: env.DB_USER,
         }),
       }),
