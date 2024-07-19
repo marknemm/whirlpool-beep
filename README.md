@@ -11,12 +11,13 @@ Consists of the following executables:
 
 ## Quickstart
 
-1) Run `npm install` to install [node_modules](node_modules) dependencies.
-2) copy [.env.example](.env.example) to a file named [.env](.env). Optionally:
+1) Install [Node.js](https://nodejs.org/en/download/package-manager) and [Docker](https://docs.docker.com/engine/install/).
+2) Run `npm install` to install [node_modules](node_modules) dependencies.
+3) copy [.env.example](.env.example) to a file named [.env](.env). Optionally:
     - Copy [.env.development](.env.development) to a file named [.env.development.local](.env.development.local) to override development specific config.
     - Copy [.env.production](.env.production) to a file named [.env.production.local](.env.production.local) to override production specific config.
-3) Fill in missing env variables within the new [.env](.env) file(s).
-4) Run `npm run [dev | prod]` to run the **CLI** program against **[devnet | mainnet]**.
+4) Fill in missing env variables within the new [.env](.env) file(s).
+5) Run `npm run [dev | prod]` to run the **CLI** program against **[devnet | mainnet]**.
 
 ## NPM Scripts
 

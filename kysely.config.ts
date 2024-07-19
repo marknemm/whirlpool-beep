@@ -10,9 +10,9 @@ export default defineConfig({
 				host: process.env.DB_HOST,
 				password: process.env.DB_PASSWORD,
 				port: parseInt(process.env.DB_PORT, 10),
-				ssl: {
+				ssl: JSON.parse(process.env.DB_SSL) && {
 					ca: process.env.DB_CA,
-					rejectUnauthorized: JSON.parse(process.env.DB_SSL),
+					rejectUnauthorized: true,
 				},
 				user: process.env.DB_USER,
 			}),
