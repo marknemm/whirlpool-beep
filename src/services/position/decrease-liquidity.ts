@@ -1,6 +1,8 @@
+import LiquidityDAO from '@/data/liquidity-dao';
 import { getPositions } from '@/services/position/get-position';
-import { toBN, toStr } from '@/util/number-conversion';
+import { genLiquidityDelta } from '@/util/liquidity';
 import { debug, error, info } from '@/util/log';
+import { toBN, toStr } from '@/util/number-conversion';
 import { verifyTransaction } from '@/util/rpc';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
@@ -56,6 +58,7 @@ export async function decreaseLiquidity(
 ): Promise<DecreaseLiquidityQuote> {
   info('\n-- Decreasing liquidity --');
 
+  // Generate transaction to decrease liquidity
   const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
 
   // Execute and verify the transaction
@@ -63,11 +66,9 @@ export async function decreaseLiquidity(
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  // Refresh position data and log the actual decrease in liquidity
-  const initLiquidity = position.getData().liquidity;
-  await position.refreshData();
-  const deltaLiquidity = initLiquidity.sub(position.getData().liquidity);
-  info('Decreased liquidity by:', toStr(deltaLiquidity));
+  // Get Liquidity delta and insert into DB
+  const liquidityDelta = await genLiquidityDelta(position, signature, quote);
+  LiquidityDAO.insert(liquidityDelta, { catchErrors: true });
 
   return quote;
 }
@@ -106,7 +107,6 @@ export async function genDecreaseLiquidityTx(
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
   if (!tokenA || !tokenB) throw new Error('Token not found');
 
-  debug('Decrease liquidity quote:', quote);
   info(`${tokenA?.metadata.symbol} min output:`, toStr(quote.tokenMinA, tokenA?.mint.decimals));
   info(`${tokenB?.metadata.symbol} min output:`, toStr(quote.tokenMinB, tokenB?.mint.decimals));
 

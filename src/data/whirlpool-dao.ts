@@ -1,7 +1,9 @@
-import type { DAOOptions } from '@/interfaces/dao';
+import TokenDAO from '@/data/token-dao';
+import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao';
+import type { ErrorWithCode } from '@/interfaces/error';
 import type { Null } from '@/interfaces/nullable';
-import db from '@/util/db';
-import { error, info } from '@/util/log';
+import db, { handleInsertError, handleSelectError } from '@/util/db';
+import { debug } from '@/util/log';
 import { getWhirlpoolTokenPair, toWhirlpoolData } from '@/util/whirlpool';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
@@ -18,15 +20,46 @@ export default class WhirlpoolDAO {
     private constructor() {}
 
     /**
+     * Gets the DB `id` of a {@link WhirlpoolRow} from the database.
+     *
+     * @param address The {@link Address} of the {@link WhirlpoolRow} to get.
+     * @param opts The {@link DAOOptions} to use for the operation.
+     * @returns A {@link Promise} that resolves to the DB `id` of the {@link WhirlpoolRow} when the operation is complete.
+     * If the select fails or the row does not exist, then resolves to `undefined`.
+     * @throws An {@link ErrorWithCode} if the select fails with an error and
+     * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
+     */
+    static async getId(address: Address | Null, opts?: DAOOptions): Promise<number | undefined> {
+      if (!address) return;
+      address = AddressUtil.toString(address);
+
+      debug('Getting Whirlpool ID from database:', address);
+
+      try {
+        const result = await db().selectFrom('whirlpool')
+          .select('id')
+          .where('address', '=', address)
+          .executeTakeFirst();
+
+        debug(`Got Whirlpool ID from database ( ID: ${result?.id} ):`, address);
+        return result?.id;
+      } catch (err) {
+        handleSelectError(err as ErrorWithCode, 'Whirlpool', opts);
+      }
+    }
+
+    /**
      * Inserts a {@link Whirlpool} into the database.
      * If the {@link Whirlpool} already exists, the operation is a no-op.
      *
      * @param whirlpool The {@link Whirlpool} to insert.
-     * @param opts The {@link DAOOptions} to use for the operation.
-     * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
-     * If the {@link Whirlpool} is {@link Null}, an empty string is returned.
+     * @param opts The {@link DAOInsertOptions} to use for the operation.
+     * @returns A {@link Promise} that resolves to the inserted row's `id` when the operation is complete.
+     * If the insert fails, then resolves to `undefined`.
+     * @throws An {@link ErrorWithCode} if the insert fails with an error and
+     * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
      */
-    static async insert(whirlpool: Whirlpool | Null, opts?: DAOOptions): Promise<string>;
+    static async insert(whirlpool: Whirlpool | Null, opts?: DAOInsertOptions): Promise<number | undefined>;
 
     /**
      * Inserts a {@link Whirlpool} into the database.
@@ -34,11 +67,17 @@ export default class WhirlpoolDAO {
      *
      * @param whirlpool The {@link WhirlpoolData} to insert.
      * @param address The {@link Address} of the whirlpool to insert.
-     * @param opts The {@link DAOOptions} to use for the operation.
-     * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
-     * If the whirlpool is {@link Null}, an empty string is returned.
+     * @param opts The {@link DAOInsertOptions} to use for the operation.
+     * @returns A {@link Promise} that resolves to the inserted row's `id` when the operation is complete.
+     * If the insert fails, then resolves to `undefined`.
+     * @throws An {@link ErrorWithCode} if the insert fails with an error and
+     * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
      */
-    static async insert(whirlpool: WhirlpoolData | Null, address: Address | Null, opts?: DAOOptions): Promise<string>;
+    static async insert(
+      whirlpool: WhirlpoolData | Null,
+      address: Address | Null,
+      opts?: DAOInsertOptions
+    ): Promise<number | undefined>;
 
     /**
      * Inserts a whirlpool into the database.
@@ -48,56 +87,57 @@ export default class WhirlpoolDAO {
      *
      * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to insert.
      * @param address The {@link Address} of the whirlpool to insert. Required if `whirlpool` is a {@link WhirlpoolData}.
-     * @param opts The {@link DAOOptions} to use for the operation.
-     * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
-     * If the whirlpool is {@link Null}, an empty string is returned.
+     * @param opts The {@link DAOInsertOptions} to use for the operation.
+     * @returns A {@link Promise} that resolves to the inserted row's `id` when the operation is complete.
+     * If the insert fails, then resolves to `undefined`.
+     * @throws An {@link ErrorWithCode} if the insert fails with an error and
+     * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
      */
     static async insert(
       whirlpool: Whirlpool | WhirlpoolData | Null,
-      address?: Address | DAOOptions | Null,
-      opts?: DAOOptions
-    ): Promise<string> {
-      if (!whirlpool) return '';
+      address?: Address | DAOInsertOptions | Null,
+      opts?: DAOInsertOptions
+    ): Promise<number | undefined> {
+      if (!whirlpool) return;
 
       // Get token pair from whirlpool data, and implicitly store tokens in database if not already present.
       const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
 
-      info('Inserting whirlpool into database:', address);
+      debug('Inserting Whirlpool into database:', address);
+
+      // Process variadic arguments and coalesce to correct types.
+      opts ??= (address && typeof address !== 'string' && !(address instanceof PublicKey)) ? address : {};
+      opts.ignoreDuplicates ??= true;
+      address ??= (whirlpool as Whirlpool).getAddress();
+      address = AddressUtil.toString(address as Address);
+      const whirlpoolData = toWhirlpoolData(whirlpool);
 
       try {
-        // Process variadic arguments and coalesce to correct types.
-        opts ??= (address && typeof address !== 'string' && !(address instanceof PublicKey)) ? address : {};
-        address ??= (whirlpool as Whirlpool).getAddress();
-        address = AddressUtil.toString(address as Address);
-        const whirlpoolData = toWhirlpoolData(whirlpool);
+        const tokenIdA = await TokenDAO.getId(tokenA.mint.publicKey);
+        const tokenIdB = await TokenDAO.getId(tokenB.mint.publicKey);
+
+        // Cannot continue without token DB IDs.
+        if (!tokenIdA) throw new Error(`Failed to get Token A for Whirlpool insert: ${tokenA.mint.publicKey}`);
+        if (!tokenIdB) throw new Error(`Failed to get Token B for Whirlpool insert: ${tokenB.mint.publicKey}`);
 
         const result = await db().insertInto('whirlpool')
           .values({
             address,
             feeRate: whirlpoolData.feeRate,
-            tokenA: tokenA.mint.publicKey,
-            tokenB: tokenB.mint.publicKey,
+            tokenA: tokenIdA,
+            tokenB: tokenIdB,
             tokenVaultA: whirlpoolData.tokenVaultA.toBase58(),
             tokenVaultB: whirlpoolData.tokenVaultB.toBase58(),
             tickSpacing: whirlpoolData.tickSpacing,
           })
-          .onConflict((oc) => oc.doNothing())
+          .returning('id')
           .executeTakeFirst();
 
-        result
-          ? info('Inserted whirlpool into database:', address)
-          : info('Whirlpool already exists in database:', address);
-
-        return address;
+        debug(`Inserted Whirlpool into database ( ID: ${result?.id} ):`, address);
+        return result?.id;
       } catch (err) {
-        if (!opts?.catchErrors) {
-          throw err;
-        }
-        error('Failed to insert whirlpool into database:', address);
-        error(err);
+        handleInsertError(err as ErrorWithCode, 'Whirlpool', address, opts);
       }
-
-      return '';
     }
 
 }

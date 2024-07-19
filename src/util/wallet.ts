@@ -1,14 +1,15 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { toNum, toSol } from '@/util/number-conversion';
+import { toBN, toDecimal, toNum, toSol } from '@/util/number-conversion';
 import { decodeBase58 } from '@/util/encode';
 import env from '@/util/env';
 import { info } from '@/util/log';
 import rpc from '@/util/rpc';
 import { getNFT, getToken } from '@/util/token';
-import { Wallet } from '@coral-xyz/anchor';
+import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token';
 import { Keypair, PublicKey, type TokenAccountsFilter } from '@solana/web3.js';
+import Decimal from 'decimal.js';
 
 /**
  * Extends the Anchor {@link Wallet} class with additional functionality.
@@ -53,24 +54,24 @@ export class WalletExt extends Wallet {
    *
    * @param currency The currency to query the balance for. Defaults to `SOL`.
    * Can be a token symbol or mint {@link Address}.
-   * @returns A {@link Promise} that resolves to the wallet account balance (SOL).
+   * @returns A {@link Promise} that resolves to the wallet account balance.
    */
-  async getBalance(currency: TokenQuery = 'SOL'): Promise<number> {
+  async getBalance(currency: TokenQuery = 'SOL'): Promise<BN> {
     const currencyToken = await getToken(currency);
     if (!currencyToken) {
       throw new Error(`Failed to fetch token metadata for query: ${currency}`);
     }
 
-    let amount = 0;
+    let amount = new BN(0);
 
     if (currencyToken.metadata.symbol === 'SOL') {
       // Fetch the default wallet balance and convert Lamports to SOL
       const lamports = await rpc().getBalance(wallet().publicKey);
-      amount = toSol(lamports);
+      amount = toBN(toSol(lamports), currencyToken.mint.decimals);
     } else {
       // Fetch the desired token account and get amount
       const tokenAccount = await this.getTokenAccount(currencyToken.mint.publicKey);
-      amount = toNum(tokenAccount?.amount, currencyToken.mint.decimals);
+      amount = toBN(tokenAccount?.amount, currencyToken.mint.decimals);
     }
 
     return amount;

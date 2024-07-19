@@ -7,7 +7,7 @@ import rpc, { verifyTransaction } from '@/util/rpc';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 
 /**
@@ -33,7 +33,7 @@ export async function openPosition(
   info('Whirlpool position opened with address:', address.toBase58());
 
   // Get, store, and return the newly opened position
-  const position = await whirlpoolClient().getPosition(address);
+  const position = await whirlpoolClient().getPosition(address, IGNORE_CACHE);
   await PositionDAO.insert(position, { catchErrors: true });
 
   return { bundleIndex, position, positionBundle };

@@ -187,3 +187,21 @@ export function toTokenAmount(
 ): Decimal {
   return toDecimal(usd).div(tokenPrice);
 }
+
+/**
+ * Converts a given token amount to `USD` based off of a given {@link tokenPrice}.
+ *
+ * @param tokenAmount The amount of the token to convert.
+ * @param tokenPrice The price of the token in `USD`.
+ * @param shift The number of decimal places to `left shift` the decimal point by. Defaults to `0`.
+ * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `1.00`.
+ * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
+ * @returns The converted `USD` amount.
+ */
+export function toUSD(
+  tokenAmount: BN | Decimal | number,
+  tokenPrice: Decimal.Value,
+  shift = 0
+): Decimal {
+  return toDecimal(tokenAmount, shift).mul(tokenPrice);
+}

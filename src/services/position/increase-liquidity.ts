@@ -1,7 +1,9 @@
 import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
-import type { LiquidityUnit } from '@/interfaces/position';
+import LiquidityDAO from '@/data/liquidity-dao';
+import type { Liquidity, LiquidityUnit } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
-import { debug, error, info } from '@/util/log';
+import { genLiquidityDelta } from '@/util/liquidity';
+import { error, info } from '@/util/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
 import { verifyTransaction } from '@/util/rpc';
 import { getTokenPrice } from '@/util/token';
@@ -19,35 +21,45 @@ import type Decimal from 'decimal.js';
  * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to increase liquidity in.
  * @param amount The amount of liquidity to deposit in the {@link Whirlpool}. Divided evenly among open positions.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
- * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ * @returns A {@link Promise} that resolves to a {@link Map} of {@link Position} addresses to {@link Liquidity} deltas.
  */
 export async function increaseAllLiquidity(
   whirlpoolAddress: Address,
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
-): Promise<Map<string, IncreaseLiquidityQuote>> {
+): Promise<Map<string, Liquidity>> {
   info('\n-- Increasing All liquidity --');
 
-  const quotes = new Map<string, IncreaseLiquidityQuote>();
+  const deltas = new Map<string, Liquidity>();
 
+  // Get Whirlpool and Bundled Positions
+  const whirlpool = await whirlpoolClient().getPool(whirlpoolAddress);
   const bundledPositions = await getPositions({ whirlpoolAddress });
-  const divAmount = toDecimal(amount).div(bundledPositions.length);
+
+  // Get amount to increase per position (divide amount evenly among positions in whirlpool)
+  const decimals = (unit === 'tokenA')
+    ? whirlpool.getTokenAInfo().decimals
+    : (unit === 'tokenB')
+      ? whirlpool.getTokenBInfo().decimals
+      : undefined;
+  const divAmount = toDecimal(amount, decimals).div(bundledPositions.length);
 
   bundledPositions.length
     ? info(`Increasing liquidity of ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
     : info('No positions to increase liquidity of in whirlpool:', whirlpoolAddress);
 
+  // Increase liquidity of each position in parallel
   const promises = bundledPositions.map(async ({ position }) => {
-    const quote = await increaseLiquidity(position, divAmount, unit)
+    const delta = await increaseLiquidity(position, divAmount, unit)
       .catch((err) => { error(err); });
 
-    if (quote) {
-      quotes.set(position.getAddress().toBase58(), quote);
+    if (delta) {
+      deltas.set(position.getAddress().toBase58(), delta);
     }
   });
 
   await Promise.all(promises);
-  return quotes;
+  return deltas;
 }
 
 /**
@@ -56,16 +68,17 @@ export async function increaseAllLiquidity(
  * @param position The {@link Position} to increase the liquidity of.
  * @param amount The amount of liquidity to deposit in the {@link Position}.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
- * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ * @returns A {@link Promise} that resolves to the {@link Liquidity} delta info.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
 export async function increaseLiquidity(
   position: Position,
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
-): Promise<IncreaseLiquidityQuote> {
+): Promise<Liquidity> {
   info('\n-- Increasing liquidity --');
 
+  // Generate transaction to increase liquidity
   const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
 
   // Execute and verify the transaction
@@ -73,13 +86,11 @@ export async function increaseLiquidity(
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  // Refresh position data and log the actual increase in liquidity
-  const initLiquidity = position.getData().liquidity;
-  await position.refreshData();
-  const deltaLiquidity = position.getData().liquidity.sub(initLiquidity);
-  info('Increased liquidity by:', toStr(deltaLiquidity));
+  // Get Liquidity delta and insert into DB
+  const liquidityDelta = await genLiquidityDelta(position, signature, quote);
+  await LiquidityDAO.insert(liquidityDelta, { catchErrors: true });
 
-  return quote;
+  return liquidityDelta;
 }
 
 /**
@@ -110,7 +121,6 @@ export async function genIncreaseLiquidityTx(
     ? await _genQuoteViaLiquidity(position, amount)
     : await _genQuoteViaInputToken(position, amount, unit);
 
-  debug('Increase liquidity quote:', quote);
   info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
   info(`${tokenB.metadata.symbol} max input:`, toStr(quote.tokenMaxB, tokenB.mint.decimals));
 

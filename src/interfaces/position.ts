@@ -1,3 +1,4 @@
+import type { LiquidityUnit } from '@/interfaces/liquidity';
 import type { BN } from '@coral-xyz/anchor';
 import type { Address, Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import type { Position, PositionBundleData, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
@@ -71,9 +72,23 @@ export interface GetPositionCliArgs {
 }
 
 /**
- * The unit to use for an amount of liquidity.
+ * Options for getting {@link Position}s.
+ *
+ * @augments WhirlpoolAccountFetchOptions
  */
-export type LiquidityUnit = 'liquidity' | 'tokenA' | 'tokenB' | 'usd';
+export interface GetPositionsOptions extends WhirlpoolAccountFetchOptions {
+
+  /**
+   * The {@link Address} of the {@link Whirlpool} to get {@link Position}s for.
+   */
+  whirlpoolAddress?: Address;
+
+}
+
+/**
+ * The status of a {@link Position}.
+ */
+export type PositionStatus = 'CLOSED' | 'OPENED';
 
 /**
  * Options for rebalancing all {@link Position}s.
@@ -119,19 +134,5 @@ export interface RebalancePositionOptions {
    * Defaults to `3%`.
    */
   priceMargin?: Percentage;
-
-}
-
-/**
- * Options for getting {@link Position}s.
- *
- * @augments WhirlpoolAccountFetchOptions
- */
-export interface GetPositionsOptions extends WhirlpoolAccountFetchOptions {
-
-  /**
-   * The {@link Address} of the {@link Whirlpool} to get {@link Position}s for.
-   */
-  whirlpoolAddress?: Address;
 
 }

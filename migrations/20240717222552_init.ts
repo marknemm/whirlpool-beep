@@ -8,7 +8,8 @@ import { type Kysely, sql } from 'kysely';
  */
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.createTable('token').ifNotExists()
-    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+    .addColumn('address', 'varchar(100)', (col) => col.unique().notNull())
     .addColumn('decimals', 'integer', (col) => col.notNull())
     .addColumn('name', 'varchar(255)', (col) => col.notNull())
     .addColumn('symbol', 'varchar(10)', (col) => col.notNull())
@@ -20,13 +21,14 @@ export async function up(db: Kysely<any>): Promise<void> {
 		.execute();
 
   await db.schema.createTable('whirlpool').ifNotExists()
-    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
-    .addColumn('feeRate', 'real', (col) => col.notNull())
-    .addColumn('tokenA', 'varchar(100)', (col) => col.references('token.address').notNull())
-    .addColumn('tokenB', 'varchar(100)', (col) => col.references('token.address').notNull())
-    .addColumn('tokenVaultA', 'varchar(100)', (col) => col.notNull())
-    .addColumn('tokenVaultB', 'varchar(100)', (col) => col.notNull())
-    .addColumn('tickSpacing', 'integer', (col) => col.notNull())
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+    .addColumn('address', 'varchar(255)', (col) => col.unique().notNull())
+    .addColumn('feeRate', 'numeric', (col) => col.notNull())
+    .addColumn('tokenA', 'integer', (col) => col.references('token.id').notNull())
+    .addColumn('tokenB', 'integer', (col) => col.references('token.id').notNull())
+    .addColumn('tokenVaultA', 'varchar(255)', (col) => col.notNull())
+    .addColumn('tokenVaultB', 'varchar(255)', (col) => col.notNull())
+    .addColumn('tickSpacing', 'int2', (col) => col.notNull())
 		.execute();
 
   await db.schema.createIndex('whirlpool_tokenA_tokenB_tickSpacing').ifNotExists()
@@ -36,31 +38,51 @@ export async function up(db: Kysely<any>): Promise<void> {
 		.execute();
 
   await db.schema.createTable('position').ifNotExists()
-    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+    .addColumn('address', 'varchar(255)', (col) => col.notNull())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
     .addColumn('priceLower', 'bigint', (col) => col.notNull())
     .addColumn('priceMargin', 'integer', (col) => col.notNull())
     .addColumn('priceOrigin', 'bigint', (col) => col.notNull())
     .addColumn('priceUpper', 'bigint', (col) => col.notNull())
+    .addColumn('status', 'varchar(255)', (col) => col.defaultTo('OPENED').notNull())
     .addColumn('tickLowerIndex', 'integer', (col) => col.notNull())
     .addColumn('tickUpperIndex', 'integer', (col) => col.notNull())
-    .addColumn('whirlpool', 'varchar(100)', (col) => col.references('whirlpool.address').notNull())
+    .addColumn('whirlpool', 'integer', (col) => col.references('whirlpool.id').notNull())
 		.execute();
 
+  await db.schema.createIndex('position_address').ifNotExists()
+    .on('position')
+    .columns(['address'])
+    .execute();
+
   await db.schema.createTable('liquidity').ifNotExists()
-    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
-    .addColumn('liquidity', 'bigint', (col) => col.notNull())
-    .addColumn('position', 'varchar(100)', (col) => col.references('position.address').notNull())
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+    .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
+    .addColumn('position', 'integer', (col) => col.references('position.id').notNull())
+    .addColumn('quote', 'json')
+    .addColumn('signature', 'varchar(255)', (col) => col.notNull())
+    .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
+    .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
+    .addColumn('usd', 'numeric(14, 2)', (col) => col.notNull())
+    .execute();
+
+  await db.schema.createTable('collect').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+    .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
+    .addColumn('position', 'integer', (col) => col.references('position.id').notNull())
+    .addColumn('signature', 'varchar(255)', (col) => col.notNull())
     .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
     .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
     .execute();
 
-  await db.schema.createTable('rebalanceTx').ifNotExists()
-    .addColumn('address', 'varchar(100)', (col) => col.primaryKey())
+  await db.schema.createTable('rebalance').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
-    .addColumn('positionOld', 'varchar(100)', (col) => col.references('position.address').notNull())
-    .addColumn('positionNew', 'varchar(100)', (col) => col.references('position.address').notNull())
+    .addColumn('positionOld', 'integer', (col) => col.references('position.id').notNull())
+    .addColumn('positionNew', 'integer', (col) => col.references('position.id').notNull())
     .addColumn('liquidity', 'bigint', (col) => col.notNull())
+    .addColumn('signature', 'varchar(255)', (col) => col.notNull())
     .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
     .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
     .addColumn('tokenFeesA', 'bigint', (col) => col.notNull())
@@ -75,8 +97,10 @@ export async function up(db: Kysely<any>): Promise<void> {
  * @returns A {@link Promise} that resolves when the migration is complete.
  */
 export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropTable('rebalanceTx').ifExists().execute();
+  await db.schema.dropTable('rebalance').ifExists().execute();
+  await db.schema.dropTable('collect').ifExists().execute();
   await db.schema.dropTable('liquidity').ifExists().execute();
+  await db.schema.dropIndex('position_address').ifExists().execute();
   await db.schema.dropTable('position').ifExists().execute();
   await db.schema.dropIndex('whirlpool_tokenA_tokenB_tickSpacing').ifExists().execute();
   await db.schema.dropTable('whirlpool').ifExists().execute();

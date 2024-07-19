@@ -6,34 +6,63 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [K in string]?: JsonValue;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
+export type Numeric = ColumnType<string, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Liquidity {
-  address: string;
-  liquidity: Int8;
-  position: string;
+export interface Collect {
+  createdAt: Generated<Timestamp>;
+  id: Generated<number>;
+  position: number;
+  signature: string;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
+}
+
+export interface Liquidity {
+  createdAt: Generated<Timestamp>;
+  id: Generated<number>;
+  position: number;
+  quote: Json | null;
+  signature: string;
+  tokenAmountA: Int8;
+  tokenAmountB: Int8;
+  usd: Numeric;
 }
 
 export interface Position {
   address: string;
   createdAt: Generated<Timestamp>;
+  id: Generated<number>;
   priceLower: Int8;
   priceMargin: number;
   priceOrigin: Int8;
   priceUpper: Int8;
+  status: Generated<string>;
   tickLowerIndex: number;
   tickUpperIndex: number;
-  whirlpool: string;
+  whirlpool: number;
 }
 
-export interface RebalanceTx {
-  address: string;
+export interface Rebalance {
   createdAt: Generated<Timestamp>;
+  id: Generated<number>;
   liquidity: Int8;
-  positionNew: string;
-  positionOld: string;
+  positionNew: number;
+  positionOld: number;
+  signature: string;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
   tokenFeesA: Int8;
@@ -43,24 +72,27 @@ export interface RebalanceTx {
 export interface Token {
   address: string;
   decimals: number;
+  id: Generated<number>;
   name: string;
   symbol: string;
 }
 
 export interface Whirlpool {
   address: string;
-  feeRate: number;
+  feeRate: Numeric;
+  id: Generated<number>;
   tickSpacing: number;
-  tokenA: string;
-  tokenB: string;
+  tokenA: number;
+  tokenB: number;
   tokenVaultA: string;
   tokenVaultB: string;
 }
 
 export interface DB {
+  collect: Collect;
   liquidity: Liquidity;
   position: Position;
-  rebalanceTx: RebalanceTx;
+  rebalance: Rebalance;
   token: Token;
   whirlpool: Whirlpool;
 }

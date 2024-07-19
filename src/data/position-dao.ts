@@ -1,10 +1,13 @@
 import WhirlpoolDAO from '@/data/whirlpool-dao';
 import type { DAOOptions } from '@/interfaces/dao';
+import { ErrorWithCode } from '@/interfaces/error';
 import type { Null } from '@/interfaces/nullable';
-import db from '@/util/db';
-import { error, info } from '@/util/log';
-import { toBigInt, toNum, toPriceRange } from '@/util/number-conversion';
+import type { PositionStatus } from '@/interfaces/position';
+import db, { handleInsertError, handleSelectError } from '@/util/db';
+import { debug, error } from '@/util/log';
+import { toBigInt, toPriceRange } from '@/util/number-conversion';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
+import { Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
@@ -18,6 +21,35 @@ export default class PositionDAO {
   private constructor() {}
 
   /**
+   * Gets the DB `id` of a {@link Position} from the database.
+   *
+   * @param address The {@link Address} of the {@link Position} to get.
+   * @param opts The {@link DAOOptions} to use for the operation.
+   * @returns A {@link Promise} that resolves to the DB `id` of the {@link Position} when the operation is complete.
+   * If the select fails or the row does not exist, then resolves to `undefined`.
+   * @throws An {@link ErrorWithCode} if the select fails with an error and
+   * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
+   */
+  static async getId(address: Address | Null, opts?: DAOOptions): Promise<number | undefined> {
+    if (!address) return;
+    address = AddressUtil.toString(address);
+
+    debug('Getting Position ID from database:', address);
+
+    try {
+      const result = await db().selectFrom('position')
+        .select('id')
+        .where('address', '=', address)
+        .executeTakeFirst();
+
+      debug(`Got Position ID from database ( ID: ${result?.id} ):`, address);
+      return result?.id;
+    } catch (err) {
+      handleSelectError(err as ErrorWithCode, 'Position', opts);
+    }
+  }
+
+  /**
    * Inserts a {@link Position} into the database.
    * If the {@link Position} already exists, the operation is a no-op.
    *
@@ -25,19 +57,26 @@ export default class PositionDAO {
    *
    * @param position The {@link Position} to insert.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
-   * If the {@link Position} is {@link Null}, an empty string is returned.
+   * @returns A {@link Promise} that resolves to the inserted row's DB `id` when the operation is complete.
+   * If the insert fails, then resolves to `undefined`.
+   * @throws An {@link ErrorWithCode} if the insert fails with an error and
+   * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async insert(position: Position | Null, opts?: DAOOptions): Promise<string> {
-    if (!position) return '';
+  static async insert(position: Position | Null, opts?: DAOOptions): Promise<number | undefined> {
+    if (!position) return;
 
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
     const whirlpoolData = position.getWhirlpoolData();
 
     const address = position.getAddress().toBase58();
-    info('Inserting position into database:', address);
+    debug('Inserting Position into database:', address);
 
     try {
+      const whirlpoolId = await WhirlpoolDAO.getId(position.getData().whirlpool);
+      if (whirlpoolId == null) { // Cannot continue without Whirlpool DB ID.
+        throw new Error(`Failed to get Whirlpool for Position Insert: ${position.getData().whirlpool}`);
+      }
+
       const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
       const { tickLowerIndex, tickUpperIndex } = position.getData();
 
@@ -59,26 +98,51 @@ export default class PositionDAO {
           priceUpper: toBigInt(priceUpper, tokenB.mint.decimals),
           tickLowerIndex,
           tickUpperIndex,
-          whirlpool: position.getData().whirlpool.toBase58(),
-
+          whirlpool: whirlpoolId,
         })
-        .onConflict((oc) => oc.doNothing())
+        .returning('id')
         .executeTakeFirst();
 
-      result
-        ? info('Inserted position into database:', address)
-        : info('Position already exists in database:', address);
+      debug(`Inserted Position into database ( ID: ${result?.id} ):`, address);
+      return result?.id;
+    } catch (err) {
+      handleInsertError(err as ErrorWithCode, 'Position', address, opts);
+    }
+  }
 
-      return address;
+  /**
+   * Updates the {@link PositionStatus} of a {@link Position} in the database.
+   * If the given {@link position} or {@link status} is {@link Null}, the operation is a no-op.
+   *
+   * @param position The {@link Position} to update the {@link PositionStatus} of.
+   * @param status The {@link PositionStatus} to update the {@link Position} to.
+   * @param opts The {@link DAOOptions} to use for the operation.
+   * @returns A {@link Promise} that resolves when the operation is complete.
+   */
+  static async updateStatus(
+    position: Position | Null,
+    status: PositionStatus | Null,
+    opts?: DAOOptions
+  ): Promise<void> {
+    if (!position || !status) return;
+    const address = position.getAddress().toBase58();
+
+    debug('Updating Position status in database:', address);
+
+    try {
+      await db().updateTable('position')
+        .set({ status })
+        .where('address', '=', address)
+        .execute();
+
+      debug('Updated Position status in database:', `${address} -- ${status}`);
     } catch (err) {
       if (!opts?.catchErrors) {
         throw err;
       }
-      error('Failed to insert position into database:', address);
+      error('Failed to update position status in database:', `${address} -- ${status}`);
       error(err);
     }
-
-    return '';
   }
 
 }

@@ -1,3 +1,4 @@
+import PositionDAO from '@/data/position-dao';
 import type { BundledPosition } from '@/interfaces/position';
 import { genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
 import { genDecreaseLiquidityTx } from '@/services/position/decrease-liquidity';
@@ -47,6 +48,7 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
   info('Executing close position transaction...');
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
+  await PositionDAO.updateStatus(bundledPosition.position, 'CLOSED', { catchErrors: true });
 
   info('Position closed:', bundledPosition.position.getAddress());
 }
