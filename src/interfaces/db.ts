@@ -22,16 +22,17 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Collect {
+export interface FeeRewardTx {
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
   position: number;
   signature: string;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
+  usd: Numeric;
 }
 
-export interface Liquidity {
+export interface LiquidityTx {
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
   position: number;
@@ -56,17 +57,11 @@ export interface Position {
   whirlpool: number;
 }
 
-export interface Rebalance {
+export interface RebalanceTx {
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
-  liquidity: Int8;
   positionNew: number;
   positionOld: number;
-  signature: string;
-  tokenAmountA: Int8;
-  tokenAmountB: Int8;
-  tokenFeesA: Int8;
-  tokenFeesB: Int8;
 }
 
 export interface Token {
@@ -89,10 +84,10 @@ export interface Whirlpool {
 }
 
 export interface DB {
-  collect: Collect;
-  liquidity: Liquidity;
+  feeRewardTx: FeeRewardTx;
+  liquidityTx: LiquidityTx;
   position: Position;
-  rebalance: Rebalance;
+  rebalanceTx: RebalanceTx;
   token: Token;
   whirlpool: Whirlpool;
 }

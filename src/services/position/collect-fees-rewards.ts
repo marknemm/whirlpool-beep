@@ -1,9 +1,17 @@
+import FeeRewardTxDAO from '@/data/fee-reward-tx-dao';
+import type { FeesRewardsTxSummary } from '@/interfaces/fees-rewards';
 import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
-import rpc, { verifyTransaction } from '@/util/rpc';
+import { toStr } from '@/util/number-conversion';
+import rpc from '@/util/rpc';
+import { getTransactionSummary, verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
-import { Address, TransactionBuilder } from '@orca-so/common-sdk';
+import { getWhirlpoolTokenPair } from '@/util/whirlpool';
+import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
+import { type Address, TransactionBuilder } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
+import BN from 'bn.js';
+import { green } from 'colors';
 
 /**
  * Collects all fee rewards for all positions.
@@ -38,9 +46,9 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
  * Collects the fee reward for a given {@link position}.
  *
  * @param position The {@link Position} to collect the fee reward for.
- * @returns A {@link Promise} that resolves once the fee reward is collected.
+ * @returns A {@link Promise} that resolves to a {@link FeesRewardsTxSummary} once the transaction completes.
  */
-export async function collectFeesRewards(position: Position): Promise<void> {
+export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary> {
   info('\n-- Collect Fees and Rewards --');
 
   const tx = await genCollectFeesRewardsTx(position);
@@ -48,9 +56,13 @@ export async function collectFeesRewards(position: Position): Promise<void> {
   info('Executing collect fees and rewards transaction...');
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
-
-  info('Collected fees and rewards for position:', position.getAddress());
   await position.refreshData();
+  info('Collected fees and rewards for position:', position.getAddress());
+
+  const txSummary = await _genFeesRewardsTxSummary(position, signature);
+  await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
+
+  return txSummary;
 }
 
 /**
@@ -70,4 +82,39 @@ export async function genCollectFeesRewardsTx(position: Position): Promise<Trans
   collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
 
   return tx;
+}
+
+/**
+ * Generates {@link FeesRewardsTxSummary}.
+ *
+ * @param position The {@link Position} to get the {@link FeesRewardsTxSummary} for.
+ * @param signature The signature of the collection transaction.
+ * @returns A {@link Promise} that resolves to the {@link FeesRewardsTxSummary}.
+ */
+async function _genFeesRewardsTxSummary(
+  position: Position,
+  signature: string,
+): Promise<FeesRewardsTxSummary> {
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+
+  const txDelta = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
+
+  const txData: FeesRewardsTxSummary = {
+    position,
+    signature,
+    tokenAmountA: txDelta.tokens.get(tokenA.mint.publicKey) ?? new BN(0),
+    tokenAmountB: txDelta.tokens.get(tokenB.mint.publicKey) ?? new BN(0),
+    usd: txDelta.usd,
+  };
+
+  _logFeesRewardsTxData(txData, tokenA, tokenB);
+  return txData;
+}
+
+function _logFeesRewardsTxData(txData: FeesRewardsTxSummary, tokenA: DigitalAsset, tokenB: DigitalAsset): void {
+  info(`Collected ${green(`'${tokenA.metadata.symbol}'`)} liquidity:`,
+    toStr(txData.tokenAmountA.abs(), tokenA.mint.decimals));
+
+  info(`Collected ${green(`'${tokenB.metadata.symbol}'`)} liquidity:`,
+    toStr(txData.tokenAmountB.abs(), tokenB.mint.decimals));
 }

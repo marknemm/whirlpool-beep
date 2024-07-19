@@ -2,12 +2,12 @@ import type { Position, DecreaseLiquidityQuote, IncreaseLiquidityQuote } from '@
 import type BN from 'bn.js';
 
 /**
- * Record of liquidity within a {@link Position}.
+ * Summary of a liquidity transaction for a {@link Position}.
  */
-export interface Liquidity {
+export interface LiquidityTxSummary {
 
   /**
-   * The {@link Position} that the liquidity delta is for.
+   * The {@link Position} that the liquidity is associated with.
    */
   position: Position;
 
@@ -17,22 +17,22 @@ export interface Liquidity {
   quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote;
 
   /**
-   * The signature of the transaction that changed the liquidity.
+   * The signature of the transaction.
    */
   signature: string;
 
   /**
-   * The amount of token A that was added or removed.
+   * The amount of token A that was increased or decreased.
    */
   tokenAmountA: BN;
 
   /**
-   * The amount of token B that was added or removed.
+   * The amount of token B that was increased or decreased.
    */
   tokenAmountB: BN;
 
   /**
-   * The USD value of the liquidity change.
+   * The total USD value of the liquidity change.
    */
   usd: number;
 

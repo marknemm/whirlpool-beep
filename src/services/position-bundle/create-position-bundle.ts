@@ -1,5 +1,6 @@
 import { debug, info } from '@/util/log';
-import rpc, { verifyTransaction } from '@/util/rpc';
+import rpc from '@/util/rpc';
+import { verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';

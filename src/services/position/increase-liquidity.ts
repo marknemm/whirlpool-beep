@@ -1,12 +1,12 @@
 import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
-import LiquidityDAO from '@/data/liquidity-dao';
-import type { Liquidity, LiquidityUnit } from '@/interfaces/liquidity';
+import LiquidityTxDAO from '@/data/liquidity-tx-dao';
+import type { LiquidityTxSummary, LiquidityUnit } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
-import { genLiquidityDelta } from '@/util/liquidity';
+import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
-import { verifyTransaction } from '@/util/rpc';
 import { getTokenPrice } from '@/util/token';
+import { verifyTransaction } from '@/util/transaction';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
@@ -21,16 +21,16 @@ import type Decimal from 'decimal.js';
  * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to increase liquidity in.
  * @param amount The amount of liquidity to deposit in the {@link Whirlpool}. Divided evenly among open positions.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
- * @returns A {@link Promise} that resolves to a {@link Map} of {@link Position} addresses to {@link Liquidity} deltas.
+ * @returns A {@link Promise} that resolves to a {@link Map} of {@link Position} addresses to {@link LiquidityTxSummary}s.
  */
 export async function increaseAllLiquidity(
   whirlpoolAddress: Address,
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
-): Promise<Map<string, Liquidity>> {
+): Promise<Map<string, LiquidityTxSummary>> {
   info('\n-- Increasing All liquidity --');
 
-  const deltas = new Map<string, Liquidity>();
+  const txSummaries = new Map<string, LiquidityTxSummary>();
 
   // Get Whirlpool and Bundled Positions
   const whirlpool = await whirlpoolClient().getPool(whirlpoolAddress);
@@ -50,16 +50,16 @@ export async function increaseAllLiquidity(
 
   // Increase liquidity of each position in parallel
   const promises = bundledPositions.map(async ({ position }) => {
-    const delta = await increaseLiquidity(position, divAmount, unit)
+    const txSummary = await increaseLiquidity(position, divAmount, unit)
       .catch((err) => { error(err); });
 
-    if (delta) {
-      deltas.set(position.getAddress().toBase58(), delta);
+    if (txSummary) {
+      txSummaries.set(position.getAddress().toBase58(), txSummary);
     }
   });
 
   await Promise.all(promises);
-  return deltas;
+  return txSummaries;
 }
 
 /**
@@ -68,14 +68,14 @@ export async function increaseAllLiquidity(
  * @param position The {@link Position} to increase the liquidity of.
  * @param amount The amount of liquidity to deposit in the {@link Position}.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
- * @returns A {@link Promise} that resolves to the {@link Liquidity} delta info.
+ * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary} delta info.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
 export async function increaseLiquidity(
   position: Position,
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
-): Promise<Liquidity> {
+): Promise<LiquidityTxSummary> {
   info('\n-- Increasing liquidity --');
 
   // Generate transaction to increase liquidity
@@ -86,9 +86,9 @@ export async function increaseLiquidity(
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  // Get Liquidity delta and insert into DB
-  const liquidityDelta = await genLiquidityDelta(position, signature, quote);
-  await LiquidityDAO.insert(liquidityDelta, { catchErrors: true });
+  // Get Liquidity tx summary and insert into DB
+  const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
+  await LiquidityTxDAO.insert(liquidityDelta, { catchErrors: true });
 
   return liquidityDelta;
 }

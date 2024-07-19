@@ -1,6 +1,6 @@
 import WhirlpoolDAO from '@/data/whirlpool-dao';
 import type { DAOOptions } from '@/interfaces/dao';
-import { ErrorWithCode } from '@/interfaces/error';
+import type { ErrorWithCode } from '@/interfaces/error';
 import type { Null } from '@/interfaces/nullable';
 import type { PositionStatus } from '@/interfaces/position';
 import db, { handleInsertError, handleSelectError } from '@/util/db';

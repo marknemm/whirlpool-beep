@@ -1,7 +1,7 @@
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
-import type { RebalanceAllPositionsOptions } from '@/interfaces/position';
+import type { RebalanceAllPositionsOptions } from '@/interfaces/rebalance';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@/services/position/rebalance-position';
 import { Percentage } from '@orca-so/common-sdk';

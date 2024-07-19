@@ -1,15 +1,18 @@
 import PositionDAO from '@/data/position-dao';
 import type { BundledPosition } from '@/interfaces/position';
-import { genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
-import { genDecreaseLiquidityTx } from '@/services/position/decrease-liquidity';
+import { collectFeesRewards } from '@/services/position/collect-fees-rewards';
+import { decreaseLiquidity } from '@/services/position/decrease-liquidity';
 import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
-import rpc, { verifyTransaction } from '@/util/rpc';
+import rpc from '@/util/rpc';
+import { verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
+
+// TODO: Improve efficiency by consolidating collect, decrease liquidity, and close transactions.
 
 /**
  * Closes all {@link Position}s in a {@link Whirlpool}.
@@ -43,6 +46,11 @@ export async function closeAllPositions(whirlpoolAddress: Address): Promise<void
 export async function closePosition(bundledPosition: BundledPosition): Promise<void> {
   info('\n-- Close Position --');
 
+  await collectFeesRewards(bundledPosition.position);
+  if (!bundledPosition.position.getData().liquidity.isZero()) {
+    await decreaseLiquidity(bundledPosition.position, bundledPosition.position.getData().liquidity);
+  }
+
   const tx = await genClosePositionTx(bundledPosition);
 
   info('Executing close position transaction...');
@@ -60,18 +68,9 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
 export async function genClosePositionTx(bundledPosition: BundledPosition): Promise<TransactionBuilder> {
-  const tx = new TransactionBuilder(rpc(), wallet());
   const { bundleIndex, position, positionBundle } = bundledPosition;
 
   info('Creating close position transaction for position:', position.getAddress());
-
-  const collectTx = await genCollectFeesRewardsTx(position);
-  tx.addInstruction(collectTx.compressIx(true));
-
-  if (!position.getData().liquidity.isZero()) {
-    const { tx: decreaseLiquidityTx } = await genDecreaseLiquidityTx(position, position.getData().liquidity);
-    tx.addInstruction(decreaseLiquidityTx.compressIx(true));
-  }
 
   const positionBundleATA = await wallet().getNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleATA) throw new Error('Position bundle token account (ATA) cannot be found');
@@ -93,5 +92,6 @@ export async function genClosePositionTx(bundledPosition: BundledPosition): Prom
     }
   );
 
-  return tx.addInstruction(closeBundledPositionIx);
+  return new TransactionBuilder(rpc(), wallet())
+    .addInstruction(closeBundledPositionIx);
 }

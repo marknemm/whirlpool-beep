@@ -1,10 +1,11 @@
-import { toLamports } from '@/util/number-conversion';
+import { CliArgs } from '@/interfaces/cli';
 import env from '@/util/env';
 import { error, info } from '@/util/log';
-import rpc, { verifyTransaction } from '@/util/rpc';
+import { toLamports } from '@/util/number-conversion';
+import rpc from '@/util/rpc';
+import { verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import yargs from 'yargs';
-import { CliArgs } from '@/interfaces/cli';
 
 const cli = {
   description: 'Airdrops SOL to the wallet configured via ENV vars.',

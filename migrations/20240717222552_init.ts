@@ -7,12 +7,12 @@ import { type Kysely, sql } from 'kysely';
  * @returns A {@link Promise} that resolves when the migration is complete.
  */
 export async function up(db: Kysely<any>): Promise<void> {
-  await db.schema.createTable('token').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
-    .addColumn('address', 'varchar(100)', (col) => col.unique().notNull())
+  await db.schema.createTable('Token').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
+    .addColumn('address', 'varchar(255)', (col) => col.unique().notNull())
     .addColumn('decimals', 'integer', (col) => col.notNull())
     .addColumn('name', 'varchar(255)', (col) => col.notNull())
-    .addColumn('symbol', 'varchar(10)', (col) => col.notNull())
+    .addColumn('symbol', 'varchar(255)', (col) => col.notNull())
 		.execute();
 
 	await db.schema.createIndex('token_symbol').ifNotExists()
@@ -20,8 +20,8 @@ export async function up(db: Kysely<any>): Promise<void> {
 		.columns(['symbol'])
 		.execute();
 
-  await db.schema.createTable('whirlpool').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+  await db.schema.createTable('Whirlpool').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('address', 'varchar(255)', (col) => col.unique().notNull())
     .addColumn('feeRate', 'numeric', (col) => col.notNull())
     .addColumn('tokenA', 'integer', (col) => col.references('token.id').notNull())
@@ -31,14 +31,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('tickSpacing', 'int2', (col) => col.notNull())
 		.execute();
 
-  await db.schema.createIndex('whirlpool_tokenA_tokenB_tickSpacing').ifNotExists()
+  await db.schema.createIndex('whirlpool_token_a_token_b_tickSpacing').ifNotExists()
     .on('whirlpool')
     .columns(['tokenA', 'tokenB', 'tickSpacing'])
     .unique()
 		.execute();
 
-  await db.schema.createTable('position').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+  await db.schema.createTable('Position').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('address', 'varchar(255)', (col) => col.notNull())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
     .addColumn('priceLower', 'bigint', (col) => col.notNull())
@@ -56,8 +56,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .columns(['address'])
     .execute();
 
-  await db.schema.createTable('liquidity').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+  await db.schema.createTable('LiquidityTx').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
     .addColumn('position', 'integer', (col) => col.references('position.id').notNull())
     .addColumn('quote', 'json')
@@ -67,26 +67,22 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('usd', 'numeric(14, 2)', (col) => col.notNull())
     .execute();
 
-  await db.schema.createTable('collect').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+  // TODO: Add field(s) for rewards.
+  await db.schema.createTable('FeeRewardTx').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
     .addColumn('position', 'integer', (col) => col.references('position.id').notNull())
     .addColumn('signature', 'varchar(255)', (col) => col.notNull())
     .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
     .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
+    .addColumn('usd', 'numeric(14, 2)', (col) => col.notNull())
     .execute();
 
-  await db.schema.createTable('rebalance').ifNotExists()
-    .addColumn('id', 'serial', (col) => col.notNull().primaryKey())
+  await db.schema.createTable('RebalanceTx').ifNotExists()
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('createdAt', 'timestamp', (col) => col.defaultTo(sql`now()`).notNull())
     .addColumn('positionOld', 'integer', (col) => col.references('position.id').notNull())
     .addColumn('positionNew', 'integer', (col) => col.references('position.id').notNull())
-    .addColumn('liquidity', 'bigint', (col) => col.notNull())
-    .addColumn('signature', 'varchar(255)', (col) => col.notNull())
-    .addColumn('tokenAmountA', 'bigint', (col) => col.notNull())
-    .addColumn('tokenAmountB', 'bigint', (col) => col.notNull())
-    .addColumn('tokenFeesA', 'bigint', (col) => col.notNull())
-    .addColumn('tokenFeesB', 'bigint', (col) => col.notNull())
     .execute();
 }
 
@@ -97,13 +93,13 @@ export async function up(db: Kysely<any>): Promise<void> {
  * @returns A {@link Promise} that resolves when the migration is complete.
  */
 export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropTable('rebalance').ifExists().execute();
-  await db.schema.dropTable('collect').ifExists().execute();
-  await db.schema.dropTable('liquidity').ifExists().execute();
+  await db.schema.dropTable('RebalanceTx').ifExists().execute();
+  await db.schema.dropTable('FeeRewardTx').ifExists().execute();
+  await db.schema.dropTable('LiquidityTx').ifExists().execute();
   await db.schema.dropIndex('position_address').ifExists().execute();
-  await db.schema.dropTable('position').ifExists().execute();
-  await db.schema.dropIndex('whirlpool_tokenA_tokenB_tickSpacing').ifExists().execute();
-  await db.schema.dropTable('whirlpool').ifExists().execute();
+  await db.schema.dropTable('Position').ifExists().execute();
+  await db.schema.dropIndex('whirlpool_token_a_token_b_tickSpacing').ifExists().execute();
+  await db.schema.dropTable('Whirlpool').ifExists().execute();
 	await db.schema.dropIndex('token_symbol').ifExists().execute();
-  await db.schema.dropTable('token').ifExists().execute();
+  await db.schema.dropTable('Token').ifExists().execute();
 }

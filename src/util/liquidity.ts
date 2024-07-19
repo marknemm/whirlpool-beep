@@ -1,78 +1,49 @@
-import type { Liquidity } from '@/interfaces/liquidity';
-import { timeout } from '@/util/async';
+import type { LiquidityTxSummary } from '@/interfaces/liquidity';
 import { info } from '@/util/log';
-import { toNum, toStr, toUSD } from '@/util/number-conversion';
-import rpc from '@/util/rpc';
-import { getTokenPrice } from '@/util/token';
-import wallet from '@/util/wallet';
+import { toStr } from '@/util/number-conversion';
+import { getTransactionSummary } from '@/util/transaction';
 import { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { type DecreaseLiquidityQuote, type IncreaseLiquidityQuote, type Position } from '@orca-so/whirlpools-sdk';
-import { type TokenBalance } from '@solana/web3.js';
 import BN from 'bn.js';
 import { green } from 'colors';
 
 /**
- * Generates {@link Liquidity} delta data.
+ * Generates {@link LiquidityTxSummary}.
  *
- * @param position The {@link Position} to get the {@link Liquidity} delta for.
+ * @param position The {@link Position} to get the {@link LiquidityTxSummary} for.
  * @param signature The signature of the transaction that changed the liquidity.
  * @param quote The {@link DecreaseLiquidityQuote} or {@link IncreaseLiquidityQuote} for the transaction.
- * @returns A {@link Promise} that resolves to the {@link Liquidity} delta.
+ * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
  */
-export async function genLiquidityDelta(
+export async function genLiquidityTxSummary(
   position: Position,
   signature: string,
   quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote
-): Promise<Liquidity> {
+): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
-  let transaction = await rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 });
-  while (!transaction?.meta?.preTokenBalances || ! transaction.meta.postTokenBalances) {
-    await timeout(1000);
-    transaction = await rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 });
-  }
+  const txDelta = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
 
-  const liquidityDelta: Liquidity = {
+  const liquidityDelta: LiquidityTxSummary = {
     position,
     quote,
     signature,
-    tokenAmountA: new BN(0),
-    tokenAmountB: new BN(0),
-    usd: 0,
+    tokenAmountA: txDelta.tokens.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
+    tokenAmountB: txDelta.tokens.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
+    usd: txDelta.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
-  for (let i = 0; i < transaction.meta.preTokenBalances.length; i++) {
-    const preBalance = transaction.meta.preTokenBalances[i];
-    const postBalance = transaction.meta.postTokenBalances[i];
-
-    if (preBalance.mint === tokenA.mint.publicKey) {
-      liquidityDelta.tokenAmountA = _calcDelta(preBalance, postBalance);
-    } else if (preBalance.mint === tokenB.mint.publicKey) {
-      liquidityDelta.tokenAmountB = _calcDelta(preBalance, postBalance);
-    }
-  }
-
-  const tokenPriceB = await getTokenPrice(tokenB);
-  if (!tokenPriceB) throw new Error(`Token price not found for: ${tokenB.metadata.symbol}`);
-  liquidityDelta.usd = toNum(toUSD(liquidityDelta.tokenAmountB, tokenPriceB, tokenB.mint.decimals), 2);
-
-  _logLiquidityDelta(liquidityDelta, tokenA, tokenB);
+  _logLiquidityTxSummary(liquidityDelta, tokenA, tokenB);
   return liquidityDelta;
 }
 
-function _calcDelta(preBalance: TokenBalance, postBalance: TokenBalance): BN {
-  return (preBalance.owner !== wallet().publicKey.toBase58())
-    ? new BN(postBalance.uiTokenAmount.amount).sub(new BN(preBalance.uiTokenAmount.amount))
-    : new BN(preBalance.uiTokenAmount.amount).sub(new BN(postBalance.uiTokenAmount.amount));
-}
-
-function _logLiquidityDelta(liquidityDelta: Liquidity, tokenA: DigitalAsset, tokenB: DigitalAsset): void {
-  const logVerb = liquidityDelta.usd > 0 ? 'Deposited' : 'Withdrew';
+function _logLiquidityTxSummary(txSummary: LiquidityTxSummary, tokenA: DigitalAsset, tokenB: DigitalAsset): void {
+  const logVerb = txSummary.usd > 0 ? 'Deposited' : 'Withdrew';
 
   info(`${logVerb} ${green(`'${tokenA.metadata.symbol}'`)} liquidity:`,
-    toStr(liquidityDelta.tokenAmountA.abs(), tokenA.mint.decimals));
+    toStr(txSummary.tokenAmountA.abs(), tokenA.mint.decimals));
 
   info(`${logVerb} ${green(`'${tokenB.metadata.symbol}'`)} liquidity:`,
-    toStr(liquidityDelta.tokenAmountB.abs(), tokenB.mint.decimals));
+    toStr(txSummary.tokenAmountB.abs(), tokenB.mint.decimals));
 }

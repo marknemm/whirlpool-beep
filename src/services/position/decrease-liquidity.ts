@@ -1,9 +1,10 @@
-import LiquidityDAO from '@/data/liquidity-dao';
+import LiquidityTxDAO from '@/data/liquidity-tx-dao';
+import { LiquidityTxSummary } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
-import { genLiquidityDelta } from '@/util/liquidity';
-import { debug, error, info } from '@/util/log';
+import { genLiquidityTxSummary } from '@/util/liquidity';
+import { error, info } from '@/util/log';
 import { toBN, toStr } from '@/util/number-conversion';
-import { verifyTransaction } from '@/util/rpc';
+import { verifyTransaction } from '@/util/transaction';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
@@ -14,15 +15,15 @@ import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParam
  *
  * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to decrease liquidity in.
  * @param amount The amount of liquidity to withdraw from the {@link Whirlpool}. Divided evenly among open positions.
- * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ * @returns A {@link Promise} that resolves to a {@link Map} of {@link Position} addresses to {@link LiquidityTxSummary}s.
  */
 export async function decreaseAllLiquidity(
   whirlpoolAddress: Address,
   amount: BN | number
-): Promise<Map<string, DecreaseLiquidityQuote>> {
+): Promise<Map<string, LiquidityTxSummary>> {
   info('\n-- Decrease All liquidity --');
 
-  const quotes = new Map<string, DecreaseLiquidityQuote>();
+  const txSummaries = new Map<string, LiquidityTxSummary>();
 
   const bundledPositions = await getPositions({ whirlpoolAddress });
   const divAmount = toBN(amount).div(toBN(bundledPositions.length));
@@ -32,16 +33,16 @@ export async function decreaseAllLiquidity(
     : info('No positions to decrease liquidity of in whirlpool:', whirlpoolAddress);
 
   const promises = bundledPositions.map(async ({ position }) => {
-    const quote = await decreaseLiquidity(position, divAmount)
+    const txSummary = await decreaseLiquidity(position, divAmount)
       .catch((err) => { error(err); });
 
-    if (quote) {
-      quotes.set(position.getAddress().toBase58(), quote);
+    if (txSummary) {
+      txSummaries.set(position.getAddress().toBase58(), txSummary);
     }
   });
 
   await Promise.all(promises);
-  return quotes;
+  return txSummaries;
 }
 
 /**
@@ -49,13 +50,13 @@ export async function decreaseAllLiquidity(
  *
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityQuote}.
+ * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
  * @throws An {@link Error} if the deposit transaction fails to complete.
  */
 export async function decreaseLiquidity(
   position: Position,
   amount: BN | number
-): Promise<DecreaseLiquidityQuote> {
+): Promise<LiquidityTxSummary> {
   info('\n-- Decreasing liquidity --');
 
   // Generate transaction to decrease liquidity
@@ -66,11 +67,11 @@ export async function decreaseLiquidity(
   const signature = await tx.buildAndExecute();
   await verifyTransaction(signature);
 
-  // Get Liquidity delta and insert into DB
-  const liquidityDelta = await genLiquidityDelta(position, signature, quote);
-  LiquidityDAO.insert(liquidityDelta, { catchErrors: true });
+  // Get Liquidity tx summary and insert into DB
+  const txSummary = await genLiquidityTxSummary(position, signature, quote);
+  LiquidityTxDAO.insert(txSummary, { catchErrors: true });
 
-  return quote;
+  return txSummary;
 }
 
 /**

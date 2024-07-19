@@ -1,4 +1,6 @@
-import type { BundledPosition, RebalanceAllPositionsOptions, RebalancePositionOptions } from '@/interfaces/position';
+import RebalanceTxDAO from '@/data/rebalance-tx-dao';
+import type { BundledPosition } from '@/interfaces/position';
+import type { RebalanceAllPositionsOptions, RebalancePositionOptions, RebalanceTxSummary } from '@/interfaces/rebalance';
 import { closePosition } from '@/services/position/close-position';
 import { getPositions } from '@/services/position/get-position';
 import { increaseLiquidity } from '@/services/position/increase-liquidity';
@@ -8,6 +10,8 @@ import { toPriceRange } from '@/util/number-conversion';
 import whirlpoolClient, { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+
+// TODO: Improve efficiency by consolidating collect, decrease liquidity, close, and open transactions.
 
 /**
  * Rebalances all {@link Position}s based on given {@link options}.
@@ -53,22 +57,26 @@ export async function rebalancePosition(
   info('\n-- Rebalance Position --');
 
   const { liquidity, liquidityUnit, priceMargin } = options;
-  const { position } = bundledPosition;
+  const positionOld = bundledPosition.position;
 
   // TODO: Condense into less transactions
-  if (await options.filter(position)) {
-    info('Rebalancing position:', position.getAddress());
+  if (await options.filter(positionOld)) {
+    info('Rebalancing position:', positionOld.getAddress());
 
     await closePosition(bundledPosition);
 
-    const whirlpool = await whirlpoolClient().getPool(position.getData().whirlpool);
+    const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
     const newBundledPosition = await openPosition(whirlpool, priceMargin);
-    await increaseLiquidity(newBundledPosition.position, liquidity, liquidityUnit);
+    const positionNew = newBundledPosition.position;
+    await increaseLiquidity(positionNew, liquidity, liquidityUnit);
+
+    const txSummary: RebalanceTxSummary = { positionOld, positionNew };
+    await RebalanceTxDAO.insert(txSummary, { catchErrors: true });
 
     return newBundledPosition;
   }
 
-  info('Position does not require rebalancing:', position.getAddress());
+  info('Position does not require rebalancing:', positionOld.getAddress());
   return bundledPosition;
 }
 

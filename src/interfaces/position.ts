@@ -1,9 +1,6 @@
-import type { LiquidityUnit } from '@/interfaces/liquidity';
-import type { BN } from '@coral-xyz/anchor';
-import type { Address, Percentage, TransactionBuilder } from '@orca-so/common-sdk';
+import type { Address, TransactionBuilder } from '@orca-so/common-sdk';
 import type { Position, PositionBundleData, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
-import type Decimal from 'decimal.js';
 
 /**
  * A bundled {@link Position}.
@@ -89,50 +86,3 @@ export interface GetPositionsOptions extends WhirlpoolAccountFetchOptions {
  * The status of a {@link Position}.
  */
 export type PositionStatus = 'CLOSED' | 'OPENED';
-
-/**
- * Options for rebalancing all {@link Position}s.
- *
- * @augments RebalancePositionOptions
- */
-export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
-
-  /**
-   * The {@link Address} of the {@link Whirlpool} to rebalance all {@link Position}s in.
-   */
-  whirlpoolAddress?: Address;
-
-}
-
-/**
- * Options for rebalancing a {@link Position}.
- */
-export interface RebalancePositionOptions {
-
-  /**
-   * The filter function to use for selecting which {@link Position}s to rebalance.
-   *
-   * @param position The {@link Position} to filter.
-   * @returns A {@link Promise} that resolves to `true` if the {@link Position} should be rebalanced, `false` otherwise.
-   */
-  filter: (position: Position) => Promise<boolean>;
-
-  /**
-   * The amount of liquidity to deposit into each {@link Position} where rebalancing is required.
-   */
-  liquidity: Decimal | BN | number;
-
-  /**
-   * The {@link LiquidityUnit} to use for the liquidity amount.
-   *
-   * Defaults to `'usd'`.
-   */
-  liquidityUnit?: LiquidityUnit;
-
-  /**
-   * The price margin {@link Percentage} to use for the {@link Position}.
-   * Defaults to `3%`.
-   */
-  priceMargin?: Percentage;
-
-}

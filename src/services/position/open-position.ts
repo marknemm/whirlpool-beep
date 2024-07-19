@@ -3,7 +3,8 @@ import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/po
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { info } from '@/util/log';
 import { toPriceRange, toTickRange } from '@/util/number-conversion';
-import rpc, { verifyTransaction } from '@/util/rpc';
+import rpc from '@/util/rpc';
+import { verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';

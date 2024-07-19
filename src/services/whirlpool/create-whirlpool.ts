@@ -1,7 +1,7 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import { debug, info } from '@/util/log';
-import { verifyTransaction } from '@/util/rpc';
 import { getTokenPair } from '@/util/token';
+import { verifyTransaction } from '@/util/transaction';
 import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
 import { type Address, type TransactionBuilder } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
