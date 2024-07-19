@@ -1,15 +1,14 @@
 import type { TokenQuery } from '@/interfaces/token';
-import { toBN, toDecimal, toNum, toSol } from '@/util/number-conversion';
 import { decodeBase58 } from '@/util/encode';
 import env from '@/util/env';
 import { info } from '@/util/log';
+import { toBN, toSol } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
 import { getNFT, getToken } from '@/util/token';
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token';
 import { Keypair, PublicKey, type TokenAccountsFilter } from '@solana/web3.js';
-import Decimal from 'decimal.js';
 
 /**
  * Extends the Anchor {@link Wallet} class with additional functionality.

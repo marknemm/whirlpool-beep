@@ -78,7 +78,7 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
 
   info('Fetching token using query:', query);
 
-  if (!PublicKeyUtils.isBase58(query)) {
+  if (!PublicKeyUtils.isBase58(query) || query.length < 32) {
     // Query token via standard token list API that is used by solana explorer.
     const response = await axios.get<TokenQueryResponse>(env.TOKEN_LIST_API, {
       params: {
@@ -101,7 +101,7 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
   }
 
   // Fetch token DigitalAsset metadata using PDA and UMI.
-  const tokenAsset = PublicKeyUtils.isBase58(query)
+  const tokenAsset = PublicKeyUtils.isBase58(query) && query.length >= 32
     ? await fetchDigitalAsset(umi(), publicKey(query))
     : null;
 
