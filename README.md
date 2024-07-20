@@ -53,3 +53,62 @@ Consists of the following executables:
 - `start:ts`: Run **CLI** TS program with entrypoint [src/index.ts](src/index.ts).
 - `start:dbg`: Run **CLI** TS program in debug mode with entrypoint [src/index.ts](src/index.ts).
 - `test`: Run unit tests.
+
+## VSCode Extensions
+
+- SQLTools
+- Docker
+- ESLint
+- DotENV
+
+## Dev Sample Data
+
+All sample data addresses can be viewed here: https://everlastingsong.github.io/nebula/
+
+Use the following to airdrop dev SOL: https://faucet.solana.com/
+
+### Dev Tokens
+
+Symbol | Address | Decimals |
+:---: | :---: | :---: |
+SOL | So11111111111111111111111111111111111111112 | 9 |
+devUSDC | BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k | 6 |
+devUSDT | H8UekPGwePSmQ3ttuYGPU1szyFfjZR4N53rymSFwpLPm | 6 |
+devSAMO | Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa | 9 |
+devTMAC | Afn8YB1p4NsoZeS5XJBZ18LTfEy5NFPwN46wapZcBQr6 | 6 |
+
+### Dev Whirlpools
+
+Token A | Token B | Tick Spacing |
+:---: | :---: | :---: |
+SOL | BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k | 64 |
+BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k | H8UekPGwePSmQ3ttuYGPU1szyFfjZR4N53rymSFwpLPm | 1 |
+Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa | BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k | 64 |
+ Afn8YB1p4NsoZeS5XJBZ18LTfEy5NFPwN46wapZcBQr6 | BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k | 64 |
+
+### Sample CLI arguments for Dev Whirlpools
+
+- SOL / devUSDC
+
+        -a SOL -b BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k -t 64
+
+- devUSDC / devUSDT
+
+        -a BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k -b H8UekPGwePSmQ3ttuYGPU1szyFfjZR4N53rymSFwpLPm -t 1
+
+- devSAMO / devUSDC
+
+        -a Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa -b BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k -t 64
+
+- devTMAC / devUSDC
+
+        -a Afn8YB1p4NsoZeS5XJBZ18LTfEy5NFPwN46wapZcBQr6 -b BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k -t 64
+
+## Misc Resources
+
+- https://www.orca.so/pools
+- https://orca-so.gitbook.io/orca-developer-portal
+- https://github.com/everlastingsong/tour-de-whirlpool
+- https://solana.com/docs/intro/overview
+- https://explorer.solana.com/
+- https://dexscreener.com/
