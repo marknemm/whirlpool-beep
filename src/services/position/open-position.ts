@@ -1,6 +1,7 @@
 import PositionDAO from '@/data/position-dao';
 import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
+import { expBackoff } from '@/util/async';
 import { info } from '@/util/log';
 import { toPriceRange, toTickRange } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
@@ -34,7 +35,7 @@ export async function openPosition(
   info('Whirlpool position opened with address:', address.toBase58());
 
   // Get, store, and return the newly opened position
-  const position = await whirlpoolClient().getPosition(address, IGNORE_CACHE);
+  const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
   await PositionDAO.insert(position, { catchErrors: true });
 
   return { bundleIndex, position, positionBundle };

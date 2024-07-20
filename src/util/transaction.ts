@@ -1,5 +1,5 @@
 import type { TransactionSummary } from '@/interfaces/transaction';
-import { timeout } from '@/util/async';
+import { expBackoff } from '@/util/async';
 import { debug, error, info } from '@/util/log';
 import { toNum, toUSD } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
@@ -33,24 +33,18 @@ export async function verifyTransaction(signature: string, commitment: Commitmen
  * Gets a transaction by its {@link signature}.
  *
  * @param signature The signature of the transaction to get.
- * @param maxRetries The maximum number of retries to get the transaction. Defaults to `5`.
  * @returns A {@link Promise} that resolves to the {@link VersionedTransactionResponse};
  * `null` if the transaction cannot be retrieved.
  */
 export async function getTransaction(
   signature: string,
-  maxRetries = 10
 ): Promise<VersionedTransactionResponse | null> {
   debug('Getting Tx:', signature);
-  let transaction = await rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 });
 
-  let retry = 0;
-  while (retry++ < maxRetries && (!transaction?.meta?.preTokenBalances || ! transaction.meta.postTokenBalances)) {
-    await timeout(1000);
-    transaction = await rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 });
-  }
-
-  return transaction;
+  return expBackoff(
+    () => rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 }),
+    { retryFilter: (result, err) => !result || !!err }
+  );
 }
 
 /**

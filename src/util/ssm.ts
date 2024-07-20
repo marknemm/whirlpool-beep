@@ -32,7 +32,7 @@ export async function loadSSMParams(): Promise<void> {
       },
     });
 
-    console.log('Loaded SSM parameter:', response.data); // eslint-disable-line no-console
+    console.log('Loaded SSM parameter:', envVarName); // eslint-disable-line no-console
     if (response.status === 200 && response.data) {
       process.env[envVarName] = response.data.Parameter.Value;
     }

@@ -8,8 +8,11 @@ import umi from '@/util/umi';
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
+import { PriceMath } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import axios from 'axios';
+import whirlpoolClient, { getWhirlpoolPrice } from './whirlpool';
+import { DEV_SAMO_USDC_ADDRESS, DEV_SOL_USDC_ADDRESS, DEV_TMAC_USDC_ADDRESS } from '@/constants/whirlpool';
 
 /**
  * Cache for previously queried token {@link DigitalAsset}s.
@@ -138,6 +141,11 @@ export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<n
     return 1;
   }
 
+  // Use dev token prices in development environment.
+  if (env.NODE_ENV === 'development') {
+    return _getDevTokenPrice(token);
+  }
+
   const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
     params: {
       contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
@@ -150,6 +158,25 @@ export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<n
   }
 
   return response.data[token.mint.publicKey]?.usd;
+}
+
+async function _getDevTokenPrice(token: DigitalAsset): Promise<number> {
+  switch (token.metadata.symbol) {
+    case 'SOL':
+      return (await getWhirlpoolPrice(
+        await whirlpoolClient().getPool(DEV_SOL_USDC_ADDRESS))
+      ).toNumber();
+    case 'devSAMO':
+      return (await getWhirlpoolPrice(
+        await whirlpoolClient().getPool(DEV_SAMO_USDC_ADDRESS))
+      ).toNumber();
+    case 'devTMAC':
+      return (await getWhirlpoolPrice(
+        await whirlpoolClient().getPool(DEV_TMAC_USDC_ADDRESS))
+      ).toNumber();
+  }
+
+  return 1;
 }
 
 /**
