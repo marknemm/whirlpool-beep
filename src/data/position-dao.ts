@@ -5,9 +5,10 @@ import type { Null } from '@/interfaces/nullable';
 import type { PositionStatus } from '@/interfaces/position';
 import db, { handleInsertError, handleSelectError } from '@/util/db';
 import { debug, error } from '@/util/log';
-import { toBigInt, toPriceRange } from '@/util/number-conversion';
+import { toBigInt } from '@/util/number-conversion';
+import { toPriceRange } from '@/util/tick-range';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
-import { Address, AddressUtil } from '@orca-so/common-sdk';
+import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**

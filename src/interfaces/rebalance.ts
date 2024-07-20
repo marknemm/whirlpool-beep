@@ -45,7 +45,8 @@ export interface RebalancePositionOptions {
 
   /**
    * The price margin {@link Percentage} to use for the {@link Position}.
-   * Defaults to `3%`.
+   *
+   * Defaults to the same price margin of original {@link Position}.
    */
   priceMargin?: Percentage;
 

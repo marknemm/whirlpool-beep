@@ -126,55 +126,6 @@ export function toStr(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
 }
 
 /**
- * Converts a given tick range to a price range.
- *
- * @param tickRange The tick range to convert.
- * @param decimalPair The decimal pair to use for the conversion.
- * The first element is the decimal for `token A`, and the second element is the decimal for `token B`.
- * @returns The converted price range.
- */
-export function toPriceRange(
-  tickRange: [number, number],
-  decimalPair: [number, number]
-): [Decimal, Decimal] {
-  const [decimalsA, decimalsB] = decimalPair;
-
-  return [
-    PriceMath.tickIndexToPrice(tickRange[0], decimalsA, decimalsB),
-    PriceMath.tickIndexToPrice(tickRange[1], decimalsA, decimalsB),
-  ];
-}
-
-/**
- * Converts a given price range to a tick range.
- *
- * If {@link tickSpacing} is provided, the conversion will account for spacing and may not be an exact mapping.
- *
- * @param priceRange The price range to convert.
- * @param decimalPair The decimal pair to use for the conversion.
- * The first element is the decimal for `token A`, and the second element is the decimal for `token B`.
- * @param tickSpacing The tick spacing to use for the conversion. Defaults to `1`.
- * @returns The converted tick range.
- */
-export function toTickRange(
-  priceRange: [Decimal, Decimal],
-  decimalPair: [number, number],
-  tickSpacing?: number
-): [number, number] {
-  const [decimalsA, decimalsB] = decimalPair;
-
-  return tickSpacing
-    ? [
-      PriceMath.priceToInitializableTickIndex(priceRange[0], decimalsA, decimalsB, tickSpacing),
-      PriceMath.priceToInitializableTickIndex(priceRange[1], decimalsA, decimalsB, tickSpacing),
-    ]
-    : [
-      PriceMath.priceToTickIndex(priceRange[0], decimalsA, decimalsB),
-      PriceMath.priceToTickIndex(priceRange[1], decimalsA, decimalsB),
-    ];
-}
-
-/**
  * Converts a given {@link usd} amount to a token amount based off of a given {@link tokenPrice}.
  *
  * @param usd The amount of `USD` to convert.

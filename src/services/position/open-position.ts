@@ -3,8 +3,8 @@ import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/po
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { expBackoff } from '@/util/async';
 import { info } from '@/util/log';
-import { toPriceRange, toTickRange } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
+import { toPriceRange, toTickRange } from '@/util/tick-range';
 import { verifyTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';

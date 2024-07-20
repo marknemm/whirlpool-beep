@@ -6,7 +6,7 @@ import { getPositions } from '@/services/position/get-position';
 import { increaseLiquidity } from '@/services/position/increase-liquidity';
 import { openPosition } from '@/services/position/open-position';
 import { error, info } from '@/util/log';
-import { toPriceRange } from '@/util/number-conversion';
+import { calcPriceMargin, toPriceRange } from '@/util/tick-range';
 import whirlpoolClient, { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
@@ -56,7 +56,7 @@ export async function rebalancePosition(
 ): Promise<BundledPosition> {
   info('\n-- Rebalance Position --');
 
-  const { liquidity, liquidityUnit, priceMargin } = options;
+  const { liquidity, liquidityUnit } = options;
   const positionOld = bundledPosition.position;
 
   // TODO: Condense into less transactions
@@ -66,6 +66,7 @@ export async function rebalancePosition(
     await closePosition(bundledPosition);
 
     const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
+    const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
     const newBundledPosition = await openPosition(whirlpool, priceMargin);
     const positionNew = newBundledPosition.position;
     await increaseLiquidity(positionNew, liquidity, liquidityUnit);
