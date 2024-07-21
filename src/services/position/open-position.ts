@@ -30,7 +30,7 @@ export async function openPosition(
 
   // Execute and verify the transaction
   info('Executing open position transaction...');
-  const signature = await tx.buildAndExecute();
+  const signature = await tx.buildAndExecute(undefined, { maxRetries: 3 });
   await verifyTransaction(signature);
   info('Whirlpool position opened with address:', address.toBase58());
 

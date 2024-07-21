@@ -1,7 +1,7 @@
 import type { Null } from '@/interfaces/nullable';
 import { BN } from '@coral-xyz/anchor';
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { PriceMath } from '@orca-so/whirlpools-sdk';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 
 /**
@@ -80,7 +80,7 @@ export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0):
  * @returns The amount of `lamports`.
  */
 export function toLamports(sol: number | Null): number {
-  return sol ? sol * 1e9 : 0;
+  return sol ? sol * LAMPORTS_PER_SOL : 0;
 }
 
 /**
@@ -101,7 +101,7 @@ export function toNum(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
  * @returns The amount of `SOL`.
  */
 export function toSol(lamports: number | Null): number {
-  return lamports ? lamports / 1e9 : 0;
+  return lamports ? lamports / LAMPORTS_PER_SOL : 0;
 }
 
 /**

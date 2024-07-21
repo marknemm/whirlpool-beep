@@ -19,7 +19,7 @@ const cli = {
   },
   builder: () =>
     yargs(process.argv.slice(2))
-      .usage('Usage: $0 <amount>')
+      .usage('Usage: $0 --amount [number]')
       .options(cli.options),
   handler
 };
