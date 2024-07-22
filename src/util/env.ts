@@ -12,6 +12,8 @@ const env = cleanEnv(process.env, {
   DB_PORT: num({ default: 5432 }),
   DB_USER: str(),
   DB_SSL: bool({ default: true }),
+  HELIUS_API: url(),
+  HELIUS_API_KEY: str({ default: '' }),
   LOG_BREAK_LEN: num({ default: 40 }),
   LOG_COLOR: bool({ default: false }),
   LOG_DEPTH: num({ default: 3 }),
@@ -28,3 +30,14 @@ const env = cleanEnv(process.env, {
 });
 
 export default env;
+
+/**
+ * Gets the secret environment variables.
+ *
+ * @returns The secret environment variables.
+ */
+export function getSecretEnvVars(): (keyof typeof env)[] {
+  return Object.keys(env).filter(
+    (key) => /API_KEY|PASSWORD|PRIVATE|RPC_ENDPOINT|SECRET/i.test(key)
+  ) as (keyof typeof env)[];
+}

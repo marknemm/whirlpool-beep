@@ -1,4 +1,4 @@
-import env from '@/util/env';
+import env, { getSecretEnvVars } from '@/util/env';
 
 /**
  * {@link RegExp} to detect standalone decimal numbers.
@@ -30,13 +30,13 @@ export const PUBLIC_KEY_REGEX = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
 export const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
 /**
- * {@link RegExp} to detect secret strings such as private keys.
+ * {@link RegExp} to detect secret strings such as private keys, api keys, and passwords.
  */
 export const SECRETS_REGEX = new RegExp(
-    `${PRIVATE_KEY_BYTE_ARRAY_REGEX.source}`
-  + `|${env.WALLET_PRIVATE_KEY}`
-  + `|${env.DB_PASSWORD.replace(REGEX_ESCAPE, '\\$&')}`
-  , 'g'
+  getSecretEnvVars()
+    .map((key) => env[key]?.toString().replace(REGEX_ESCAPE, '\\$&'))
+    .join('|'),
+  'g'
 );
 
 /**

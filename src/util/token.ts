@@ -154,7 +154,7 @@ export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<n
   });
 
   if (response.status !== 200) {
-    throw new Error(`Failed to fetch token price (${response.status}): ${response.statusText}`);
+    throw new Error(`Failed to fetch token price ( ${response.status} ): ${response.statusText}`);
   }
 
   return response.data[token.mint.publicKey]?.usd;

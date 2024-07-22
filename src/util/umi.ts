@@ -14,6 +14,7 @@ let _umi: Umi;
  *
  * `UMI` is a modular framework for building and using JS clients for Solana programs.
  * It provides a set of higher level tools (compared to `web3.js`) for interacting with Solana account data.
+ * Specifically, it queries a related set of accounts to form a digital asset encompassing all data associated with an entity.
  *
  * @returns The singleton {@link Umi} client.
  */
