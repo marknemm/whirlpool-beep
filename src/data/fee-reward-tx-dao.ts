@@ -40,6 +40,7 @@ export default class FeeRewardTxDAO {
 
       const result = await db().insertInto('feeRewardTx')
         .values({
+          fee: toBigInt(txSummary.fee),
           position: positionId,
           signature: txSummary.signature,
           tokenAmountA: toBigInt(txSummary.tokenAmountA),

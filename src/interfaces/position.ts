@@ -81,8 +81,3 @@ export interface GetPositionsOptions extends WhirlpoolAccountFetchOptions {
   whirlpoolAddress?: Address;
 
 }
-
-/**
- * The status of a {@link Position}.
- */
-export type PositionStatus = 'CLOSED' | 'OPENED';

@@ -40,6 +40,7 @@ export default class LiquidityTxDAO {
 
       const result = await db().insertInto('liquidityTx')
         .values({
+          fee: toBigInt(txSummary.fee),
           position: positionId,
           quote: JSON.stringify(txSummary.quote),
           signature: txSummary.signature,

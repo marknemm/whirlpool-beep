@@ -1,14 +1,16 @@
 import LiquidityTxDAO from '@/data/liquidity-tx-dao';
 import { LiquidityTxSummary } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
+import env from '@/util/env';
 import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toStr } from '@/util/number-conversion';
-import { verifyTransaction } from '@/util/transaction';
+import { executeTransaction } from '@/util/transaction';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
+import type Decimal from 'decimal.js';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -64,8 +66,7 @@ export async function decreaseLiquidity(
 
   // Execute and verify the transaction
   info('Executing decrease liquidity transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
+  const signature = await executeTransaction(tx);
 
   // Get Liquidity tx summary and insert into DB
   const txSummary = await genLiquidityTxSummary(position, signature, quote);
@@ -102,7 +103,7 @@ export async function genDecreaseLiquidityTx(
     // Withdraw amount
     liquidity: toBN(amount),
     // Acceptable slippage
-    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
+    slippageTolerance: Percentage.fromFraction(env.SLIPPAGE_DEFAULT, 100),
   });
 
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());

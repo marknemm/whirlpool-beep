@@ -2,10 +2,10 @@ import PositionDAO from '@/data/position-dao';
 import type { BundledPosition, GenOptionPositionTxReturn } from '@/interfaces/position';
 import { getPositionBundle } from '@/services/position-bundle/get-position-bundle';
 import { expBackoff } from '@/util/async';
-import { info } from '@/util/log';
+import { debug, info } from '@/util/log';
 import rpc from '@/util/rpc';
 import { toPriceRange, toTickRange } from '@/util/tick-range';
-import { verifyTransaction } from '@/util/transaction';
+import { executeTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool';
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
@@ -30,13 +30,12 @@ export async function openPosition(
 
   // Execute and verify the transaction
   info('Executing open position transaction...');
-  const signature = await tx.buildAndExecute(undefined, { maxRetries: 3 });
-  await verifyTransaction(signature);
+  const signature = await executeTransaction(tx);
   info('Whirlpool position opened with address:', address.toBase58());
 
   // Get, store, and return the newly opened position
   const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
-  await PositionDAO.insert(position, { catchErrors: true });
+  await PositionDAO.insert(position, signature, { catchErrors: true });
 
   return { bundleIndex, position, positionBundle };
 }
@@ -53,7 +52,7 @@ export async function genOpenPositionTx(
   whirlpool: Whirlpool,
   priceMargin = Percentage.fromFraction(3, 100)
 ): Promise<GenOptionPositionTxReturn> {
-  info('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
+  debug('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = await _genPositionTickRange(whirlpool, priceMargin);
@@ -82,6 +81,16 @@ export async function genOpenPositionTx(
     positionBundle.positionBundleMint,
     bundleIndex
   );
+
+  debug('Create Tx details for position in whirlpool:', formatWhirlpool(whirlpool));
+  debug('funder:', wallet().publicKey.toBase58());
+  debug('positionBundle:', positionBundlePda.publicKey);
+  debug('positionBundleTokenAccount:', positionBundleTokenAccount.address);
+  debug('bundleIndex:', bundleIndex);
+  debug('bundledPosition:', bundledPositionPda.publicKey);
+  debug('whirlpool', whirlpool.getAddress());
+  debug('tickLowerIndex:', tickRange[0]);
+  debug('tickUpperIndex:', tickRange[1]);
 
   // Create instruction to open position inside bundle
   const openPositionIx = await WhirlpoolIx.openBundledPositionIx(

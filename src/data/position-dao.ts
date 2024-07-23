@@ -2,7 +2,6 @@ import WhirlpoolDAO from '@/data/whirlpool-dao';
 import type { DAOOptions } from '@/interfaces/dao';
 import type { ErrorWithCode } from '@/interfaces/error';
 import type { Null } from '@/interfaces/nullable';
-import type { PositionStatus } from '@/interfaces/position';
 import db, { handleInsertError, handleSelectError } from '@/util/db';
 import { debug, error } from '@/util/log';
 import { toBigInt } from '@/util/number-conversion';
@@ -41,6 +40,7 @@ export default class PositionDAO {
       const result = await db().selectFrom('position')
         .select('id')
         .where('address', '=', address)
+        .orderBy('id', 'desc')
         .executeTakeFirst();
 
       debug(`Got Position ID from database ( ID: ${result?.id} ):`, address);
@@ -57,13 +57,14 @@ export default class PositionDAO {
    * `Note`: This method also inserts the {@link Whirlpool} associated with the {@link Position} via {@link WhirlpoolDAO}.
    *
    * @param position The {@link Position} to insert.
+   * @param txSignature The signature of the open position transaction.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the inserted row's DB `id` when the operation is complete.
    * If the insert fails, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the insert fails with an error and
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async insert(position: Position | Null, opts?: DAOOptions): Promise<number | undefined> {
+  static async insert(position: Position | Null, txSignature: string, opts?: DAOOptions): Promise<number | undefined> {
     if (!position) return;
 
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
@@ -88,11 +89,12 @@ export default class PositionDAO {
         [tokenA.mint.decimals, tokenB.mint.decimals]
       );
 
-      const priceMargin = priceOrigin.minus(priceLower).div(priceOrigin).mul(100).ceil().toNumber();
+      const priceMargin = priceOrigin.minus(priceLower).div(priceOrigin).mul(100).round().toNumber();
 
       const result = await db().insertInto('position')
         .values({
           address,
+          openTx: txSignature,
           priceLower: toBigInt(priceLower, tokenB.mint.decimals),
           priceMargin,
           priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
@@ -112,36 +114,36 @@ export default class PositionDAO {
   }
 
   /**
-   * Updates the {@link PositionStatus} of a {@link Position} in the database.
-   * If the given {@link position} or {@link status} is {@link Null}, the operation is a no-op.
+   * Updates the status of a {@link Position} in the database by setting a closeTx signature.
+   * If the given {@link position} or {@link txSignature} is {@link Null}, the operation is a no-op.
    *
-   * @param position The {@link Position} to update the {@link PositionStatus} of.
-   * @param status The {@link PositionStatus} to update the {@link Position} to.
+   * @param position The {@link Position} to update the status of.
+   * @param txSignature The signature of the close position transaction.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves when the operation is complete.
    */
-  static async updateStatus(
+  static async updateClosed(
     position: Position | Null,
-    status: PositionStatus | Null,
+    txSignature: string,
     opts?: DAOOptions
   ): Promise<void> {
-    if (!position || !status) return;
+    if (!position || !txSignature) return;
     const address = position.getAddress().toBase58();
 
-    debug('Updating Position status in database:', address);
+    debug('Closing Position in database:', address);
 
     try {
       await db().updateTable('position')
-        .set({ status })
+        .set({ closeTx: txSignature })
         .where('address', '=', address)
         .execute();
 
-      debug('Updated Position status in database:', `${address} -- ${status}`);
+      debug('Position closed in database:', `${address} -- ${txSignature}`);
     } catch (err) {
       if (!opts?.catchErrors) {
         throw err;
       }
-      error('Failed to update position status in database:', `${address} -- ${status}`);
+      error('Failed to close position in database:', `${address} -- ${txSignature}`);
       error(err);
     }
   }

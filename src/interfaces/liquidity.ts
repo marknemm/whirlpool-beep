@@ -7,6 +7,11 @@ import type BN from 'bn.js';
 export interface LiquidityTxSummary {
 
   /**
+   * The fee paid for the transaction in lamports.
+   */
+  fee: number;
+
+  /**
    * The {@link Position} that the liquidity is associated with.
    */
   position: Position;

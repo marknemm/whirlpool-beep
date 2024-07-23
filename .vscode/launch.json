@@ -6,7 +6,7 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:dbg"],
+      "runtimeArgs": ["run", "dev"],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "skipFiles": [
@@ -18,7 +18,7 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "prod:dbg"],
+      "runtimeArgs": ["run", "prod"],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "skipFiles": [

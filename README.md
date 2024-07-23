@@ -27,8 +27,7 @@ Consists of the following executables:
 - `clean`: Clean standard build and package output.
 - `clean:all`: Clean standard build and package output as well as [node_modules](node_modules) dependencies.
 - `dev`: Run the **CLI** in interactive mode against **devnet**.
-- `dev:cli`: Run the **CLI** in non-interactive mode against **devnet**.
-- `dev:dbg`: Run the **CLI** in interactive mode with debugger against **devnet**.
+- `dev:cli`: Run the **CLI** in non-interactive mode against **devnet**. E.g. `npm run dev:cli util.ts`.
 - `dev:deploy`: Package & deploy **λ Functions** to cloud provider for **devnet**.
 - `dev:env`: Setup dev env for running **CLI** locally against **devnet**.
 - `dev:kysely`: Run **kysely** CLI for dev **Postgres** database migration management.
@@ -38,10 +37,9 @@ Consists of the following executables:
 - `dev:sls`: Run **λ Functions** against **devnet** using a local simulated cloud provider.
 - `lint`: Run **eslint** against TS files under [src](src).
 - `node:ts`: Run node with TS config.
-- `node:dbg`: Run node with TS config in debug mode.
+- `node:cli`: Run node with TS config from within the [src/cli](src/cli) directory.
 - `prod`: Run the **CLI** in interactive mode against **mainnet**.
-- `prod:cli`: Run the **CLI** in non-interactive mode against **mainnet**.
-- `prod:dbg`: Run the **CLI** in interactive mode with debugger against **mainnet**.
+- `prod:cli`: Run the **CLI** in non-interactive mode against **mainnet**. E.g. `npm run prod:cli util.ts`.
 - `prod:deploy`: Package & deploy **λ Functions** to cloud provider for **mainnet**.
 - `prod:env`: Setup prod env for running **CLI** locally against **mainnet**.
 - `prod:kysely`: Run **kysely** CLI for prod **Postgres** database migration management. Migrations are found under [migrations](migrations).
@@ -51,7 +49,6 @@ Consists of the following executables:
 - `prod:sls`: Run **λ Functions** against **mainnet** using a local simulated cloud provider.
 - `start`: Run **CLI** JS program with entrypoint [dist/index.js](dist/index.js).
 - `start:ts`: Run **CLI** TS program with entrypoint [src/index.ts](src/index.ts).
-- `start:dbg`: Run **CLI** TS program in debug mode with entrypoint [src/index.ts](src/index.ts).
 - `test`: Run unit tests.
 
 ## VSCode Extensions

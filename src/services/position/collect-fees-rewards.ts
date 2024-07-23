@@ -4,7 +4,7 @@ import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
 import { toStr } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
-import { getTransactionSummary, verifyTransaction } from '@/util/transaction';
+import { executeTransaction, getTransactionSummary } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
@@ -54,8 +54,7 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
   const tx = await genCollectFeesRewardsTx(position);
 
   info('Executing collect fees and rewards transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
+  const signature = await executeTransaction(tx);
   await position.refreshData();
   info('Collected fees and rewards for position:', position.getAddress());
 
@@ -97,14 +96,15 @@ async function _genFeesRewardsTxSummary(
 ): Promise<FeesRewardsTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
-  const txDelta = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
+  const txSummary = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
 
   const txData: FeesRewardsTxSummary = {
+    fee: txSummary.fee,
     position,
     signature,
-    tokenAmountA: txDelta.tokens.get(tokenA.mint.publicKey) ?? new BN(0),
-    tokenAmountB: txDelta.tokens.get(tokenB.mint.publicKey) ?? new BN(0),
-    usd: txDelta.usd,
+    tokenAmountA: txSummary.tokens.get(tokenA.mint.publicKey) ?? new BN(0),
+    tokenAmountB: txSummary.tokens.get(tokenB.mint.publicKey) ?? new BN(0),
+    usd: txSummary.usd,
   };
 
   _logFeesRewardsTxData(txData, tokenA, tokenB);

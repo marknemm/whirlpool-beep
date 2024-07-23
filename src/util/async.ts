@@ -1,4 +1,5 @@
-import { ExpBackoffOpts } from '@/interfaces/async';
+import type { ExpBackoffOpts } from '@/interfaces/async';
+import { debug, warn } from '@/util/log';
 
 /**
  * Executes a given async {@link fn} with exponential backoff.
@@ -9,31 +10,35 @@ import { ExpBackoffOpts } from '@/interfaces/async';
  * @throws If the maximum number of retries is exceeded.
  */
 export async function expBackoff<T>(
-  fn: () => Promise<T>,
-  opts?: ExpBackoffOpts<T>
+  fn: (retry: number) => Promise<T>,
+  opts: ExpBackoffOpts<T> = {}
 ): Promise<T> {
-  opts ??= {};
-  opts.baseDelay ??= 250;
-  opts.maxDelay ??= 4000;
-  opts.maxRetries ??= 5;
-  opts.retryFilter ??= (result, err) => !!err;
+  const baseDelay = opts.baseDelay ?? 250;
+  const maxDelay = opts.maxDelay ?? 5000;
+  const maxRetries = opts.maxRetries ?? 10;
+  const retryFilter = opts.retryFilter ?? ((result, err) => !!err);
 
-  let retries = 0;
-  let delay = opts.baseDelay;
+  let retry = 0;
 
   do {
     try {
-      const result = await fn();
-      if (opts.retryFilter(result)) continue;
+      const result = await fn(retry);
+      if (retryFilter(result) && retry < maxRetries) continue;
       return result;
     } catch (err) {
-      if (!opts.retryFilter(undefined, err) || retries++ >= opts.maxRetries) {
+      if (!retryFilter(undefined, err) || retry >= maxRetries) {
         throw err;
       }
-
-      await timeout(delay);
-      delay = Math.min(delay * 2, opts.maxDelay);
+      warn('Error triggering retry:', (err as Error).message ?? err);
     }
+
+    const delay = baseDelay * (2 ** retry);
+
+    debug(`Retrying after ${delay} ms...`);
+    await timeout(Math.min(delay, maxDelay));
+    debug(`Retrying ( retry: ${retry + 1} )...`);
+
+    retry++;
   } while (true); // eslint-disable-line no-constant-condition
 }
 

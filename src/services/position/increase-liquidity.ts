@@ -2,11 +2,12 @@ import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
 import LiquidityTxDAO from '@/data/liquidity-tx-dao';
 import type { LiquidityTxSummary, LiquidityUnit } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
+import env from '@/util/env';
 import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
 import { getTokenPrice } from '@/util/token';
-import { verifyTransaction } from '@/util/transaction';
+import { executeTransaction } from '@/util/transaction';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
@@ -83,8 +84,7 @@ export async function increaseLiquidity(
 
   // Execute and verify the transaction
   info('Executing increase liquidity transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
+  const signature = await executeTransaction(tx);
 
   // Get Liquidity tx summary and insert into DB
   const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
@@ -193,7 +193,7 @@ async function _genQuoteViaLiquidity(
     tickLowerIndex,
     tickUpperIndex,
     // Acceptable slippage
-    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
+    slippageTolerance: Percentage.fromFraction(env.SLIPPAGE_DEFAULT, 100),
     // Token ext
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
       whirlpoolClient().getFetcher(),
@@ -233,7 +233,7 @@ async function _genQuoteViaInputToken(
     inputTokenMint: new PublicKey(inputToken.mint.publicKey),
     inputTokenAmount: toBN(amount, inputToken.mint.decimals),
     // Acceptable slippage
-    slippageTolerance: Percentage.fromFraction(1, 100), // 1%
+    slippageTolerance: Percentage.fromFraction(env.SLIPPAGE_DEFAULT, 100),
     // Token ext
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(
       whirlpoolClient().getFetcher(),

@@ -12,7 +12,7 @@ import prompts from 'prompts';
 export async function promptCliScript(): Promise<{ script: string, commandsDir: string }> {
   const cliScripts = (await glob(`${appRootPath}/src/cli/*.ts`, { withFileTypes: false }))
     .map((path) => path.split('/').pop()!.replace('.ts', ''))
-    .filter((script) => env.NODE_ENV === 'development' || script !== 'airdrop');
+    .sort();
 
   const { script } = await prompts({
     type: 'select',
@@ -38,7 +38,9 @@ export async function promptCliScript(): Promise<{ script: string, commandsDir: 
  */
 export async function promptCliCommand(script: string): Promise<string> {
   const cliCommands = (await glob(`${appRootPath}/src/cli/${script}-cmds/*.ts`, { withFileTypes: false }))
-    .map((path) => path.split('/').pop()!.replace('.ts', ''));
+    .map((path) => path.split('/').pop()!.replace('.ts', ''))
+    .filter((cmd) => env.NODE_ENV === 'development' || cmd !== 'airdrop')
+    .sort();
 
   const { command } = await prompts({
     type: 'select',

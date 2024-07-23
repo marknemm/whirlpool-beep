@@ -24,6 +24,7 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface FeeRewardTx {
   createdAt: Generated<Timestamp>;
+  fee: Int8;
   id: Generated<number>;
   position: number;
   signature: string;
@@ -34,6 +35,7 @@ export interface FeeRewardTx {
 
 export interface LiquidityTx {
   createdAt: Generated<Timestamp>;
+  fee: Int8;
   id: Generated<number>;
   position: number;
   quote: Json | null;
@@ -45,13 +47,14 @@ export interface LiquidityTx {
 
 export interface Position {
   address: string;
+  closeTx: string | null;
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
+  openTx: string;
   priceLower: Int8;
   priceMargin: number;
   priceOrigin: Int8;
   priceUpper: Int8;
-  status: Generated<string>;
   tickLowerIndex: number;
   tickUpperIndex: number;
   whirlpool: number;

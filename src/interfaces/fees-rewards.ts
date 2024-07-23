@@ -9,6 +9,11 @@ export interface FeesRewardsTxSummary {
   // TODO: Add rewards field(s).
 
   /**
+   * The fee paid for the transaction in lamports.
+   */
+  fee: number;
+
+  /**
    * The {@link Position} that the fees and rewards are associated with.
    */
   position: Position;

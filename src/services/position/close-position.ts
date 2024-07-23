@@ -5,7 +5,7 @@ import { decreaseLiquidity } from '@/services/position/decrease-liquidity';
 import { getPositions } from '@/services/position/get-position';
 import { error, info } from '@/util/log';
 import rpc from '@/util/rpc';
-import { verifyTransaction } from '@/util/transaction';
+import { executeTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
@@ -54,9 +54,8 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
   const tx = await genClosePositionTx(bundledPosition);
 
   info('Executing close position transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
-  await PositionDAO.updateStatus(bundledPosition.position, 'CLOSED', { catchErrors: true });
+  const signature = await executeTransaction(tx);
+  await PositionDAO.updateClosed(bundledPosition.position, signature, { catchErrors: true });
 
   info('Position closed:', bundledPosition.position.getAddress());
 }

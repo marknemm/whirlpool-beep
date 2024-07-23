@@ -1,12 +1,13 @@
-import { CliArgs } from '@/interfaces/cli';
+import type { CliArgs } from '@/interfaces/cli';
 import { prompt } from '@/util/cli';
 import { decodeBase58, encodeBase58 } from '@/util/encode';
-import { error, info } from '@/util/log';
+import { info } from '@/util/log';
 import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';
-import yargs from 'yargs';
+import { type Argv } from 'yargs';
 
 const cli = {
+  command: 'create-wallet-json',
   description: 'Creates a wallet JSON file containing private key byte array.',
   options: {
     'out': {
@@ -21,10 +22,7 @@ const cli = {
       type: 'string' as const,
     },
   },
-  builder: () =>
-    yargs(process.argv.slice(2))
-      .usage('Usage: $0 [options]')
-      .options(cli.options),
+  builder: (yargs: Argv) => yargs.options(cli.options),
   handler,
 };
 
@@ -33,9 +31,7 @@ const cli = {
  *
  * @param argv The CLI arguments passed to the command.
  */
-export async function handler(argv?: CliArgs<typeof cli.options>) {
-  argv ??= await cli.builder().parse();
-
+export async function handler(argv: CliArgs<typeof cli.options>) {
   // get private key as raw bytes
   const privateKey = argv.privateKey ?? await prompt('privateKey(base58):');
   const privateKeyBytes = decodeBase58(privateKey.trim());
@@ -50,15 +46,6 @@ export async function handler(argv?: CliArgs<typeof cli.options>) {
   if (privateKey === privateKeyLoaded) {
     info(`${outPathname} created successfully!`);
   }
-}
-
-if (process.env.NO_EXEC_CLI !== 'true') {
-  handler()
-    .then(() => process.exit(0))
-    .catch((err) => {
-      error(err);
-      process.exit(1);
-    });
 }
 
 export default cli;

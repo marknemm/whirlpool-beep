@@ -14,7 +14,6 @@ export default function rpc(): Connection {
     _rpc = new Connection(env.RPC_ENDPOINT);
 
     info('-- Initialized RPC Connection --');
-    info('RPC Endpoint:', _rpc.rpcEndpoint);
   }
 
   return _rpc;

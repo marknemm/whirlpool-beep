@@ -17,7 +17,7 @@ export interface ExpBackoffOpts<T = unknown> {
    * The maximum delay in milliseconds.
    * If the delay exceeds this value, it will not increase further.
    *
-   * @default 4000
+   * @default 5000
    */
   maxDelay?: number;
 
@@ -25,7 +25,7 @@ export interface ExpBackoffOpts<T = unknown> {
    * The maximum number of retries.
    * If the number of retries exceeds this value, the function will stop retrying.
    *
-   * @default 5
+   * @default 10
    */
   maxRetries?: number;
 

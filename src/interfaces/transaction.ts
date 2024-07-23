@@ -1,32 +1,23 @@
-import { BuildOptions } from '@orca-so/common-sdk';
+import type { BuildOptions } from '@orca-so/common-sdk';
 import type { Commitment, SendOptions } from '@solana/web3.js';
 import type BN from 'bn.js';
 
-/**
- * Options for building a transaction.
- */
-export type TransactionBuildOptions = Partial<BuildOptions> & {
+export interface ComputeBudget {
 
   /**
-   * The priority to use for the transaction.
-   *
-   * @default 'medium'
+   * The limit of the compute budget measured in CU (compute units).
    */
-  priority?: keyof PriorityFeeEstimate;
-
-}
-
-/**
- * Options for sending a transaction.
- */
-export type TransactionSendOptions = Partial<SendOptions> & {
+  computeBudgetLimit: number | undefined;
 
   /**
-   * Wait for the sent transaction to be confirmed up to this level.
-   *
-   * @default 'finalized'
+   * The priority fee to pay for the transaction.
    */
-  commitment?: Commitment;
+  priorityFeeLamports: number;
+
+  /**
+   * The type of compute budget to use.
+   */
+  type: 'fixed';
 
 }
 
@@ -87,9 +78,47 @@ export interface PriorityFeeEstimate {
 }
 
 /**
+ * Options for building a transaction.
+ */
+export type TransactionBuildOptions = Partial<BuildOptions> & {
+
+  /**
+   * The priority to use for the transaction.
+   *
+   * @default env.PRIORITY_LEVEL_DEFAULT
+   */
+  priority?: TransactionPriority;
+
+}
+
+/**
+ * The priority of a transaction, which dictates the priority fee to use.
+ */
+export type TransactionPriority = keyof PriorityFeeEstimate;
+
+/**
+ * Options for sending a transaction.
+ */
+export type TransactionSendOptions = Partial<SendOptions> & {
+
+  /**
+   * Wait for the sent transaction to be confirmed up to this level.
+   *
+   * @default 'finalized'
+   */
+  commitment?: Commitment;
+
+}
+
+/**
  * Summary of a generic transaction.
  */
 export interface TransactionSummary {
+
+  /**
+   * The fee paid for the transaction in lamports.
+   */
+  fee: number;
 
   /**
    * The signature of the transaction.

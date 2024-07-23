@@ -23,15 +23,16 @@ export async function genLiquidityTxSummary(
 ): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
-  const txDelta = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
+  const txSummary = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
 
   const liquidityDelta: LiquidityTxSummary = {
+    fee: txSummary.fee,
     position,
     quote,
     signature,
-    tokenAmountA: txDelta.tokens.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
-    tokenAmountB: txDelta.tokens.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
-    usd: txDelta.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
+    tokenAmountA: txSummary.tokens.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
+    tokenAmountB: txSummary.tokens.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
+    usd: txSummary.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
   _logLiquidityTxSummary(liquidityDelta, tokenA, tokenB);
