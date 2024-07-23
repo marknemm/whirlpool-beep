@@ -3,6 +3,7 @@ import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/co
 import type { CliArgs } from '@/interfaces/cli';
 import { collectAllFeesRewards, collectFeesRewards } from '@/services/position/collect-fees-rewards';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
+import { error } from '@/util/log';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -30,18 +31,23 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  if (argv.position) {
-    const { position } = await getPosition(argv.position);
-    return await collectFeesRewards(position);
-  }
+  try {
+    if (argv.position) {
+      const { position } = await getPosition(argv.position);
+      return await collectFeesRewards(position);
+    }
 
-  if (argv.bundleIndex) {
-    const { position } = await getPositionAtIdx(argv.bundleIndex);
-    return await collectFeesRewards(position);
-  }
+    if (argv.bundleIndex) {
+      const { position } = await getPositionAtIdx(argv.bundleIndex);
+      return await collectFeesRewards(position);
+    }
 
-  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
-  return await collectAllFeesRewards(whirlpoolAddress);
+    const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
+    return await collectAllFeesRewards(whirlpoolAddress);
+  } catch (err) {
+    error(err);
+    process.exit(1);
+  }
 }
 
 export default cli;

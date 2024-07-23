@@ -4,6 +4,7 @@ import type { CliArgs } from '@/interfaces/cli';
 import type { RebalanceAllPositionsOptions } from '@/interfaces/rebalance';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
 import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@/services/position/rebalance-position';
+import { error } from '@/util/log';
 import { Percentage } from '@orca-so/common-sdk';
 import { type Argv } from 'yargs';
 
@@ -45,23 +46,28 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const rebalanceOptions: RebalanceAllPositionsOptions = {
-    whirlpoolAddress: await getWhirlpoolAddressFromCliArgs(argv),
-    liquidity: argv.liquidity,
-    liquidityUnit: argv.liquidityUnit,
-    filter: genPriceRangeRebalanceFilter(
-      Percentage.fromFraction(argv.priceRangeMargin, 100)
-    )
-  };
+  try {
+    const rebalanceOptions: RebalanceAllPositionsOptions = {
+      whirlpoolAddress: await getWhirlpoolAddressFromCliArgs(argv),
+      liquidity: argv.liquidity,
+      liquidityUnit: argv.liquidityUnit,
+      filter: genPriceRangeRebalanceFilter(
+        Percentage.fromFraction(argv.priceRangeMargin, 100)
+      )
+    };
 
-  if (argv.bundleIndex || argv.position) {
-    const bundledPosition = argv.position
-      ? await getPosition(argv.position)
-      : await getPositionAtIdx(argv.bundleIndex!);
+    if (argv.bundleIndex || argv.position) {
+      const bundledPosition = argv.position
+        ? await getPosition(argv.position)
+        : await getPositionAtIdx(argv.bundleIndex!);
 
-    await rebalancePosition(bundledPosition, rebalanceOptions);
-  } else {
-    await rebalanceAllPositions(rebalanceOptions);
+      await rebalancePosition(bundledPosition, rebalanceOptions);
+    } else {
+      await rebalanceAllPositions(rebalanceOptions);
+    }
+  } catch (err) {
+    error(err);
+    process.exit(1);
   }
 }
 

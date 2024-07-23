@@ -1,7 +1,7 @@
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
 import { getPositions } from '@/services/position/get-position';
-import { info } from '@/util/log';
+import { error, info } from '@/util/log';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -21,14 +21,19 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
-  const bundledPositions = await getPositions({ whirlpoolAddress });
+  try {
+    const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
+    const bundledPositions = await getPositions({ whirlpoolAddress });
 
-  info('Positions:', bundledPositions.map((pos) => pos.position.getAddress().toBase58()));
+    info('Positions:', bundledPositions.map((pos) => pos.position.getAddress().toBase58()));
 
-  whirlpoolAddress
-    ? info(`Retrieved ${bundledPositions.length} owned positions under whirlpool:`, whirlpoolAddress.toBase58())
-    : info(`Retrieved ${bundledPositions.length} owned positions`);
+    whirlpoolAddress
+      ? info(`Retrieved ${bundledPositions.length} owned positions under whirlpool:`, whirlpoolAddress.toBase58())
+      : info(`Retrieved ${bundledPositions.length} owned positions`);
+  } catch (err) {
+    error(err);
+    process.exit(1);
+  }
 }
 
 export default cli;

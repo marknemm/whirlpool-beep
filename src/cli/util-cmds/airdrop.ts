@@ -1,6 +1,6 @@
 import type { CliArgs } from '@/interfaces/cli';
 import env from '@/util/env';
-import { info } from '@/util/log';
+import { error, info } from '@/util/log';
 import { toLamports } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
 import { verifyTransaction } from '@/util/transaction';
@@ -28,17 +28,22 @@ const cli = {
  * @param argv The CLI arguments passed to the command.
  */
 async function handler(argv: CliArgs<typeof cli.options>) {
-  if (env.NODE_ENV !== 'development') {
-    throw new Error('Airdrop is only available in development environment');
+  try {
+    if (env.NODE_ENV !== 'development') {
+      throw new Error('Airdrop is only available in development environment');
+    }
+
+    info(`Airdropping ${argv.amount} SOL to wallet:`, wallet().publicKey.toBase58());
+
+    // Send the transaction
+    const signature = await rpc().requestAirdrop(wallet().publicKey, toLamports(argv.amount));
+    verifyTransaction(signature);
+
+    info('Airdrop complete - wallet balance:', await wallet().getBalance());
+  } catch (err) {
+    error(err);
+    process.exit(1);
   }
-
-  info(`Airdropping ${argv.amount} SOL to wallet:`, wallet().publicKey.toBase58());
-
-  // Send the transaction
-  const signature = await rpc().requestAirdrop(wallet().publicKey, toLamports(argv.amount));
-  verifyTransaction(signature);
-
-  info('Airdrop complete - wallet balance:', await wallet().getBalance());
 }
 
 export default cli;

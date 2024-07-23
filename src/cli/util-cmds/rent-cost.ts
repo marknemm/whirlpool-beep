@@ -1,5 +1,5 @@
 import type { CliArgs } from '@/interfaces/cli';
-import { info } from '@/util/log';
+import { error, info } from '@/util/log';
 import { toSol } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
 import { type Argv } from 'yargs';
@@ -25,9 +25,14 @@ const cli = {
  * @param argv The CLI arguments passed to the command.
  */
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const lamports = await rpc().getMinimumBalanceForRentExemption(argv!.size!);
+  try {
+    const lamports = await rpc().getMinimumBalanceForRentExemption(argv!.size!);
 
-  info(`Rent exemption amount for Account ( size: ${argv!.size} ): ${toSol(lamports)} SOL`);
+    info(`Rent exemption amount for Account ( size: ${argv!.size} ): ${toSol(lamports)} SOL`);
+  } catch (err) {
+    error(err);
+    process.exit(1);
+  }
 }
 
 export default cli;

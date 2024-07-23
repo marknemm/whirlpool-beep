@@ -3,6 +3,7 @@ import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/co
 import type { CliArgs } from '@/interfaces/cli';
 import { closeAllPositions, closePosition } from '@/services/position/close-position';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
+import { error } from '@/util/log';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -37,20 +38,25 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
+  try {
+    const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
 
-  if (whirlpoolAddress) {
-    await closeAllPositions(whirlpoolAddress);
-  }
+    if (whirlpoolAddress) {
+      await closeAllPositions(whirlpoolAddress);
+    }
 
-  if (argv.position) {
-    const bundledPosition = await getPosition(argv.position);
-    return await closePosition(bundledPosition);
-  }
+    if (argv.position) {
+      const bundledPosition = await getPosition(argv.position);
+      return await closePosition(bundledPosition);
+    }
 
-  if (argv.bundleIndex) {
-    const bundledPosition = await getPositionAtIdx(argv.bundleIndex);
-    return await closePosition(bundledPosition);
+    if (argv.bundleIndex) {
+      const bundledPosition = await getPositionAtIdx(argv.bundleIndex);
+      return await closePosition(bundledPosition);
+    }
+  } catch (err) {
+    error(err);
+    process.exit(1);
   }
 }
 

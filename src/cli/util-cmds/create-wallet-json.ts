@@ -1,7 +1,7 @@
 import type { CliArgs } from '@/interfaces/cli';
 import { prompt } from '@/util/cli';
 import { decodeBase58, encodeBase58 } from '@/util/encode';
-import { info } from '@/util/log';
+import { error, info } from '@/util/log';
 import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { type Argv } from 'yargs';
@@ -32,19 +32,24 @@ const cli = {
  * @param argv The CLI arguments passed to the command.
  */
 export async function handler(argv: CliArgs<typeof cli.options>) {
-  // get private key as raw bytes
-  const privateKey = argv.privateKey ?? await prompt('privateKey(base58):');
-  const privateKeyBytes = decodeBase58(privateKey.trim());
+  try {
+    // get private key as raw bytes
+    const privateKey = argv.privateKey ?? await prompt('privateKey(base58):');
+    const privateKeyBytes = decodeBase58(privateKey.trim());
 
-  // write file
-  const outPathname = `${appRootPath}/${argv.out}`;
-  await writeFile(outPathname, `[${privateKeyBytes.toString()}]`);
+    // write file
+    const outPathname = `${appRootPath}/${argv.out}`;
+    await writeFile(outPathname, `[${privateKeyBytes.toString()}]`);
 
-  // verify file
-  const privateKeyBytesLoaded = await readFile(outPathname, { encoding: 'utf-8' });
-  const privateKeyLoaded = encodeBase58(privateKeyBytesLoaded);
-  if (privateKey === privateKeyLoaded) {
-    info(`${outPathname} created successfully!`);
+    // verify file
+    const privateKeyBytesLoaded = await readFile(outPathname, { encoding: 'utf-8' });
+    const privateKeyLoaded = encodeBase58(privateKeyBytesLoaded);
+    if (privateKey === privateKeyLoaded) {
+      info(`${outPathname} created successfully!`);
+    }
+  } catch (err) {
+    error(err);
+    process.exit(1);
   }
 }
 

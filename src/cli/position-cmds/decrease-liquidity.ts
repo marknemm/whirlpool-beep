@@ -3,6 +3,7 @@ import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/co
 import type { CliArgs } from '@/interfaces/cli';
 import { decreaseAllLiquidity, decreaseLiquidity } from '@/services/position/decrease-liquidity';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
+import { error } from '@/util/log';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -60,22 +61,27 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
-  const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
+  try {
+    const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
 
-  if (whirlpoolAddress) {
-    return await decreaseAllLiquidity(whirlpoolAddress, argv.liquidity!);
-  }
+    if (whirlpoolAddress) {
+      return await decreaseAllLiquidity(whirlpoolAddress, argv.liquidity!);
+    }
 
-  if (argv.position) {
-    const { position } = await getPosition(argv.position);
-    const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
-    return await decreaseLiquidity(position, liquidity!);
-  }
+    if (argv.position) {
+      const { position } = await getPosition(argv.position);
+      const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
+      return await decreaseLiquidity(position, liquidity!);
+    }
 
-  if (argv.bundleIndex) {
-    const { position } = await getPositionAtIdx(argv.bundleIndex);
-    const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
-    return await decreaseLiquidity(position, liquidity!);
+    if (argv.bundleIndex) {
+      const { position } = await getPositionAtIdx(argv.bundleIndex);
+      const liquidity = argv.zero ? position.getData().liquidity : argv.liquidity;
+      return await decreaseLiquidity(position, liquidity!);
+    }
+  } catch (err) {
+    error(err);
+    process.exit(1);
   }
 }
 
