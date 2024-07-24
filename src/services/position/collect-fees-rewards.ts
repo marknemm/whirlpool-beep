@@ -1,15 +1,16 @@
 import FeeRewardTxDAO from '@/data/fee-reward-tx-dao';
 import type { FeesRewardsTxSummary } from '@/interfaces/fees-rewards';
 import { getPositions } from '@/services/position/get-position';
-import { error, info } from '@/util/log';
+import { debug, error, info } from '@/util/log';
 import { toStr } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
+import { getToken } from '@/util/token';
 import { executeTransaction, getTransactionSummary } from '@/util/transaction';
 import wallet from '@/util/wallet';
-import { getWhirlpoolTokenPair } from '@/util/whirlpool';
+import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { type Address, TransactionBuilder } from '@orca-so/common-sdk';
-import { type Position } from '@orca-so/whirlpools-sdk';
+import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
+import { collectFeesQuote, collectRewardsQuote, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
 import { green } from 'colors';
 
@@ -51,7 +52,7 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
 export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary> {
   info('\n-- Collect Fees and Rewards --');
 
-  const tx = await genCollectFeesRewardsTx(position);
+  const { tx } = await genCollectFeesRewardsTx(position);
 
   info('Executing collect fees and rewards transaction...');
   const signature = await executeTransaction(tx);
@@ -68,10 +69,15 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
  * Creates a transaction to collect fees and rewards for a given {@link position}.
  *
  * @param position The {@link Position} to collect fees and rewards for.
- * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ * @returns A {@link Promise} that resolves to an object containing the
+ * {@link CollectFeesQuote}, {@link CollectRewardsQuote}, and {@link TransactionBuilder}.
  */
-export async function genCollectFeesRewardsTx(position: Position): Promise<TransactionBuilder> {
+export async function genCollectFeesRewardsTx(
+  position: Position
+): Promise<{ feesQuote: CollectFeesQuote, rewardsQuote: CollectRewardsQuote, tx: TransactionBuilder }> {
   info('Creating collect fees and rewards transaction for position:', position.getAddress());
+
+  const { feesQuote, rewardsQuote } = await _genCollectFeesRewardsQuote(position);
 
   const collectFeesTx = await position.collectFees(true);
   const collectRewardsTxs = await position.collectRewards();
@@ -80,7 +86,83 @@ export async function genCollectFeesRewardsTx(position: Position): Promise<Trans
   tx.addInstruction(collectFeesTx.compressIx(true));
   collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
 
-  return tx;
+  return { tx, feesQuote, rewardsQuote };
+}
+
+/**
+ * Generates the {@link CollectFeesQuote} and {@link CollectRewardsQuote} for a given {@link position}.
+ *
+ * @param position The {@link Position} to generate the {@link CollectFeesQuote} and {@link CollectRewardsQuote} for.
+ * @returns A {@link Promise} that resolves to an object containing the {@link CollectFeesQuote} and {@link CollectRewardsQuote}.
+ */
+async function _genCollectFeesRewardsQuote(
+  position: Position
+): Promise<{ feesQuote: CollectFeesQuote, rewardsQuote: CollectRewardsQuote }> {
+  const { tickLowerIndex, tickUpperIndex, whirlpool: whirlpoolAddress } = position.getData();
+  const { tickSpacing } = position.getWhirlpoolData();
+  const accountFetcher = whirlpoolClient().getFetcher();
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+
+  const tickArrayLowerAddress = PDAUtil.getTickArrayFromTickIndex(
+    tickLowerIndex,
+    tickSpacing,
+    whirlpoolAddress,
+    ORCA_WHIRLPOOL_PROGRAM_ID
+  ).publicKey;
+
+  const tickArrayUpperAddress = PDAUtil.getTickArrayFromTickIndex(
+    tickUpperIndex,
+    tickSpacing,
+    whirlpoolAddress,
+    ORCA_WHIRLPOOL_PROGRAM_ID
+  ).publicKey;
+
+  const tickArrayLower = await accountFetcher.getTickArray(tickArrayLowerAddress);
+  const tickArrayUpper = await accountFetcher.getTickArray(tickArrayUpperAddress);
+  if (!tickArrayLower || !tickArrayUpper) {
+    throw new Error('TickArray not found');
+  }
+
+  const tickLower = TickArrayUtil.getTickFromArray(tickArrayLower, tickLowerIndex, tickSpacing);
+  const tickUpper = TickArrayUtil.getTickFromArray(tickArrayUpper, tickUpperIndex, tickSpacing);
+
+  const tokenExtensionCtx = await TokenExtensionUtil.buildTokenExtensionContext(
+    accountFetcher,
+    position.getWhirlpoolData()
+  );
+
+  const feesQuote = await collectFeesQuote({
+    whirlpool: position.getWhirlpoolData(),
+    position: position.getData(),
+    tickLower,
+    tickUpper,
+    tokenExtensionCtx,
+  });
+
+  debug(`Collect fee ${green(tokenA.metadata.symbol)} estimate:`, toStr(feesQuote.feeOwedA, tokenA.mint.decimals));
+  debug(`Collect fee ${green(tokenB.metadata.symbol)} estimate:`, toStr(feesQuote.feeOwedB, tokenB.mint.decimals));
+
+  const rewardsQuote = await collectRewardsQuote({
+    whirlpool: position.getWhirlpoolData(),
+    position: position.getData(),
+    tickLower,
+    tickUpper,
+    tokenExtensionCtx,
+  });
+
+  for (let i = 0; i < rewardsQuote.rewardOwed.length; i++) {
+    const rewardOwed = rewardsQuote.rewardOwed[i];
+    const rewardInfo = position.getWhirlpoolData().rewardInfos[i];
+
+    if (PoolUtil.isRewardInitialized(rewardInfo)) {
+      const token = await getToken(rewardInfo.mint.toBase58());
+      if (!token) continue;
+
+      debug(`Reward ${green(token.metadata.symbol)} ( idx: ${i} ):`, toStr(rewardOwed, token.mint.decimals));
+    }
+  }
+
+  return { feesQuote, rewardsQuote };
 }
 
 /**

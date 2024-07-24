@@ -22,13 +22,13 @@ const _getPositionCliOpts = {
 const _liquidityCliOpts = {
   'liquidity': {
     alias: 'l',
-    describe: 'The amount of liquidity',
+    description: 'The amount of liquidity',
     group: 'Liquidity',
     type: 'number' as const,
   },
   'liquidity-unit': {
     alias: 'u',
-    describe: 'The unit to use for the liquidity amount',
+    description: 'The unit to use for the liquidity amount',
     defaultDescription: 'usd',
     group: 'Liquidity',
     type: 'string' as const,

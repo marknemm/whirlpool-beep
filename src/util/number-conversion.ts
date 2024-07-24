@@ -108,7 +108,10 @@ export function toSol(lamports: number | Null): number {
  * Converts a given currency `value` to a `string`.
  *
  * @param value The value to convert.
- * @param decimals The decimal precision. Defaults to `0`.
+ * @param decimals The decimal precision and the number of decimal places to `left shift` the decimal point by.
+ * Defaults to `0`.
+ * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `1.00`.
+ * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted `string`. if given a `falsey` value, `'0'` is returned.
  */
 export function toStr(value: bigint | BN | Decimal.Value | Null, decimals = 0): string {

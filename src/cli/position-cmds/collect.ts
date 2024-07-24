@@ -1,9 +1,12 @@
 import { genGetPositionCliOpts } from '@/cli/common/position-opts';
+import { genTransactionCliOpts } from '@/cli/common/transaction-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/interfaces/cli';
-import { collectAllFeesRewards, collectFeesRewards } from '@/services/position/collect-fees-rewards';
+import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsTx } from '@/services/position/collect-fees-rewards';
 import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
-import { error } from '@/util/log';
+import { error, info } from '@/util/log';
+import { genComputeBudget } from '@/util/transaction-budget';
+import { type Position } from '@orca-so/whirlpools-sdk';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -25,6 +28,7 @@ const cli = {
         description: 'The bundle index of the position to collect fees & rewards from',
       }
     }),
+    ...genTransactionCliOpts()
   },
   builder: (yargs: Argv) => yargs.options(cli.options),
   handler,
@@ -32,18 +36,28 @@ const cli = {
 
 async function handler(argv: CliArgs<typeof cli.options>) {
   try {
+    let position: Position | undefined;
+
     if (argv.position) {
-      const { position } = await getPosition(argv.position);
-      return await collectFeesRewards(position);
+      ({ position } = await getPosition(argv.position));
     }
 
     if (argv.bundleIndex) {
-      const { position } = await getPositionAtIdx(argv.bundleIndex);
-      return await collectFeesRewards(position);
+      ({ position } = await getPositionAtIdx(argv.bundleIndex));
     }
 
-    const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
-    return await collectAllFeesRewards(whirlpoolAddress);
+    if (position) {
+      if (argv.dryRun) {
+        const { tx } = await genCollectFeesRewardsTx(position);
+        const computeBudget = await genComputeBudget(tx);
+        info('Transaction budget:', computeBudget);
+      } else {
+        await collectFeesRewards(position);
+      }
+    } else {
+      const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
+      await collectAllFeesRewards(whirlpoolAddress);
+    }
   } catch (err) {
     error(err);
     process.exit(1);
