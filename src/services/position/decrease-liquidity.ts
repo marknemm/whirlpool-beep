@@ -61,6 +61,15 @@ export async function decreaseLiquidity(
 ): Promise<LiquidityTxSummary> {
   info('\n-- Decreasing liquidity --');
 
+  if (toBN(amount).isZero()) {
+    throw new Error('Cannot decrease liquidity by zero');
+  }
+
+  if (toBN(amount).gt(position.getData().liquidity)) {
+    throw new Error('Cannot decrease liquidity by more than current liquidity: '
+      + `${toStr(amount)} > ${toStr(position.getData().liquidity)}`);
+  }
+
   // Generate transaction to decrease liquidity
   const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
 

@@ -49,10 +49,17 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
  * @param position The {@link Position} to collect the fee reward for.
  * @returns A {@link Promise} that resolves to a {@link FeesRewardsTxSummary} once the transaction completes.
  */
-export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary> {
+export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary | undefined> {
   info('\n-- Collect Fees and Rewards --');
 
-  const { tx } = await genCollectFeesRewardsTx(position);
+  const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
+
+  const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
+  const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
+  if (!hasFees && !hasRewards) {
+    info('No fees or rewards to collect for position:', position.getAddress());
+    return undefined;
+  }
 
   info('Executing collect fees and rewards transaction...');
   const signature = await executeTransaction(tx);
