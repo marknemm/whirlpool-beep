@@ -1,5 +1,6 @@
 import type { TransactionBuildOptions, TransactionMetadata, TransactionSendOptions, TransactionSummary } from '@/interfaces/transaction';
 import { expBackoff } from '@/util/async';
+import env from '@/util/env';
 import { debug, error, info } from '@/util/log';
 import { toNum, toUSD } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
@@ -28,6 +29,7 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
   sendOpts: TransactionSendOptions = {},
 ): Promise<string> {
   buildOpts.computeBudgetOption ??= await genComputeBudget(tx, buildOpts);
+  sendOpts.maxRetries ??= env.RPC_MAX_RETRIES;
 
   return await expBackoff(
     async (retry: number) => {
@@ -51,7 +53,6 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
       return signature;
     },
     {
-      baseDelay: 1000,
       retryFilter: (result, err) =>
            !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash that is 'too old' and tx wasn't processed in time.
         || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found'), // Blockhash that is 'too new' and RPC node is a bit behind.

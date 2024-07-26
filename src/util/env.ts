@@ -73,6 +73,23 @@ const env = cleanEnv(process.env, {
   HELIUS_API_KEY: str({ default: '' }),
 
   /**
+   * The default liquidity to use for an operation that involves increasing liquidity in a whirlpool position.
+   *
+   * @default 0
+   */
+  INCREASE_LIQUIDITY: num({ default: 0 }),
+
+  /**
+   * The unit to use for the {@link env.INCREASE_LIQUIDITY} value.
+   *
+   * @default 'usd'
+   */
+  INCREASE_LIQUIDITY_UNIT: str({
+    choices: ['liquidity', 'tokenA', 'tokenB', 'usd'],
+    default: 'usd'
+  }),
+
+  /**
    * The log line break length.
    *
    * @default 40
@@ -147,9 +164,37 @@ const env = cleanEnv(process.env, {
   PRIORITY_FEE_MAX_LAMPORTS: num({ default: 2000000 }), // 0.002 SOL
 
   /**
+   * The default base delay used for exponential backoff.
+   *
+   * @default 250
+   */
+  RETRY_BASE_DELAY: num({ default: 250 }),
+
+  /**
+   * The default maximum delay used for exponential backoff.
+   *
+   * @default 5000
+   */
+  RETRY_MAX_DELAY: num({ default: 5000 }),
+
+  /**
+   * The default maximum number of retries used for exponential backoff.
+   *
+   * @default 10
+   */
+  RETRY_MAX_RETRIES: num({ default: 10 }),
+
+  /**
    * The RPC endpoint used to access the Solana cluster.
    */
   RPC_ENDPOINT: url(),
+
+  /**
+   * The default maximum number of retries an RPC node should attempt when sending a transaction to the leader validator.
+   *
+   * @default 3
+   */
+  RPC_MAX_RETRIES: num({ default: 3 }),
 
   /**
    * The default slippage tolerance to use when swapping tokens. A percentage [0, 100].

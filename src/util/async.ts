@@ -1,4 +1,5 @@
 import type { ExpBackoffOpts } from '@/interfaces/async';
+import env from '@/util/env';
 import { debug, warn } from '@/util/log';
 
 /**
@@ -13,9 +14,9 @@ export async function expBackoff<T>(
   fn: (retry: number) => Promise<T>,
   opts: ExpBackoffOpts<T> = {}
 ): Promise<T> {
-  const baseDelay = opts.baseDelay ?? 250;
-  const maxDelay = opts.maxDelay ?? 5000;
-  const maxRetries = opts.maxRetries ?? 10;
+  const baseDelay = opts.baseDelay ?? env.RETRY_BASE_DELAY;
+  const maxDelay = opts.maxDelay ?? env.RETRY_MAX_DELAY;
+  const maxRetries = opts.maxRetries ?? env.RETRY_MAX_RETRIES;
   const retryFilter = opts.retryFilter ?? ((result, err) => !!err);
 
   let retry = 0;

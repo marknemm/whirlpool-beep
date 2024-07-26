@@ -9,7 +9,7 @@ export interface ExpBackoffOpts<T = unknown> {
   /**
    * The base delay in milliseconds.
    *
-   * @default 250
+   * @default env.RETRY_BASE_DELAY
    */
   baseDelay?: number;
 
@@ -17,7 +17,7 @@ export interface ExpBackoffOpts<T = unknown> {
    * The maximum delay in milliseconds.
    * If the delay exceeds this value, it will not increase further.
    *
-   * @default 5000
+   * @default env.RETRY_MAX_DELAY
    */
   maxDelay?: number;
 
@@ -25,7 +25,7 @@ export interface ExpBackoffOpts<T = unknown> {
    * The maximum number of retries.
    * If the number of retries exceeds this value, the function will stop retrying.
    *
-   * @default 10
+   * @default env.RETRY_MAX_RETRIES
    */
   maxRetries?: number;
 
