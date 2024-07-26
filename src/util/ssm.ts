@@ -22,19 +22,23 @@ export async function loadSSMParams(): Promise<void> {
   console.log('Loading SSM parameters:', envParams, envSecureParams); // eslint-disable-line no-console
   const promises = envParams.concat(envSecureParams).map(async (envVarName, idx) => {
     console.log('Loading SSM parameter:', envVarName); // eslint-disable-line no-console
-    const response = await axios.get<SSMParamResponse>(awsParamsUrl, {
-      headers: {
-        'X-Aws-Parameters-Secrets-Token': process.env.AWS_SESSION_TOKEN,
-      },
-      params: {
-        name: encodeURIComponent(`/whirlpool-beep/${process.env.NODE_ENV}/${envVarName}`),
-        withDecryption: idx >= envParams.length,
-      },
-    });
+    try {
+      const response = await axios.get<SSMParamResponse>(awsParamsUrl, {
+        headers: {
+          'X-Aws-Parameters-Secrets-Token': process.env.AWS_SESSION_TOKEN,
+        },
+        params: {
+          name: encodeURIComponent(`/whirlpool-beep/${process.env.NODE_ENV}/${envVarName}`),
+          withDecryption: idx >= envParams.length,
+        },
+      });
 
-    console.log('Loaded SSM parameter:', envVarName); // eslint-disable-line no-console
-    if (response.status === 200 && response.data) {
-      process.env[envVarName] = response.data.Parameter.Value;
+      console.log('Loaded SSM parameter:', envVarName); // eslint-disable-line no-console
+      if (response.status === 200 && response.data) {
+        process.env[envVarName] = response.data.Parameter.Value;
+      }
+    } catch (err) {
+      console.warn('Failed to load SSM parameter:', envVarName); // eslint-disable-line no-console
     }
   });
 
