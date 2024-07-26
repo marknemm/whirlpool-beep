@@ -17,12 +17,13 @@ async function main() {
     ? await promptCliCommand(script)
     : '';
 
-  process.argv = [process.argv[0], script, command];
+  process.argv = [process.argv[0], script, command]; // Update argv so yargs can parse it with command
   const cli = require(`./cli/${script}.ts`).default; // eslint-disable-line @typescript-eslint/no-var-requires
   const cliBuilder = cli.builder();
-  cliBuilder.showHelp();
 
   const scriptCommand = `${script} ${command}`.trim();
+
+  cliBuilder.showHelp();
   const args = await prompt(`\nInput ${blue(scriptCommand)} arguments: `);
   const argv = await cliBuilder.parse(`${command} ${args}`);
 

@@ -13,7 +13,8 @@ const cli = {
         visit: (commandModule) => commandModule.default
       })
       .demandCommand()
-      .help(),
+      .options({ 'help': { alias: 'h', hidden: true } })
+      .version(false),
 };
 
 if (process.env.NO_EXEC_CLI !== 'true') {

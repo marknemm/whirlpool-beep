@@ -4,6 +4,8 @@ import { DecimalUtil } from '@orca-so/common-sdk';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 
+const MICRO_LAMPORTS_PER_LAMPORT = 10 ** 6;
+
 /**
  * Converts a given currency `value` to a {@link bigint}.
  *
@@ -74,13 +76,33 @@ export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0):
 }
 
 /**
- * Converts `SOL` to `lamports`.
+ * Converts a given amount of either `SOL` (default) or `Micro Lamports` to `Lamports`.
  *
- * @param sol The amount of `SOL` to convert.
- * @returns The amount of `lamports`.
+ * @param amt The amount to convert.
+ * @param unit The unit of the amount. Defaults to `SOL`.
+ * @returns The amount of `Lamports`.
  */
-export function toLamports(sol: number | Null): number {
-  return sol ? sol * LAMPORTS_PER_SOL : 0;
+export function toLamports(amt: number | Null, unit: 'SOL' | 'Micro Lamports' = 'SOL'): number {
+  if (!amt) return 0;
+
+  return unit === 'SOL'
+    ? amt * LAMPORTS_PER_SOL
+    : amt / MICRO_LAMPORTS_PER_LAMPORT;
+}
+
+/**
+ * Converts a given amount of either `SOL` (default) or `Lamports` to `Micro Lamports`.
+ *
+ * @param amt The amount to convert.
+ * @param unit The unit of the amount. Defaults to `SOL`.
+ * @returns The converted amount in `Micro Lamports`.
+ */
+export function toMicroLamports(amt: number | Null, unit: 'SOL' | 'Lamports' = 'SOL'): number {
+  if (!amt) return 0;
+
+  return unit === 'SOL'
+    ? toLamports(amt) * MICRO_LAMPORTS_PER_LAMPORT
+    : amt * MICRO_LAMPORTS_PER_LAMPORT;
 }
 
 /**
@@ -95,13 +117,18 @@ export function toNum(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
 }
 
 /**
- * Converts `lamports` to `SOL`.
+ * Converts a given amount of either `Lamports` (default) or `Micro Lamports` to `SOL`.
  *
- * @param lamports The amount of `lamports` to convert.
+ * @param amt The amount to convert.
+ * @param unit The unit of the amount. Defaults to `Lamports`.
  * @returns The amount of `SOL`.
  */
-export function toSol(lamports: number | Null): number {
-  return lamports ? lamports / LAMPORTS_PER_SOL : 0;
+export function toSol(amt: number | Null, unit: 'Lamports' | 'Micro Lamports' = 'Lamports'): number {
+  if (!amt) return 0;
+
+  return unit === 'Lamports'
+    ? amt / LAMPORTS_PER_SOL
+    : toLamports(amt, 'Micro Lamports') / LAMPORTS_PER_SOL;
 }
 
 /**

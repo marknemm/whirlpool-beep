@@ -25,7 +25,9 @@ Consists of the following executables:
 - `build:cli`: Compile all TS under [src](src) for **CLI** and output to [dist](dist).
 - `build:fn`: Compile all TS under [src](src) for **λ Functions** and package under [.serverless](.serverless).
 - `clean`: Clean standard build and package output.
-- `clean:all`: Clean standard build and package output as well as [node_modules](node_modules) dependencies.
+- `clean:all`: Clean standard build and package output, log output, and [node_modules](node_modules) dependencies.
+- `clean:deps`: Clean [node_modules](node_modules) dependencies.
+- `clean:logs`: Clean log output.
 - `dev`: Run the **CLI** in interactive mode against **devnet**.
 - `dev:cli`: Run the **CLI** in non-interactive mode against **devnet**. E.g. `npm run dev:cli util.ts`.
 - `dev:deploy`: Package & deploy **λ Functions** to cloud provider for **devnet**.

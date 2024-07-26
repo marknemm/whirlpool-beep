@@ -94,6 +94,13 @@ const env = cleanEnv(process.env, {
   LOG_DEPTH: num({ default: 3 }),
 
   /**
+   * The log file output path.
+   *
+   * @default ''
+   */
+  LOG_FILE_OUT: str({ default: '' }),
+
+  /**
    * The lowest log level to output.
    *
    * @default 'info'
@@ -126,18 +133,18 @@ const env = cleanEnv(process.env, {
   }),
 
   /**
-   * The minimum possible value to use when generating the compute budget for a transaction.
+   * The minimum total priority fee for a transaction in lamports.
    *
-   * @default 1000 lamports (0.000001 SOL)
+   * @default 10000 lamports (0.00001 SOL)
    */
-  PRIORITY_FEE_MIN: num({ default: 1000 }),   // 0.000001 SOL
+  PRIORITY_FEE_MIN_LAMPORTS: num({ default: 10000 }),   // 0.00001 SOL
 
   /**
-   * The maximum possible value to use when generating the compute budget for a transaction.
+   * The maximum total priority fee for a transaction in lamports.
    *
-   * @default 1000000 lamports (0.001 SOL)
+   * @default 2000000 lamports (0.002 SOL)
    */
-  PRIORITY_FEE_MAX: num({ default: 1000000 }), // 0.001 SOL
+  PRIORITY_FEE_MAX_LAMPORTS: num({ default: 2000000 }), // 0.002 SOL
 
   /**
    * The RPC endpoint used to access the Solana cluster.

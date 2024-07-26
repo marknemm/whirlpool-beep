@@ -46,10 +46,11 @@ export async function closeAllPositions(whirlpoolAddress: Address): Promise<void
 export async function closePosition(bundledPosition: BundledPosition): Promise<void> {
   info('\n-- Close Position --');
 
-  await collectFeesRewards(bundledPosition.position);
   if (!bundledPosition.position.getData().liquidity.isZero()) {
     await decreaseLiquidity(bundledPosition.position, bundledPosition.position.getData().liquidity);
   }
+
+  await collectFeesRewards(bundledPosition.position);
 
   const tx = await genClosePositionTx(bundledPosition);
 

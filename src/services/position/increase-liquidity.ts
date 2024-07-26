@@ -2,12 +2,15 @@ import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
 import LiquidityTxDAO from '@/data/liquidity-tx-dao';
 import type { LiquidityTxSummary, LiquidityUnit } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
+import { expBackoff } from '@/util/async';
 import env from '@/util/env';
+import { getTxProgramErrorInfo } from '@/util/error';
 import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
 import { getTokenPrice } from '@/util/token';
 import { executeTransaction } from '@/util/transaction';
+import wallet from '@/util/wallet';
 import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
@@ -70,7 +73,7 @@ export async function increaseAllLiquidity(
  * @param amount The amount of liquidity to deposit in the {@link Position}.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
  * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary} delta info.
- * @throws An {@link Error} if the deposit transaction fails to complete.
+ * @throws An {@link Error} if the transaction fails to complete.
  */
 export async function increaseLiquidity(
   position: Position,
@@ -79,18 +82,25 @@ export async function increaseLiquidity(
 ): Promise<LiquidityTxSummary> {
   info('\n-- Increasing liquidity --');
 
-  // Generate transaction to increase liquidity
-  const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
+  return expBackoff(async () => {
+    // Generate transaction to increase liquidity
+    const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
 
-  // Execute and verify the transaction
-  info('Executing increase liquidity transaction...');
-  const signature = await executeTransaction(tx);
+    // Execute and verify the transaction
+    info('Executing increase liquidity transaction...');
+    const signature = await executeTransaction(tx);
 
-  // Get Liquidity tx summary and insert into DB
-  const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
-  await LiquidityTxDAO.insert(liquidityDelta, { catchErrors: true });
+    // Get Liquidity tx summary and insert into DB
+    const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
+    await LiquidityTxDAO.insert(liquidityDelta, { catchErrors: true });
 
-  return liquidityDelta;
+    return liquidityDelta;
+  }, {
+    retryFilter: (result, err) => {
+      const errInfo = getTxProgramErrorInfo(err);
+      return ['TokenMaxExceeded'].includes(errInfo?.name ?? '');
+    }
+  });
 }
 
 /**
@@ -100,6 +110,7 @@ export async function increaseLiquidity(
  * @param amount The amount of liquidity to deposit in the {@link Position}.
  * @param unit The {@link LiquidityUnit} to use for the amount. Defaults to `usd`.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ * @throws An {@link Error} if there's an insufficient wallet balance for token A or B.
  */
 export async function genIncreaseLiquidityTx(
   position: Position,
@@ -123,6 +134,16 @@ export async function genIncreaseLiquidityTx(
 
   info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
   info(`${tokenB.metadata.symbol} max input:`, toStr(quote.tokenMaxB, tokenB.mint.decimals));
+
+  const walletBalanceA = await wallet().getBalance(tokenA.mint.publicKey);
+  if (walletBalanceA.lt(quote.tokenMaxA)) {
+    throw new Error(`Insufficient ${tokenA.metadata.symbol} balance: ${toStr(walletBalanceA, tokenA.mint.decimals)}`);
+  }
+
+  const walletBalanceB = await wallet().getBalance(tokenB.mint.publicKey);
+  if (walletBalanceB.lt(quote.tokenMaxB)) {
+    throw new Error(`Insufficient ${tokenB.metadata.symbol} balance: ${toStr(walletBalanceB, tokenB.mint.decimals)}`);
+  }
 
   const tx = await position.increaseLiquidity(quote);
   return { quote, tx };

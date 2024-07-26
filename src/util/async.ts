@@ -29,13 +29,16 @@ export async function expBackoff<T>(
       if (!retryFilter(undefined, err) || retry >= maxRetries) {
         throw err;
       }
-      warn('Error triggering retry:', (err as Error).message ?? err);
+      warn('Error triggering retry:', err);
     }
 
-    const delay = baseDelay * (2 ** retry);
+    const delay = Math.min(
+      baseDelay * (2 ** retry),
+      maxDelay
+    );
 
     debug(`Retrying after ${delay} ms...`);
-    await timeout(Math.min(delay, maxDelay));
+    await timeout(delay);
     debug(`Retrying ( retry: ${retry + 1} )...`);
 
     retry++;

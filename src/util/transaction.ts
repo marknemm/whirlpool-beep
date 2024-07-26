@@ -7,7 +7,7 @@ import { getToken, getTokenPrice } from '@/util/token';
 import { genComputeBudget } from '@/util/transaction-budget';
 import wallet from '@/util/wallet';
 import { AddressUtil, TransactionBuilder, type Address } from '@orca-so/common-sdk';
-import { type Commitment, type TokenBalance, type VersionedTransactionResponse } from '@solana/web3.js';
+import { SendTransactionError, type Commitment, type TokenBalance, type VersionedTransactionResponse } from '@solana/web3.js';
 import BN from 'bn.js';
 import { green } from 'colors';
 
@@ -44,7 +44,8 @@ export async function executeTransaction(
     },
     {
       baseDelay: 1000,
-      retryFilter: (result, err) => !!(err as Error)?.stack?.includes('TransactionExpiredBlockheightExceededError'),
+      retryFilter: (result, err) =>
+        !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError'),
     }
   );
 }

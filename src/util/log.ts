@@ -2,8 +2,10 @@ import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
 import env from '@/util/env';
 import { PublicKey } from '@solana/web3.js';
 import { red, yellow } from 'colors';
+import { join } from 'node:path';
 import { inspect, type InspectOptions } from 'node:util';
-import { createLogger, format, transports, type Logger } from 'winston'; // eslint-disable-line no-restricted-imports
+import { createLogger, format, transports, type Logger, type transport } from 'winston'; // eslint-disable-line no-restricted-imports
+import { path as appRootPath } from 'app-root-path';
 
 const _inspectOpts: InspectOptions = {
   breakLength: env.LOG_BREAK_LEN,
@@ -29,7 +31,7 @@ const logger = createLogger({
       timestamp = env.LOG_TIMESTAMP ? `[${timestamp}] ` : '';
 
       // Add space to align messages after log levels
-      level = `[${level}] ${level.match(/info|warn/)?.length ? ' ' : ''}`;
+      level = `[${level}] ${/info|warn/.test(level) ? ' ' : ''}`;
 
       // Generate formatted and colored base log message
       message = _formatMessage(message);
@@ -44,19 +46,32 @@ const logger = createLogger({
       // Generate formatted and colored stack trace
       stack = stack?.replace(/^Error: /, '');
       if (stack && env.LOG_COLOR) {
-        stack = red(stack);
+        stack = /warn/.test(level)
+          ? yellow(stack)
+          : red(stack);
       }
 
       // Append parts of log message to output.
-      const logStr = `${newlines}${timestamp}${level}${stack ? `${stack}\n` : message}`;
+      const logStr = `${newlines}${timestamp}${level}${message}${stack ? `\n\n${stack}\n` : ''}`;
 
       // IMPORTANT - Filter out all secret values.
       return logStr.replaceAll(SECRETS_REGEX, '[SECRET]');
     }),
   ),
   transports: [
-    new transports.Console(),
-  ],
+    new transports.Console() as transport,
+  ].concat(
+    env.LOG_FILE_OUT
+      ? [
+        new transports.File({
+          dirname: env.LOG_FILE_OUT.charAt(0) !== '/'
+            ? join(appRootPath, env.LOG_FILE_OUT)
+            : env.LOG_FILE_OUT,
+          filename: `${new Date().toISOString()}.log.ansi`,
+        })
+      ]
+      : []
+  ),
 });
 
 /**
@@ -82,6 +97,7 @@ function _formatMessage(message: object | string): string {
  * @returns The formatted messages as a single `string`.
  */
 function _formatRestMessages(messages: (object | string)[]): string {
+  messages = messages?.filter((message) => !(message instanceof Error));
   if (!messages?.length) return '';
 
   // Treat only rest message as a data value that will receive syntax highlighting according to its type.

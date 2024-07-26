@@ -10,7 +10,7 @@ export interface ComputeBudget {
   computeBudgetLimit: number | undefined;
 
   /**
-   * The priority fee to pay for the transaction.
+   * The total priority fee to pay for the transaction in lamports.
    */
   priorityFeeLamports: number;
 
@@ -46,32 +46,32 @@ export interface PriorityFeeEstimateResponse {
 export interface PriorityFeeEstimate {
 
   /**
-   * Minimum urgency priority fee.
+   * Minimum urgency priority fee in micro lamports per compute unit (CU).
    */
   min: number;
 
   /**
-   * Low urgency priority fee.
+   * Low urgency priority fee in micro lamports per compute unit (CU).
    */
   low: number;
 
   /**
-   * Medium urgency priority fee.
+   * Medium urgency priority fee in micro lamports per compute unit (CU).
    */
   medium: number;
 
   /**
-   * High urgency priority fee.
+   * High urgency priority fee in micro lamports per compute unit (CU).
    */
   high: number;
 
   /**
-   * Very high urgency priority fee.
+   * Very high urgency priority fee in micro lamports per compute unit (CU).
    */
   veryHigh: number;
 
   /**
-   * Maximum urgency priority fee.
+   * Maximum urgency priority fee in micro lamports per compute unit (CU).
    */
   unsafeMax: number;
 

@@ -4,6 +4,7 @@ import { decodeBase58, encodeBase58 } from '@/util/encode';
 import { error, info } from '@/util/log';
 import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -38,7 +39,7 @@ export async function handler(argv: CliArgs<typeof cli.options>) {
     const privateKeyBytes = decodeBase58(privateKey.trim());
 
     // write file
-    const outPathname = `${appRootPath}/${argv.out}`;
+    const outPathname = join(appRootPath, argv.out);
     await writeFile(outPathname, `[${privateKeyBytes.toString()}]`);
 
     // verify file

@@ -1,7 +1,9 @@
 import LiquidityTxDAO from '@/data/liquidity-tx-dao';
 import { LiquidityTxSummary } from '@/interfaces/liquidity';
 import { getPositions } from '@/services/position/get-position';
+import { expBackoff } from '@/util/async';
 import env from '@/util/env';
+import { getTxProgramErrorInfo } from '@/util/error';
 import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toStr } from '@/util/number-conversion';
@@ -10,7 +12,6 @@ import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
-import type Decimal from 'decimal.js';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -53,7 +54,7 @@ export async function decreaseAllLiquidity(
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
  * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
- * @throws An {@link Error} if the deposit transaction fails to complete.
+ * @throws An {@link Error} if the transaction fails to complete.
  */
 export async function decreaseLiquidity(
   position: Position,
@@ -61,27 +62,25 @@ export async function decreaseLiquidity(
 ): Promise<LiquidityTxSummary> {
   info('\n-- Decreasing liquidity --');
 
-  if (toBN(amount).isZero()) {
-    throw new Error('Cannot decrease liquidity by zero');
-  }
+  return expBackoff(async () => {
+    // Generate transaction to decrease liquidity
+    const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
 
-  if (toBN(amount).gt(position.getData().liquidity)) {
-    throw new Error('Cannot decrease liquidity by more than current liquidity: '
-      + `${toStr(amount)} > ${toStr(position.getData().liquidity)}`);
-  }
+    // Execute and verify the transaction
+    info('Executing decrease liquidity transaction...');
+    const signature = await executeTransaction(tx);
 
-  // Generate transaction to decrease liquidity
-  const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
+    // Get Liquidity tx summary and insert into DB
+    const txSummary = await genLiquidityTxSummary(position, signature, quote);
+    LiquidityTxDAO.insert(txSummary, { catchErrors: true });
 
-  // Execute and verify the transaction
-  info('Executing decrease liquidity transaction...');
-  const signature = await executeTransaction(tx);
-
-  // Get Liquidity tx summary and insert into DB
-  const txSummary = await genLiquidityTxSummary(position, signature, quote);
-  LiquidityTxDAO.insert(txSummary, { catchErrors: true });
-
-  return txSummary;
+    return txSummary;
+  }, {
+    retryFilter: (result, err) => {
+      const errInfo = getTxProgramErrorInfo(err);
+      return ['TokenMinSubceeded'].includes(errInfo?.name ?? '');
+    },
+  });
 }
 
 /**
@@ -90,12 +89,22 @@ export async function decreaseLiquidity(
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
  */
 export async function genDecreaseLiquidityTx(
   position: Position,
   amount: BN | number
 ): Promise<{ quote: DecreaseLiquidityQuote, tx: TransactionBuilder }> {
   info('Creating Tx to decrease liquidity by:', toStr(amount));
+
+  if (toBN(amount).isZero()) {
+    throw new Error('Cannot decrease liquidity by zero');
+  }
+
+  if (toBN(amount).gt(position.getData().liquidity)) {
+    throw new Error('Cannot decrease liquidity by more than position liquidity: '
+      + `${toStr(amount)} > ${toStr(position.getData().liquidity)}`);
+  }
 
   const quote = decreaseLiquidityQuoteByLiquidityWithParams({
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(

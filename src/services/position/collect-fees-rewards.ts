@@ -1,6 +1,8 @@
 import FeeRewardTxDAO from '@/data/fee-reward-tx-dao';
 import type { FeesRewardsTxSummary } from '@/interfaces/fees-rewards';
 import { getPositions } from '@/services/position/get-position';
+import { expBackoff } from '@/util/async';
+import { getTxProgramErrorInfo } from '@/util/error';
 import { debug, error, info } from '@/util/log';
 import { toStr } from '@/util/number-conversion';
 import rpc from '@/util/rpc';
@@ -52,24 +54,31 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
 export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary | undefined> {
   info('\n-- Collect Fees and Rewards --');
 
-  const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
+  return expBackoff(async () => {
+    const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
 
-  const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
-  const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
-  if (!hasFees && !hasRewards) {
-    info('No fees or rewards to collect for position:', position.getAddress());
-    return undefined;
-  }
+    const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
+    const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
+    if (!hasFees && !hasRewards) {
+      info('No fees or rewards to collect for position:', position.getAddress());
+      return undefined;
+    }
 
-  info('Executing collect fees and rewards transaction...');
-  const signature = await executeTransaction(tx);
-  await position.refreshData();
-  info('Collected fees and rewards for position:', position.getAddress());
+    info('Executing collect fees and rewards transaction...');
+    const signature = await executeTransaction(tx);
+    await position.refreshData();
+    info('Collected fees and rewards for position:', position.getAddress());
 
-  const txSummary = await _genFeesRewardsTxSummary(position, signature);
-  await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
+    const txSummary = await _genFeesRewardsTxSummary(position, signature);
+    await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
 
-  return txSummary;
+    return txSummary;
+  }, {
+    retryFilter: (result, err) => {
+      const errInfo = getTxProgramErrorInfo(err);
+      return ['InvalidTimestamp'].includes(errInfo?.name ?? '');
+    }
+  });
 }
 
 /**
@@ -86,8 +95,9 @@ export async function genCollectFeesRewardsTx(
 
   const { feesQuote, rewardsQuote } = await _genCollectFeesRewardsQuote(position);
 
-  const collectFeesTx = await position.collectFees(true);
-  const collectRewardsTxs = await position.collectRewards();
+  await position.refreshData();
+  const collectFeesTx = await position.collectFees(!position.getData().liquidity.isZero());
+  const collectRewardsTxs = await position.collectRewards(undefined, false);
 
   const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(collectFeesTx.compressIx(true));
