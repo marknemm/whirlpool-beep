@@ -6,8 +6,9 @@ import { getPositions } from '@/services/position/get-position';
 import { increaseLiquidity } from '@/services/position/increase-liquidity';
 import { openPosition } from '@/services/position/open-position';
 import { error, info } from '@/util/log';
+import { toStr } from '@/util/number-conversion';
 import { calcPriceMargin, toPriceRange } from '@/util/tick-range';
-import whirlpoolClient, { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 
@@ -54,14 +55,19 @@ export async function rebalancePosition(
   bundledPosition: BundledPosition,
   options: RebalancePositionOptions
 ): Promise<BundledPosition> {
-  info('\n-- Rebalance Position --');
-
   const { liquidity, liquidityUnit } = options;
   const positionOld = bundledPosition.position;
 
+  const opMetadata = {
+    whirlpool: await formatWhirlpool(bundledPosition.position.getWhirlpoolData()),
+    position: bundledPosition.position.getAddress().toBase58(),
+    liquidity: toStr(liquidity),
+    liquidityUnit: liquidityUnit ?? 'usd',
+  };
+
   // TODO: Condense into less transactions
   if (await options.filter(positionOld)) {
-    info('Rebalancing position:', positionOld.getAddress());
+    info('\n-- Rebalance Position --\n', opMetadata);
 
     await closePosition(bundledPosition);
 
@@ -77,7 +83,7 @@ export async function rebalancePosition(
     return newBundledPosition;
   }
 
-  info('Position does not require rebalancing:', positionOld.getAddress());
+  info('\n-- Rebalance Position Not Required: Skipping --\n', opMetadata);
   return bundledPosition;
 }
 
