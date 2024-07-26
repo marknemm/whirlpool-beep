@@ -8,7 +8,7 @@ import { genLiquidityTxSummary } from '@/util/liquidity';
 import { error, info } from '@/util/log';
 import { toBN, toStr } from '@/util/number-conversion';
 import { executeTransaction } from '@/util/transaction';
-import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
 import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
@@ -60,25 +60,41 @@ export async function decreaseLiquidity(
   position: Position,
   amount: BN | number
 ): Promise<LiquidityTxSummary> {
-  info('\n-- Decreasing liquidity --');
+  return expBackoff(async (retry) => {
+    info('\n-- Decreasing liquidity --\n', {
+      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+      position: position.getAddress().toBase58(),
+      amount: toStr(amount),
+      retry,
+    });
 
-  return expBackoff(async () => {
+    // Must refresh data if retrying, or may generate error due to stale data.
+    if (retry) {
+      await position.refreshData();
+    }
+
     // Generate transaction to decrease liquidity
+    const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
     const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
 
     // Execute and verify the transaction
-    info('Executing decrease liquidity transaction...');
-    const signature = await executeTransaction(tx);
+    const signature = await executeTransaction(tx, {
+      name: 'Decrease Liquidity',
+      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+      position: position.getAddress().toBase58(),
+      [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+    });
 
     // Get Liquidity tx summary and insert into DB
     const txSummary = await genLiquidityTxSummary(position, signature, quote);
-    LiquidityTxDAO.insert(txSummary, { catchErrors: true });
+    await LiquidityTxDAO.insert(txSummary, { catchErrors: true });
 
     return txSummary;
   }, {
     retryFilter: (result, err) => {
       const errInfo = getTxProgramErrorInfo(err);
-      return ['TokenMinSubceeded'].includes(errInfo?.name ?? '');
+      return ['InvalidTimestamp', 'LiquidityUnderflow', 'TokenMinSubceeded'].includes(errInfo?.name ?? '');
     },
   });
 }
@@ -95,7 +111,10 @@ export async function genDecreaseLiquidityTx(
   position: Position,
   amount: BN | number
 ): Promise<{ quote: DecreaseLiquidityQuote, tx: TransactionBuilder }> {
-  info('Creating Tx to decrease liquidity by:', toStr(amount));
+  info('Creating Tx to decrease liquidity:', {
+    position: position.getAddress().toBase58(),
+    amount: toStr(amount),
+  });
 
   if (toBN(amount).isZero()) {
     throw new Error('Cannot decrease liquidity by zero');
@@ -125,10 +144,11 @@ export async function genDecreaseLiquidityTx(
   });
 
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-  if (!tokenA || !tokenB) throw new Error('Token not found');
-
-  info(`${tokenA?.metadata.symbol} min output:`, toStr(quote.tokenMinA, tokenA?.mint.decimals));
-  info(`${tokenB?.metadata.symbol} min output:`, toStr(quote.tokenMinB, tokenB?.mint.decimals));
+  info('Generated decrease liquidity quote:', {
+    position: position.getAddress().toBase58(),
+    [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
+    [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+  });
 
   const tx = await position.decreaseLiquidity(quote);
   return { quote, tx };

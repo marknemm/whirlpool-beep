@@ -1,5 +1,5 @@
 import type { Null } from '@/interfaces/nullable';
-import type { ComputeBudget, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionBuildOptions } from '@/interfaces/transaction';
+import type { ComputeBudget, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionBuildOptions, TransactionPriority } from '@/interfaces/transaction';
 import { encodeBase58 } from '@/util/encode';
 import env from '@/util/env';
 import { debug, error } from '@/util/log';
@@ -28,7 +28,11 @@ export async function genComputeBudget(
   const computeBudgetLimit = (buildOpts.computeBudgetOption as ComputeBudget)?.computeBudgetLimit
     ?? await getComputeLimitEstimate(tx);
 
-  const priority = buildOpts.priority ?? env.PRIORITY_LEVEL_DEFAULT;
+  let priority = buildOpts.priority ?? env.PRIORITY_LEVEL_DEFAULT;
+  if (retry) { // Every 2 retries, increase the priority level - caps at 'veryHigh'
+    priority = getNextPriorityLevel(priority, Math.floor(retry / 2));
+  }
+
   const priorityFeeEstimate = await getPriorityFeeEstimate(tx);
   const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[priority], 'Micro Lamports');
 
@@ -72,6 +76,20 @@ export async function getComputeLimitEstimate(
   debug('Estimated Compute Units:', minComputeUnits);
 
   return minComputeUnits;
+}
+
+/**
+ * Gets the next priority level for a transaction. Caps at `veryHigh`.
+ *
+ * @param priority The current {@link TransactionPriority} to get the next priority level for.
+ * @param jump The number of priority levels to jump forward by. Defaults to `1`.
+ * Enter a negative number to jump backwards.
+ * @returns The next {@link TransactionPriority}.
+ */
+export function getNextPriorityLevel(priority: TransactionPriority, jump = 1): TransactionPriority {
+  const priorityLevels: TransactionPriority[] = ['min', 'low', 'medium', 'high', 'veryHigh'];
+  const priorityIndex = priorityLevels.indexOf(priority);
+  return priorityLevels[Math.max(priorityIndex + jump, priorityLevels.length - 1)];
 }
 
 /**

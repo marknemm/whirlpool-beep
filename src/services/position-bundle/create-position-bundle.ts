@@ -1,6 +1,7 @@
+import { expBackoff } from '@/util/async';
 import { debug, info } from '@/util/log';
 import rpc from '@/util/rpc';
-import { verifyTransaction } from '@/util/transaction';
+import { executeTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
 import whirlpoolClient from '@/util/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';
@@ -29,15 +30,16 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
   const { positionBundleKey, tx } = await createPositionBundleTx();
 
   // Execute and verify transaction
-  info('Executing initialize position bundle transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
-  info('Position bundle initialized with address:', positionBundleKey.toBase58());
+  await executeTransaction(tx, {
+    name: 'Initialize Position Bundle',
+    positionBundle: positionBundleKey.toBase58(),
+  });
 
   // Get and return position bundle data
-  const positionBundle = await whirlpoolClient().getFetcher().getPositionBundle(positionBundleKey);
+  const positionBundle = await expBackoff(() =>
+    whirlpoolClient().getFetcher().getPositionBundle(positionBundleKey)
+  );
   if (!positionBundle) throw new Error('Could not retrieve position bundle data after initialization');
-  debug('Position bundle:', positionBundle);
   return positionBundle;
 }
 
@@ -59,6 +61,15 @@ export async function createPositionBundleTx(): Promise<{ positionBundleKey: Pub
     wallet().publicKey
   );
 
+  debug('Tx details for create position bundle:', {
+    funder: wallet().publicKey.toBase58(),
+    owner: wallet().publicKey.toBase58(),
+    positionBundleMint: positionBundleMintKeypair.publicKey.toBase58(),
+    positionBundle: positionBundlePda.publicKey.toBase58(),
+    positionBundleMetadata: positionBundleMetadataPda.publicKey.toBase58(),
+    positionBundleTokenAccount: positionBundleTokenAccount.toBase58(),
+  });
+
   const initPositionBundleIx = WhirlpoolIx.initializePositionBundleWithMetadataIx(
     whirlpoolClient().getContext().program,
     {
@@ -71,8 +82,15 @@ export async function createPositionBundleTx(): Promise<{ positionBundleKey: Pub
     }
   );
 
-  const tx = new TransactionBuilder(rpc(), wallet())
-    .addInstruction(initPositionBundleIx);
+  const tx = new TransactionBuilder(rpc(), wallet());
+  tx.addInstruction(initPositionBundleIx);
+
+  info('Created Tx to initialize position bundle:', {
+    positionBundle: positionBundlePda.publicKey.toBase58(),
+    positionBundleMetadata: positionBundleMetadataPda.publicKey.toBase58(),
+    positionBundleMint: positionBundleMintKeypair.publicKey.toBase58(),
+    positionBundleTokenAccount: positionBundleTokenAccount.toBase58(),
+  });
 
   return { positionBundleKey: positionBundlePda.publicKey, tx };
 }

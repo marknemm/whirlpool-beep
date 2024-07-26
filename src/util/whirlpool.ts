@@ -112,8 +112,10 @@ export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Nul
 
   const whirlpoolData = toWhirlpoolData(whirlpool);
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
+  const address = (whirlpool as Whirlpool).getAddress?.().toBase58() ?? '';
 
-  return `${_getWhirlpoolAddress(whirlpool)} ( ${tokenA.metadata.symbol} <-> ${tokenB.metadata.symbol} )`.trim();
+  return (address ? `${address} -- ` : '')
+    + `${tokenA.metadata.symbol} / ${tokenB.metadata.symbol} -- spacing: ${whirlpoolData.tickSpacing}`.trim();
 }
 
 /**
@@ -124,8 +126,4 @@ export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Nul
  */
 export function toWhirlpoolData(whirlpool: Whirlpool | WhirlpoolData): WhirlpoolData {
   return (whirlpool as Whirlpool)?.getData?.() ?? whirlpool;
-}
-
-function _getWhirlpoolAddress(whirlpool: Whirlpool | WhirlpoolData): string {
-  return (whirlpool as Whirlpool).getAddress?.().toBase58() ?? '';
 }

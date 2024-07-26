@@ -37,7 +37,11 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     // Send the transaction
     const signature = await rpc().requestAirdrop(wallet().publicKey, toLamports(argv.amount));
-    verifyTransaction(signature);
+    verifyTransaction(signature, {
+      name: 'Airdrop',
+      destination: wallet().publicKey.toBase58(),
+      amount: argv.amount,
+    });
 
     info('Airdrop complete - wallet balance:', await wallet().getBalance());
   } catch (err) {

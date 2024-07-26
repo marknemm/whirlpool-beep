@@ -6,12 +6,12 @@ import { expBackoff } from '@/util/async';
 import env from '@/util/env';
 import { getTxProgramErrorInfo } from '@/util/error';
 import { genLiquidityTxSummary } from '@/util/liquidity';
-import { error, info } from '@/util/log';
+import { debug, error, info } from '@/util/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion';
 import { getTokenPrice } from '@/util/token';
 import { executeTransaction } from '@/util/transaction';
 import wallet from '@/util/wallet';
-import whirlpoolClient, { getWhirlpoolTokenPair } from '@/util/whirlpool';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { BN } from '@coral-xyz/anchor';
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
@@ -49,8 +49,8 @@ export async function increaseAllLiquidity(
   const divAmount = toDecimal(amount, decimals).div(bundledPositions.length);
 
   bundledPositions.length
-    ? info(`Increasing liquidity of ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
-    : info('No positions to increase liquidity of in whirlpool:', whirlpoolAddress);
+    ? info(`Increasing liquidity of ${bundledPositions.length} positions in pool:`, await formatWhirlpool(whirlpool))
+    : info('No positions to increase liquidity of in pool:', await formatWhirlpool(whirlpool));
 
   // Increase liquidity of each position in parallel
   const promises = bundledPositions.map(async ({ position }) => {
@@ -80,15 +80,31 @@ export async function increaseLiquidity(
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
 ): Promise<LiquidityTxSummary> {
-  info('\n-- Increasing liquidity --');
+  return expBackoff(async (retry) => {
+    info('\n-- Increasing liquidity --\n', {
+      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+      position: position.getAddress().toBase58(),
+      amount: `${toStr(amount)} ${unit}`,
+      retry,
+    });
 
-  return expBackoff(async () => {
-    // Generate transaction to increase liquidity
+    // Must refresh data if retrying, or may generate error due to stale data.
+    if (retry) {
+      await position.refreshData();
+    }
+
+    // Get token pair and generate increase liquidity transaction
+    const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
     const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
 
-    // Execute and verify the transaction
-    info('Executing increase liquidity transaction...');
-    const signature = await executeTransaction(tx);
+    // Execute Tx and get signature
+    const signature = await executeTransaction(tx, {
+      name: 'Increase Liquidity',
+      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+      position: position.getAddress().toBase58(),
+      [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+    });
 
     // Get Liquidity tx summary and insert into DB
     const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
@@ -98,7 +114,7 @@ export async function increaseLiquidity(
   }, {
     retryFilter: (result, err) => {
       const errInfo = getTxProgramErrorInfo(err);
-      return ['TokenMaxExceeded'].includes(errInfo?.name ?? '');
+      return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '');
     }
   });
 }
@@ -117,10 +133,13 @@ export async function genIncreaseLiquidityTx(
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
 ): Promise<{ quote: IncreaseLiquidityQuote, tx: TransactionBuilder }> {
-  info('Creating tx to increase liquidity in position:', position.getAddress());
+  info('Creating Tx to increase liquidity:', {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+    amount: `${toStr(amount)} ${unit}`
+  });
 
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-  if (!tokenA || !tokenB) throw new Error('Token not found');
 
   // If unit is USD, convert to token amount
   if (unit === 'usd') {
@@ -132,8 +151,12 @@ export async function genIncreaseLiquidityTx(
     ? await _genQuoteViaLiquidity(position, amount)
     : await _genQuoteViaInputToken(position, amount, unit);
 
-  info(`${tokenA.metadata.symbol} max input:`, toStr(quote.tokenMaxA, tokenA.mint.decimals));
-  info(`${tokenB.metadata.symbol} max input:`, toStr(quote.tokenMaxB, tokenB.mint.decimals));
+  info('Generated increase liquidity quote:', {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+    [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
+    [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+  });
 
   const walletBalanceA = await wallet().getBalance(tokenA.mint.publicKey);
   if (walletBalanceA.lt(quote.tokenMaxA)) {
@@ -163,7 +186,7 @@ export async function _toTokenAmount(
 ): Promise<{ amount: Decimal, unit: 'tokenA' | 'tokenB' }> {
   const [tokenA, tokenB] = tokenPair;
 
-  info(`Converting USD (${toStr(usd)}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
+  debug(`Converting USD (${toStr(usd)}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
 
   // If either token is a stablecoin, prioritize that token
   if (STABLECOIN_SYMBOL_REGEX.test(tokenA.metadata.symbol)) {
@@ -205,6 +228,8 @@ async function _genQuoteViaLiquidity(
   const { sqrtPrice, tickCurrentIndex } = position.getWhirlpoolData();
   const { tickLowerIndex, tickUpperIndex } = position.getData();
 
+  debug('Getting increase liquidity quote:', toStr(amount));
+
   return increaseLiquidityQuoteByLiquidityWithParams({
     liquidity: toBN(amount),
     // Pool state
@@ -236,7 +261,7 @@ async function _genQuoteViaInputToken(
     ? tokenA
     : tokenB;
 
-  info('Getting increase liquidity quote:', toStr(amount, inputToken.mint.decimals), inputToken.metadata.symbol);
+  debug('Getting increase liquidity quote:', toStr(amount, inputToken.mint.decimals), inputToken.metadata.symbol);
 
   const tokenMintA = new PublicKey(tokenA.mint.publicKey);
   const tokenMintB = new PublicKey(tokenB.mint.publicKey);

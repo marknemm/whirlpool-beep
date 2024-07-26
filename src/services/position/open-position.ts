@@ -24,14 +24,21 @@ export async function openPosition(
   whirlpool: Whirlpool,
   priceMargin = Percentage.fromFraction(3, 100)
 ): Promise<BundledPosition> {
-  info('\n-- Open Position --');
+  info('\n-- Open Position --\n', {
+    whirlpool: await formatWhirlpool(whirlpool),
+    priceMargin: priceMargin.toString(),
+  });
 
   const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(whirlpool, priceMargin);
 
   // Execute and verify the transaction
-  info('Executing open position transaction...');
-  const signature = await executeTransaction(tx);
-  info('Whirlpool position opened with address:', address.toBase58());
+  const signature = await executeTransaction(tx, {
+    name: 'Open Position',
+    whirlpool: await formatWhirlpool(whirlpool),
+    position: address.toBase58(),
+    bundleIndex,
+    positionBundle: positionBundle.positionBundleMint.toBase58(),
+  });
 
   // Get, store, and return the newly opened position
   const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
@@ -52,7 +59,10 @@ export async function genOpenPositionTx(
   whirlpool: Whirlpool,
   priceMargin = Percentage.fromFraction(3, 100)
 ): Promise<GenOptionPositionTxReturn> {
-  debug('Creating Tx to open position in whirlpool:', formatWhirlpool(whirlpool));
+  info('Creating Tx to open position:', {
+    whirlpool: await formatWhirlpool(whirlpool),
+    priceMargin: priceMargin.toString(),
+  });
 
   // Use Whirlpool price data to generate position tick range
   const tickRange = await _genPositionTickRange(whirlpool, priceMargin);
@@ -82,15 +92,16 @@ export async function genOpenPositionTx(
     bundleIndex
   );
 
-  debug('Create Tx details for position in whirlpool:', formatWhirlpool(whirlpool));
-  debug('funder:', wallet().publicKey.toBase58());
-  debug('positionBundle:', positionBundlePda.publicKey);
-  debug('positionBundleTokenAccount:', positionBundleTokenAccount.address);
-  debug('bundleIndex:', bundleIndex);
-  debug('bundledPosition:', bundledPositionPda.publicKey);
-  debug('whirlpool', whirlpool.getAddress());
-  debug('tickLowerIndex:', tickRange[0]);
-  debug('tickUpperIndex:', tickRange[1]);
+  debug('Tx details for open position:', {
+    funder: wallet().publicKey.toBase58(),
+    positionBundle: positionBundlePda.publicKey.toBase58(),
+    positionBundleTokenAccount: positionBundleTokenAccount.address.toBase58(),
+    bundleIndex,
+    bundledPosition: bundledPositionPda.publicKey.toBase58(),
+    whirlpool: await formatWhirlpool(whirlpool),
+    tickLowerIndex: tickRange[0],
+    tickUpperIndex: tickRange[1],
+  });
 
   // Create instruction to open position inside bundle
   const openPositionIx = await WhirlpoolIx.openBundledPositionIx(
@@ -111,6 +122,13 @@ export async function genOpenPositionTx(
   // Create a transaction to open position inside bundle
   const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(openPositionIx);
+
+  info('Created tx to open position:', {
+    whirlpool: await formatWhirlpool(whirlpool),
+    position: bundledPositionPda.publicKey.toBase58(),
+    bundleIndex,
+    positionBundle: positionBundle.positionBundleMint.toBase58(),
+  });
 
   return { address: bundledPositionPda.publicKey, bundleIndex, positionBundle, tx };
 }

@@ -2,11 +2,9 @@ import type { LiquidityTxSummary } from '@/interfaces/liquidity';
 import { info } from '@/util/log';
 import { toStr } from '@/util/number-conversion';
 import { getTransactionSummary } from '@/util/transaction';
-import { getWhirlpoolTokenPair } from '@/util/whirlpool';
-import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
+import { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool';
 import { type DecreaseLiquidityQuote, type IncreaseLiquidityQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
-import { green } from 'colors';
 
 /**
  * Generates {@link LiquidityTxSummary}.
@@ -25,7 +23,7 @@ export async function genLiquidityTxSummary(
 
   const txSummary = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
 
-  const liquidityDelta: LiquidityTxSummary = {
+  const liquidityTxSummary: LiquidityTxSummary = {
     fee: txSummary.fee,
     position,
     quote,
@@ -35,16 +33,15 @@ export async function genLiquidityTxSummary(
     usd: txSummary.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
-  _logLiquidityTxSummary(liquidityDelta, tokenA, tokenB);
-  return liquidityDelta;
-}
+  info(`${txSummary.usd > 0 ? 'Increase' : 'Decreased'} liquidity:`, {
+    whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
+    position: liquidityTxSummary.position.getAddress().toBase58(),
+    signature: liquidityTxSummary.signature,
+    [tokenA.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountA.abs(), tokenA.mint.decimals),
+    [tokenB.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountB.abs(), tokenB.mint.decimals),
+    usd: `$${Math.abs(liquidityTxSummary.usd)}`,
+    fee: toStr(liquidityTxSummary.fee),
+  });
 
-function _logLiquidityTxSummary(txSummary: LiquidityTxSummary, tokenA: DigitalAsset, tokenB: DigitalAsset): void {
-  const logVerb = txSummary.usd > 0 ? 'Deposited' : 'Withdrew';
-
-  info(`${logVerb} ${green(`'${tokenA.metadata.symbol}'`)} liquidity:`,
-    toStr(txSummary.tokenAmountA.abs(), tokenA.mint.decimals));
-
-  info(`${logVerb} ${green(`'${tokenB.metadata.symbol}'`)} liquidity:`,
-    toStr(txSummary.tokenAmountB.abs(), tokenB.mint.decimals));
+  return liquidityTxSummary;
 }

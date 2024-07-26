@@ -18,6 +18,6 @@ export async function rebalance() {
 
   await rebalanceAllPositions({
     filter: genPriceRangeRebalanceFilter(),
-    liquidity: 100,
+    liquidity: 25,
   });
 }

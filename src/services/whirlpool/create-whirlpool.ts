@@ -1,8 +1,9 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import { debug, info } from '@/util/log';
+import { expBackoff } from '@/util/async';
+import { info } from '@/util/log';
 import { getTokenPair } from '@/util/token';
-import { verifyTransaction } from '@/util/transaction';
-import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool';
+import { executeTransaction } from '@/util/transaction';
+import whirlpoolClient from '@/util/whirlpool';
 import { type Address, type TransactionBuilder } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type PublicKey } from '@solana/web3.js';
@@ -24,18 +25,25 @@ export async function createWhirlpool(
   tickSpacing: number,
   initialPrice: Decimal
 ): Promise<Whirlpool> {
-  debug('\n-- Create Whirlpool --');
+  const [tokenA, tokenB] = await getTokenPair(tokenAddrA, tokenAddrB);
+
+  info('\n-- Create Whirlpool --\n', {
+    tokenA: tokenA.metadata.symbol,
+    tokenB: tokenB.metadata.symbol,
+    tickSpacing,
+  });
 
   const { poolKey, tx } = await genCreateWhirlpoolTx(tokenAddrA, tokenAddrB, tickSpacing, initialPrice);
 
-  debug('Executing create whirlpool transaction...');
-  const signature = await tx.buildAndExecute();
-  await verifyTransaction(signature);
+  await executeTransaction(tx, {
+    name: 'Create Whirlpool',
+    whirlpool: poolKey.toBase58(),
+    tokenA: tokenA.metadata.symbol,
+    tokenB: tokenB.metadata.symbol,
+    tickSpacing,
+  });
 
-  const whirlpool = await whirlpoolClient().getPool(poolKey);
-  debug('Created whirlpool:', formatWhirlpool(whirlpool));
-
-  return whirlpool;
+  return await expBackoff(() => whirlpoolClient().getPool(poolKey));
 }
 
 /**

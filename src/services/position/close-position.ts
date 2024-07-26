@@ -54,8 +54,10 @@ export async function closePosition(bundledPosition: BundledPosition): Promise<v
 
   const tx = await genClosePositionTx(bundledPosition);
 
-  info('Executing close position transaction...');
-  const signature = await executeTransaction(tx);
+  const signature = await executeTransaction(tx, {
+    name: 'Close Position',
+    position: bundledPosition.position.getAddress().toBase58(),
+  });
   await PositionDAO.updateClosed(bundledPosition.position, signature, { catchErrors: true });
 
   info('Position closed:', bundledPosition.position.getAddress());

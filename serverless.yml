@@ -8,7 +8,7 @@ service: whirlpool-beep
 provider:
   name: aws
   runtime: nodejs20.x
-  timeout: 360 # (6 min) Maximum execution time for all functions in seconds
+  timeout: 900 # (15 min) Maximum execution time for all functions in seconds
   layers:
     # Use AWS Lambda Extension for loading secrets and parameters from AWS SSM Parameter Store when running on AWS
     - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
@@ -51,4 +51,4 @@ functions:
   rebalance:
     handler: src/functions/position.rebalance
     events:
-      - schedule: rate(10 minutes)
+      - schedule: rate(15 minutes)

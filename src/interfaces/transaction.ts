@@ -92,6 +92,23 @@ export type TransactionBuildOptions = Partial<BuildOptions> & {
 }
 
 /**
+ * Metadata for a transaction.
+ */
+export interface TransactionMetadata {
+
+  /**
+   * The description of the operation being performed.
+   */
+  description?: string;
+
+  /**
+   * The name of the operation being performed.
+   */
+  name: string;
+
+}
+
+/**
  * The priority of a transaction, which dictates the priority fee to use.
  */
 export type TransactionPriority = keyof PriorityFeeEstimate;

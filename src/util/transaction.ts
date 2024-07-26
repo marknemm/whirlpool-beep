@@ -1,4 +1,4 @@
-import type { TransactionBuildOptions, TransactionSendOptions, TransactionSummary } from '@/interfaces/transaction';
+import type { TransactionBuildOptions, TransactionMetadata, TransactionSendOptions, TransactionSummary } from '@/interfaces/transaction';
 import { expBackoff } from '@/util/async';
 import { debug, error, info } from '@/util/log';
 import { toNum, toUSD } from '@/util/number-conversion';
@@ -15,15 +15,17 @@ import { green } from 'colors';
  * Executes a given transaction.
  *
  * @param tx The transaction to execute.
+ * @param txMetadata Metadata pertaining to the transaction to execute. Used primarily for debugging / logging.
  * @param buildOpts The {@link TransactionBuildOptions} to use for building the transaction.
  * @param sendOpts The {@link TransactionSendOptions} to use for sending the transaction.
  * @returns A {@link Promise} that resolves to the signature of the executed transaction.
  * @throws An {@link Error} if the transaction execution fails.
  */
-export async function executeTransaction(
+export async function executeTransaction<TMeta extends TransactionMetadata>(
   tx: TransactionBuilder,
+  txMetadata: TMeta,
   buildOpts: TransactionBuildOptions = {},
-  sendOpts: TransactionSendOptions = {}
+  sendOpts: TransactionSendOptions = {},
 ): Promise<string> {
   buildOpts.computeBudgetOption ??= await genComputeBudget(tx, buildOpts);
 
@@ -34,18 +36,25 @@ export async function executeTransaction(
         buildOpts.computeBudgetOption = await genComputeBudget(tx, buildOpts, retry);
       }
 
-      info('Executing Tx with compute budget:', buildOpts.computeBudgetOption);
+      info('Executing Tx:', {
+        ...txMetadata,
+        ...buildOpts.computeBudgetOption
+      });
 
       const signature = await tx.buildAndExecute(buildOpts, sendOpts);
-      await verifyTransaction(signature, sendOpts.commitment);
+      await verifyTransaction(signature, txMetadata, sendOpts.commitment);
 
-      info('Tx executed and verified:', signature);
+      info('Tx executed and verified:', {
+        ...txMetadata,
+        signature,
+      });
       return signature;
     },
     {
       baseDelay: 1000,
       retryFilter: (result, err) =>
-        !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError'),
+           !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash that is 'too old' and tx wasn't processed in time.
+        || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found'), // Blockhash that is 'too new' and RPC node is a bit behind.
     }
   );
 }
@@ -54,12 +63,20 @@ export async function executeTransaction(
  * Verifies a blockchain transaction by waiting for it to be confirmed.
  *
  * @param signature The signature of the transaction to verify.
+ * @param txMetadata Metadata pertaining to the transaction to verify.
  * @param commitment The commitment level to use for the verification. Defaults to `finalized`.
  * @returns A {@link Promise} that resolves when the transaction is confirmed.
  * @throws An {@link Error} if the transaction cannot be confirmed.
  */
-export async function verifyTransaction(signature: string, commitment: Commitment = 'finalized'): Promise<void> {
-  debug(`Verifying Tx ( Commitment: ${green(commitment)} ):`, signature);
+export async function verifyTransaction<TMeta extends TransactionMetadata>(
+  signature: string,
+  txMetadata: TMeta,
+  commitment: Commitment = 'finalized'
+): Promise<void> {
+  debug(`Verifying Tx ( Commitment: ${green(commitment)} ):`, {
+    ...txMetadata,
+    signature
+  });
 
   // Wait for the transaction to complete
   const latestBlockhash = await rpc().getLatestBlockhash();

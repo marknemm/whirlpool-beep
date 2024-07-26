@@ -10,9 +10,10 @@ import { publicKey } from '@metaplex-foundation/umi';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
 import { PriceMath } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import whirlpoolClient, { getWhirlpoolPrice } from './whirlpool';
 import { DEV_SAMO_USDC_ADDRESS, DEV_SOL_USDC_ADDRESS, DEV_TMAC_USDC_ADDRESS } from '@/constants/whirlpool';
+import { expBackoff } from './async';
 
 /**
  * Cache for previously queried token {@link DigitalAsset}s.
@@ -146,18 +147,22 @@ export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<n
     return _getDevTokenPrice(token);
   }
 
-  const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
-    params: {
-      contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
-      vs_currencies: 'usd',                     // eslint-disable-line camelcase
+  return await expBackoff(async () => {
+    const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
+      params: {
+        contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
+        vs_currencies: 'usd',                     // eslint-disable-line camelcase
+      }
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`Failed to fetch token price ( ${response.status} ): ${response.statusText}`);
     }
+
+    return response.data[token.mint.publicKey]?.usd;
+  }, {
+    retryFilter: (result, err) => (err as AxiosError)?.response?.status === 429,
   });
-
-  if (response.status !== 200) {
-    throw new Error(`Failed to fetch token price ( ${response.status} ): ${response.statusText}`);
-  }
-
-  return response.data[token.mint.publicKey]?.usd;
 }
 
 async function _getDevTokenPrice(token: DigitalAsset): Promise<number> {
