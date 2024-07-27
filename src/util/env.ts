@@ -140,16 +140,6 @@ const env = cleanEnv(process.env, {
   NODE_ENV: str({ choices: ['development', 'production', 'test'] }),
 
   /**
-   * The default priority to use when generating the compute budget for a transaction.
-   *
-   * @default 'medium'
-   */
-  PRIORITY_LEVEL_DEFAULT: str({
-    choices: ['min', 'low', 'medium', 'high', 'veryHigh', 'unsafeMax'],
-    default: 'medium'
-  }),
-
-  /**
    * The minimum total priority fee for a transaction in lamports.
    *
    * @default 10000 lamports (0.00001 SOL)
@@ -162,6 +152,16 @@ const env = cleanEnv(process.env, {
    * @default 2000000 lamports (0.002 SOL)
    */
   PRIORITY_FEE_MAX_LAMPORTS: num({ default: 2000000 }), // 0.002 SOL
+
+  /**
+   * The default priority to use when generating the compute budget for a transaction.
+   *
+   * @default 'medium'
+   */
+  PRIORITY_LEVEL_DEFAULT: str({
+    choices: ['min', 'low', 'medium', 'high', 'veryHigh', 'unsafeMax'],
+    default: 'medium'
+  }),
 
   /**
    * The default base delay used for exponential backoff.

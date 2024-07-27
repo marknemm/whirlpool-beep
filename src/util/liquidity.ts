@@ -33,7 +33,7 @@ export async function genLiquidityTxSummary(
     usd: txSummary.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
-  info(`${txSummary.usd > 0 ? 'Increase' : 'Decreased'} liquidity:`, {
+  info(`${liquidityTxSummary.usd > 0 ? 'Increased' : 'Decreased'} liquidity:`, {
     whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
     position: liquidityTxSummary.position.getAddress().toBase58(),
     signature: liquidityTxSummary.signature,
