@@ -1,9 +1,9 @@
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/interfaces/cli';
-import { getPosition, getPositionAtIdx } from '@/services/position/get-position';
-import { increaseAllLiquidity, increaseLiquidity } from '@/services/position/increase-liquidity';
-import { error } from '@/util/log';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { increaseAllLiquidity, increaseLiquidity } from '@/services/liquidity/increase/increase-liquidity';
+import { getPosition, getPositionAtIdx } from '@/services/position/query/query-position';
+import { error } from '@/util/log/log';
 import { type Argv } from 'yargs';
 
 const cli = {

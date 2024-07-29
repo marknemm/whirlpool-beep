@@ -1,6 +1,6 @@
-import type { CliArgs } from '@/interfaces/cli';
-import { error } from '@/util/log';
-import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@/util/transaction-budget';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { error } from '@/util/log/log';
+import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@/util/transaction-budget/transaction-budget';
 import { VersionedTransaction } from '@solana/web3.js';
 import { type Argv } from 'yargs';
 

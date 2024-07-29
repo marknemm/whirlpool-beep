@@ -1,7 +1,7 @@
-import type { CliArgs } from '@/interfaces/cli';
-import { error, info } from '@/util/log';
-import { toSol } from '@/util/number-conversion';
-import rpc from '@/util/rpc';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { error, info } from '@/util/log/log';
+import { toSol } from '@/util/number-conversion/number-conversion';
+import rpc from '@/util/rpc/rpc';
 import { type Argv } from 'yargs';
 
 const cli = {

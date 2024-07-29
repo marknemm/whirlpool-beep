@@ -1,7 +1,7 @@
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/interfaces/cli';
-import { getPositions } from '@/services/position/get-position';
-import { error, info } from '@/util/log';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { getPositions } from '@/services/position/query/query-position';
+import { error, info } from '@/util/log/log';
 import { type Argv } from 'yargs';
 
 const cli = {

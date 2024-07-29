@@ -1,7 +1,7 @@
-import type { CliArgs } from '@/interfaces/cli';
-import { prompt } from '@/util/cli';
-import { decodeBase58, encodeBase58 } from '@/util/encode';
-import { error, info } from '@/util/log';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { prompt } from '@/util/cli/cli';
+import { decodeBase58, encodeBase58 } from '@/util/encode/encode';
+import { error, info } from '@/util/log/log';
 import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

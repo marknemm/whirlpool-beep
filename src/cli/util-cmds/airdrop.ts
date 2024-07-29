@@ -1,10 +1,10 @@
-import type { CliArgs } from '@/interfaces/cli';
-import env from '@/util/env';
-import { error, info } from '@/util/log';
-import { toLamports } from '@/util/number-conversion';
-import rpc from '@/util/rpc';
-import { verifyTransaction } from '@/util/transaction';
-import wallet from '@/util/wallet';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import env from '@/util/env/env';
+import { error, info } from '@/util/log/log';
+import { toLamports } from '@/util/number-conversion/number-conversion';
+import rpc from '@/util/rpc/rpc';
+import { verifyTransaction } from '@/util/transaction/transaction';
+import wallet from '@/util/wallet/wallet';
 import { type Argv } from 'yargs';
 
 const cli = {

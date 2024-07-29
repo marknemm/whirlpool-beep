@@ -3,16 +3,16 @@
  */
 export async function rebalance() {
   // Load and validate environment variables.
-  const { loadSSMParams } = await import('@/util/ssm');
+  const { loadSSMParams } = await import('@/util/ssm/ssm');
   await loadSSMParams();
-  const env = (await import('@/util/env')).default;
+  const env = (await import('@/util/env/env')).default;
 
   // Load other dependencies.
-  const { info } = await import('@/util/log');
+  const { info } = await import('@/util/log/log');
   const {
     genPriceRangeRebalanceFilter,
     rebalanceAllPositions
-  } = await import('@/services/position/rebalance-position');
+  } = await import('@/services/position/rebalance/rebalance-position');
 
   info('Environment variables loaded and validated:', { ...env }, '\n');
 

@@ -1,9 +1,9 @@
 import { genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/interfaces/cli';
-import { increaseLiquidity } from '@/services/position/increase-liquidity';
-import { openPosition } from '@/services/position/open-position';
-import { error } from '@/util/log';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
+import { increaseLiquidity } from '@/services/liquidity/increase/increase-liquidity';
+import { openPosition } from '@/services/position/open/open-position';
+import { error } from '@/util/log/log';
 import { Percentage } from '@orca-so/common-sdk';
 import { type Argv } from 'yargs';
 

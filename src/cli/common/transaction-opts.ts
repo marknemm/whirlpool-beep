@@ -1,4 +1,4 @@
-import type { CliArgs, CliOpts } from '@/interfaces/cli';
+import type { CliArgs, CliOpts } from '@/util/cli/cli.interfaces';
 import deepmerge from 'deepmerge';
 
 const _transactionCliOpts = {

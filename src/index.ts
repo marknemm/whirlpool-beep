@@ -1,8 +1,9 @@
-import env from './util/env'; // Load and validate env variables ASAP
+import env from '@/util/env/env'; // Load and validate env variables ASAP
 
+import { prompt, promptCliCommand, promptCliScript } from '@/util/cli/cli';
+import { debug, error, info } from '@/util/log/log';
 import { blue } from 'colors';
-import { prompt, promptCliCommand, promptCliScript } from './util/cli';
-import { debug, error, info } from './util/log';
+import { join } from 'node:path';
 
 /**
  * Main entry point.
@@ -17,19 +18,24 @@ async function main() {
     ? await promptCliCommand(script)
     : '';
 
-  process.argv = [process.argv[0], script, command]; // Update argv so yargs can parse it with command
-  const cli = require(`./cli/${script}.ts`).default; // eslint-disable-line @typescript-eslint/no-var-requires
+  // Update argv so yargs can parse it when loading the CLI module
+  process.argv = [process.argv[0], script, command];
+
+  // Load the CLI module
+  const cliPathname = join(__dirname, 'cli', `${script}.ts`);
+  const cli = (await import(cliPathname)).default;
   const cliBuilder = cli.builder();
 
-  const scriptCommand = `${script} ${command}`.trim();
-
+  // Show help for CLI command, prompt for arguments, and parse them
   cliBuilder.showHelp();
+  const scriptCommand = `${script} ${command}`.trim();
   const args = await prompt(`\nInput ${blue(scriptCommand)} arguments: `);
   const argv = await cliBuilder.parse(`${command} ${args}`);
 
+  // Execute the CLI command
   info(`\n${blue(scriptCommand)} ${args}\n`);
-
-  const handler = cli.handler ?? require(`./cli/${script}-cmds/${command}.ts`).default.handler; // eslint-disable-line @typescript-eslint/no-var-requires
+  const cmdPathname = join(__dirname, 'cli', `${script}-cmds`, `${command}.ts`);
+  const handler = cli.handler ?? (await import(cmdPathname)).default.handler;
   await handler?.(argv);
 }
 
