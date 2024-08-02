@@ -16,6 +16,10 @@ export default tseslint.config({
     'no-floating-promise': noFloatingPromise,
   },
   rules: {
+    '@typescript-eslint/no-require-imports': 'off',             // Disable the rule that disallows using require statements
+    '@typescript-eslint/no-unused-expressions': ['warn', {      // Enable the warning about unused expressions
+      allowTernary: true,                                       // Allow ternary expressions
+    }],
     '@typescript-eslint/no-unused-vars': ['warn', {             // Enable the warning about unused variables
       args: 'none',                                             // Do not check for unused function arguments
       caughtErrors: 'none',                                     // Do not check for unused caught errors
