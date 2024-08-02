@@ -132,9 +132,9 @@ export async function getPriorityFeeEstimate(
 export async function getHeliusPriorityFeeEstimate(
   tx?: Transaction | VersionedTransaction | Null
 ): Promise<PriorityFeeEstimate> {
-  debug('Fetching priority fee estimate via Helius API:', env.HELIUS_API);
+  debug('Fetching priority fee estimate via Helius RPC Endpoint:', env.HELIUS_RPC_ENDPOINT);
 
-  const response = await axios.post<PriorityFeeEstimateResponse>(env.HELIUS_API, {
+  const response = await axios.post<PriorityFeeEstimateResponse>(env.HELIUS_RPC_ENDPOINT, {
     jsonrpc: '2.0',
     id: '1',
     method: 'getPriorityFeeEstimate',

@@ -1,7 +1,7 @@
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
-import { getTransactionSummary } from '@/util/transaction/transaction';
+import { getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction/transaction';
 import { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type DecreaseLiquidityQuote, type IncreaseLiquidityQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
@@ -21,16 +21,22 @@ export async function genLiquidityTxSummary(
 ): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
-  const txSummary = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
+  const txSummary = await getTransactionSummary(signature);
+
+  const liquidityIx = txSummary.decodedIxs.find(
+    (ix) => ix.name.toLowerCase().includes('liquidity')
+  );
+  if (!liquidityIx) throw new Error('No liquidity instruction found in transaction');
+  const { tokenTotals, usd } = await getTransactionTransferTotals([liquidityIx]);
 
   const liquidityTxSummary: LiquidityTxSummary = {
     fee: txSummary.fee,
     position,
     quote,
     signature,
-    tokenAmountA: txSummary.tokens.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
-    tokenAmountB: txSummary.tokens.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
-    usd: txSummary.usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
+    tokenAmountA: tokenTotals.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
+    tokenAmountB: tokenTotals.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
+    usd: usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
   info(`${liquidityTxSummary.usd > 0 ? 'Increased' : 'Decreased'} liquidity:`, {

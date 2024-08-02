@@ -1,4 +1,5 @@
 import type { BundledPosition } from '@/interfaces/position.interfaces';
+import { TransactionBuilder } from '@orca-so/common-sdk';
 
 /**
  * Options for closing a {@link BundledPosition}.
@@ -31,5 +32,27 @@ export interface ClosePositionOptions {
    * @default false
    */
   separateTxs?: boolean;
+
+}
+
+/**
+ * The result of generating a close position transaction.
+ */
+export interface GenClosePositionTxResult {
+
+  /**
+   * The transaction builder for the decrease liquidity transaction.
+   */
+  decreaseLiquidityTx?: TransactionBuilder;
+
+  /**
+   * The transaction builder for the collect fees and rewards transaction.
+   */
+  feesRewardsTx?: TransactionBuilder;
+
+  /**
+   * The transaction builder for the complete close position transaction.
+   */
+  tx: TransactionBuilder;
 
 }

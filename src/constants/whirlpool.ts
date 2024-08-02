@@ -47,4 +47,4 @@ export const DEV_SAMO_USDC_ADDRESS = 'EgxU92G34jw6QDG9RuTX9StFg1PmHuDqkRKAE5kVEi
 /**
  * Dev TMAC / USDC whirlpool address.
  */
-export const DEV_TMAC_USDC_ADDRESS = 'H3xhLrSEyDFm6jjG42QezbvhSxF5YHW75VdGUnqeEg5y	';
+export const DEV_TMAC_USDC_ADDRESS = 'H3xhLrSEyDFm6jjG42QezbvhSxF5YHW75VdGUnqeEg5y';

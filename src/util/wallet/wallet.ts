@@ -17,34 +17,25 @@ import { Keypair, PublicKey, type TokenAccountsFilter } from '@solana/web3.js';
 export class WalletExt extends Wallet {
 
   /**
-   * The singleton instance of the {@link WalletExt}.
-   */
-  static #instance: WalletExt;
-
-  /**
-   * The singleton instance of the {@link WalletExt}.
+   * Initializes a new {@link WalletExt} instance.
    *
-   * Creates a new instance if one does not already exist.
+   * @param address The wallet address. Defaults to the environment variable {@link env.WALLET_ADDRESS}.
+   * @param privateKey The wallet private key. Defaults to the environment variable {@link env.WALLET_PRIVATE_KEY}.
    */
-  static get instance(): WalletExt {
-    WalletExt.#instance ??= new WalletExt();
-    return WalletExt.#instance;
-  }
-
-  private constructor() {
-    // Generate a keypair from the WALLET_PRIVATE_KEY env variable
-    const privateKeyBytes = decodeBase58(env.WALLET_PRIVATE_KEY);
+  constructor(
+    address: string = env.WALLET_ADDRESS,
+    privateKey: string = env.WALLET_PRIVATE_KEY,
+  ) {
+    // Generate a keypair from private key raw bytes
+    const privateKeyBytes = decodeBase58(privateKey);
     const keypair = Keypair.fromSecretKey(privateKeyBytes); // Performs implicit mathematical validation
 
     // Double check that the keypair public key matches the expected wallet address
-    if (keypair.publicKey.toBase58() !== env.WALLET_ADDRESS) {
+    if (keypair.publicKey.toBase58() !== address) {
       throw new Error('Public key does not match expected value');
     }
 
     super(keypair);
-
-    info('-- Initialized Wallet --');
-    info('Wallet Address:', this.publicKey.toBase58());
   }
 
   /**
@@ -201,12 +192,23 @@ export class WalletExt extends Wallet {
 
 }
 
+let _wallet: WalletExt;
+
 /**
  * Gets the singleton {@link WalletExt}, and initializes it if it has not already been initialized.
+ *
+ * Initializes the wallet with the environment variables {@link env.WALLET_ADDRESS} and {@link env.WALLET_PRIVATE_KEY}.
  *
  * @returns The {@link WalletExt} singleton.
  * @throws An {@link Error} if the {@link WalletExt} private key is invalid or does not match the expected public key.
  */
 export default function wallet(): WalletExt {
-  return WalletExt.instance;
+  if (!_wallet) {
+    _wallet = new WalletExt();
+
+    info('-- Initialized Wallet --');
+    info('Wallet Address:', _wallet.publicKey.toBase58());
+  }
+
+  return _wallet;
 }

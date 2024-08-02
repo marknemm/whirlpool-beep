@@ -1,7 +1,25 @@
 import type { TransactionPriority } from '@/util/transaction-budget/transaction-budget.interfaces';
+import type { Instruction } from '@coral-xyz/anchor';
 import type { BuildOptions } from '@orca-so/common-sdk';
 import type { Commitment, SendOptions } from '@solana/web3.js';
 import type BN from 'bn.js';
+
+/**
+ * A fully decoded transaction instruction.
+ */
+export interface DecodedTransactionIx extends Instruction {
+
+  /**
+   * The inner instructions of the transaction.
+   */
+  innerInstructions: Instruction[];
+
+  /**
+   * The name of the program that the instruction belongs to.
+   */
+  programName: string;
+
+}
 
 /**
  * Options for building a transaction.
@@ -42,7 +60,7 @@ export type TransactionSendOptions = Partial<SendOptions> & {
   /**
    * Wait for the sent transaction to be confirmed up to this level.
    *
-   * @default 'finalized'
+   * @default 'confirmed'
    */
   commitment?: Commitment;
 
@@ -69,7 +87,29 @@ export interface TransactionSummary {
   tokens: Map<string, BN>;
 
   /**
+   * The decoded instructions of the transaction.
+   */
+  decodedIxs: DecodedTransactionIx[];
+
+  /**
    * The total delta of the transaction in USD.
+   */
+  usd: number;
+
+}
+
+/**
+ * Transfer totals for a transaction.
+ */
+export interface TransferTotals {
+
+  /**
+   * The total token transfer amount deltas.
+   */
+  tokenTotals: Map<string, BN>;
+
+  /**
+   * The total USD delta.
    */
   usd: number;
 

@@ -19,13 +19,20 @@ import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token
  *
  * Indexed by both token address and symbol.
  */
-const _cache = new Map<string, DigitalAsset>();
+const _tokenCache = new Map<string, DigitalAsset>();
+
+/**
+ * Cache for previously queried token prices.
+ *
+ * Indexed by both token address and symbol.
+ */
+const _tokenPriceCache = new Map<string, number>();
 
 /**
  * Clears the token cache.
  */
 export function clearTokenCache() {
-  _cache.clear();
+  _tokenCache.clear();
 }
 
 /**
@@ -68,15 +75,21 @@ export async function getTokenPair(
  * Fetches a token by a given {@link query}.
  *
  * @param query The {@link TokenQuery} for the token to fetch.
+ * @param ignoreCache Whether to ignore the cache and fetch the token. Defaults to `false`.
  * @returns A {@link Promise} that resolves to the {@link DigitalAsset} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
-export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> {
+export async function getToken(
+  query: TokenQuery | Null,
+  ignoreCache = false
+): Promise<DigitalAsset | null> {
   query = _queryToString(query);
+  if (!query) return null;
 
-  if (_cache.has(query)) {
-    return _cache.get(query)!;
+  // Attempt to pull from cache if allowed and available
+  if (!ignoreCache && _tokenCache.has(query)) {
+    return _tokenCache.get(query)!;
   }
 
   info('Fetching token using query:', query);
@@ -109,8 +122,8 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
     : null;
 
   if (tokenAsset) {
-    _cache.set(query, tokenAsset);
-    _cache.set(tokenAsset.publicKey, tokenAsset);
+    _tokenCache.set(query, tokenAsset);
+    _tokenCache.set(tokenAsset.publicKey, tokenAsset);
 
     info('Fetched token:', formatToken(tokenAsset));
     await TokenDAO.insert(tokenAsset, { catchErrors: true });
@@ -125,43 +138,63 @@ export async function getToken(query: TokenQuery): Promise<DigitalAsset | null> 
  * Gets the price of a token in USD.
  *
  * @param token The token {@link DigitalAsset} or {@link TokenQuery} to get the price of.
+ * @param ignoreCache Whether to ignore the cache and fetch the token price. Defaults to `false`.
  * @returns A {@link Promise} that resolves to the price of the token in USD.
  * If the token price cannot be fetched, `undefined` is returned.
  * @throws An {@link Error} if the GET request fails or returns a non-200 status code.
  * @see https://docs.coingecko.com
  */
-export async function getTokenPrice(token: DigitalAsset | TokenQuery): Promise<number | undefined> {
+export async function getTokenPrice(
+  token: DigitalAsset | TokenQuery | Null,
+  ignoreCache = false
+): Promise<number | undefined> {
+  if (!token) return undefined;
+
+  // Attempt to pull from cache if allowed and available
+  const tokenAddress = _queryToString(token);
+  if (!ignoreCache && _tokenPriceCache.has(tokenAddress)) {
+    return _tokenPriceCache.get(tokenAddress);
+  }
+
+  // Get token metadata if not already a DigitalAsset
   if (typeof token === 'string' || token instanceof PublicKey) {
     token = (await getToken(token))!;
     if (!token) throw new Error(`Failed to fetch token using query: ${token}`);
   }
+  const tokenSymbol = token.metadata.symbol;
 
-  // Short circuit for common stablecoins.
-  if (STABLECOIN_SYMBOL_REGEX.test(token.metadata.symbol)) {
+  // Short circuit for common stablecoins
+  if (STABLECOIN_SYMBOL_REGEX.test(tokenSymbol)) {
     return 1;
   }
 
-  // Use dev token prices in development environment.
-  if (env.NODE_ENV === 'development') {
-    return _getDevTokenPrice(token);
-  }
+  const price = (env.NODE_ENV === 'production')
+    // Production environment query aggregate DeFi value
+    ? await expBackoff(async () => {
+      const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
+        params: {
+          contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
+          vs_currencies: 'usd',                     // eslint-disable-line camelcase
+        }
+      });
 
-  return await expBackoff(async () => {
-    const response = await axios.get<TokenPriceResponse>(env.TOKEN_PRICE_API, {
-      params: {
-        contract_addresses: token.mint.publicKey, // eslint-disable-line camelcase
-        vs_currencies: 'usd',                     // eslint-disable-line camelcase
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch token price ( ${response.status} ): ${response.statusText}`);
       }
-    });
 
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch token price ( ${response.status} ): ${response.statusText}`);
-    }
+      return response.data[token.mint.publicKey]?.usd;
+    }, {
+      retryFilter: (result, err) => (err as AxiosError)?.response?.status === 429,
+    })
+    // Development environment query direct liquidity pool value based on stable coin
+    : await _getDevTokenPrice(token);
 
-    return response.data[token.mint.publicKey]?.usd;
-  }, {
-    retryFilter: (result, err) => (err as AxiosError)?.response?.status === 429,
-  });
+  // Add to cache and return.
+  if (price) {
+    _tokenPriceCache.set(tokenAddress, price);
+    _tokenPriceCache.set(tokenSymbol, price);
+  }
+  return price;
 }
 
 async function _getDevTokenPrice(token: DigitalAsset): Promise<number> {
@@ -201,10 +234,16 @@ export function formatToken(token: DigitalAsset | Null): string {
  * @param query The query to convert.
  * @returns The converted query as a string.
  */
-function _queryToString(query: TokenQuery): string {
+function _queryToString(query: DigitalAsset | TokenQuery | Null): string {
+  if (!query) return '';
+
+  if ((query as DigitalAsset).publicKey) {
+    return (query as DigitalAsset).publicKey;
+  }
+
   return (typeof query === 'string')
     ? query
-    : AddressUtil.toString(query);
+    : AddressUtil.toString(query as TokenQuery);
 }
 
 export type * from './token.interfaces';

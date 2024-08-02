@@ -1,11 +1,9 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
+import anchor from '@/util/anchor/anchor';
 import { info } from '@/util/log/log';
-import rpc from '@/util/rpc/rpc';
-import wallet from '@/util/wallet/wallet';
-import { AnchorProvider } from '@coral-xyz/anchor';
-import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PriceMath, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
-import { getTokenPair } from '../token/token';
+import { getTokenPair } from '@/util/token/token';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
+import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PriceMath, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
 let _whirlpoolClient: WhirlpoolClient;
@@ -17,8 +15,7 @@ let _whirlpoolClient: WhirlpoolClient;
  */
 export default function whirlpoolClient(): WhirlpoolClient {
   if (!_whirlpoolClient) {
-    const anchor = new AnchorProvider(rpc(), wallet(), AnchorProvider.defaultOptions());
-    const ctx = WhirlpoolContext.withProvider(anchor, ORCA_WHIRLPOOL_PROGRAM_ID);
+    const ctx = WhirlpoolContext.withProvider(anchor(), ORCA_WHIRLPOOL_PROGRAM_ID);
 
     _whirlpoolClient = buildWhirlpoolClient(ctx);
 
@@ -26,23 +23,6 @@ export default function whirlpoolClient(): WhirlpoolClient {
   }
 
   return _whirlpoolClient;
-}
-
-/**
- * Formats a {@link Whirlpool} or {@link WhirlpoolData} into a human-readable log ID.
- *
- * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to format.
- * @returns A {@link Promise} that resolves to the formatted log ID. Returns an empty string if the whirlpool is `null`.
- */
-export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Null): Promise<string> {
-  if (!whirlpool) return '';
-
-  const whirlpoolData = toWhirlpoolData(whirlpool);
-  const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
-  const address = (whirlpool as Whirlpool).getAddress?.().toBase58() ?? '';
-
-  return (address ? `${address} -- ` : '')
-    + `${tokenA.metadata.symbol} / ${tokenB.metadata.symbol} -- spacing: ${whirlpoolData.tickSpacing}`.trim();
 }
 
 /**
@@ -78,6 +58,23 @@ export async function getWhirlpoolTokenPair(
     whirlpoolData.tokenMintA,
     whirlpoolData.tokenMintB
   );
+}
+
+/**
+ * Formats a {@link Whirlpool} or {@link WhirlpoolData} into a human-readable log ID.
+ *
+ * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to format.
+ * @returns A {@link Promise} that resolves to the formatted log ID. Returns an empty string if the whirlpool is `null`.
+ */
+export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Null): Promise<string> {
+  if (!whirlpool) return '';
+
+  const whirlpoolData = toWhirlpoolData(whirlpool);
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
+  const address = (whirlpool as Whirlpool).getAddress?.().toBase58() ?? '';
+
+  return (address ? `${address} -- ` : '')
+    + `${tokenA.metadata.symbol} / ${tokenB.metadata.symbol} -- spacing: ${whirlpoolData.tickSpacing}`.trim();
 }
 
 /**

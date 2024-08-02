@@ -180,9 +180,11 @@ export function toTokenAmount(
  * @returns The converted `USD` amount.
  */
 export function toUSD(
-  tokenAmount: BN | Decimal | number,
-  tokenPrice: Decimal.Value,
+  tokenAmount: BN | Decimal | number | Null,
+  tokenPrice: Decimal.Value | Null,
   shift = 0
 ): Decimal {
-  return toDecimal(tokenAmount, shift).mul(tokenPrice);
+  return (tokenAmount && tokenPrice)
+    ? toDecimal(tokenAmount, shift).mul(tokenPrice)
+    : new Decimal(0);
 }

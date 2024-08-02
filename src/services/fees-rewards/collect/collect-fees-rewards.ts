@@ -4,9 +4,10 @@ import { expBackoff } from '@/util/async/async';
 import { getTxProgramErrorInfo } from '@/util/error/error';
 import { debug, error, info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
+import type { SplTokenTransferIxData } from '@/util/program/program.interfaces';
 import rpc from '@/util/rpc/rpc';
 import { getToken } from '@/util/token/token';
-import { executeTransaction, getTransactionSummary } from '@/util/transaction/transaction';
+import { executeTransaction, getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
@@ -86,7 +87,7 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
     });
     await position.refreshData();
 
-    const txSummary = await _genFeesRewardsTxSummary(position, signature);
+    const txSummary = await genFeesRewardsTxSummary(position, signature);
     await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
 
     return txSummary;
@@ -102,11 +103,14 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
  * Creates a transaction to collect fees and rewards for a given {@link position}.
  *
  * @param position The {@link Position} to collect fees and rewards for.
+ * @param updateFeesAndRewards Whether to update the fees and rewards for the position.
+ * Defaults to whether or not the position has liquidity.
  * @returns A {@link Promise} that resolves to an object containing the
  * {@link CollectFeesQuote}, {@link CollectRewardsQuote}, and {@link TransactionBuilder}.
  */
 export async function genCollectFeesRewardsTx(
-  position: Position
+  position: Position,
+  updateFeesAndRewards = !position.getData().liquidity.isZero()
 ): Promise<{ feesQuote: CollectFeesQuote, rewardsQuote: CollectRewardsQuote, tx: TransactionBuilder }> {
   info('Creating collect fees and rewards transaction:', {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
@@ -116,8 +120,8 @@ export async function genCollectFeesRewardsTx(
   const { feesQuote, rewardsQuote } = await _genCollectFeesRewardsQuote(position);
 
   await position.refreshData();
-  const collectFeesTx = await position.collectFees(!position.getData().liquidity.isZero());
-  const collectRewardsTxs = await position.collectRewards(undefined, false);
+  const collectFeesTx = await position.collectFees(updateFeesAndRewards);
+  const collectRewardsTxs = await position.collectRewards(undefined, updateFeesAndRewards);
 
   const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(collectFeesTx.compressIx(true));
@@ -205,21 +209,27 @@ async function _genCollectFeesRewardsQuote(
  * @param signature The signature of the collection transaction.
  * @returns A {@link Promise} that resolves to the {@link FeesRewardsTxSummary}.
  */
-async function _genFeesRewardsTxSummary(
+export async function genFeesRewardsTxSummary(
   position: Position,
   signature: string,
 ): Promise<FeesRewardsTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
-  const txSummary = await getTransactionSummary(signature, [tokenA.mint.publicKey, tokenB.mint.publicKey]);
+  const txSummary = await getTransactionSummary(signature);
+
+  const liquidityIx = txSummary.decodedIxs.find(
+    (ix) => ix.name.toLowerCase().includes('fee')
+  );
+  if (!liquidityIx) throw new Error('No liquidity instruction found in transaction');
+  const { tokenTotals, usd } = await getTransactionTransferTotals([liquidityIx]);
 
   const feesRewardsTxSummary: FeesRewardsTxSummary = {
     fee: txSummary.fee,
     position,
     signature,
-    tokenAmountA: txSummary.tokens.get(tokenA.mint.publicKey) ?? new BN(0),
-    tokenAmountB: txSummary.tokens.get(tokenB.mint.publicKey) ?? new BN(0),
-    usd: txSummary.usd,
+    tokenAmountA: tokenTotals.get(tokenA.mint.publicKey) ?? new BN(0),
+    tokenAmountB: tokenTotals.get(tokenB.mint.publicKey) ?? new BN(0),
+    usd,
   };
 
   info('Fees and rewards tx summary:', {

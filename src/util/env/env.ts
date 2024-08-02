@@ -66,6 +66,11 @@ const env = cleanEnv(process.env, {
   HELIUS_API: url(),
 
   /**
+   * The Helius RPC endpoint.
+   */
+  HELIUS_RPC_ENDPOINT: url(),
+
+  /**
    * The Helius API key.
    *
    * @default ''

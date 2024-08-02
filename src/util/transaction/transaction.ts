@@ -1,16 +1,20 @@
 import { expBackoff } from '@/util/async/async';
 import env from '@/util/env/env';
-import { debug, error, info } from '@/util/log/log';
+import { debug, error, info, warn } from '@/util/log/log';
 import { toNum, toUSD } from '@/util/number-conversion/number-conversion';
+import { decodeIx, type SplTokenTransferIxData, type TempTokenAccount } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { getToken, getTokenPrice } from '@/util/token/token';
 import { genComputeBudget } from '@/util/transaction-budget/transaction-budget';
 import wallet from '@/util/wallet/wallet';
-import { AddressUtil, TransactionBuilder, type Address } from '@orca-so/common-sdk';
-import { SendTransactionError, type Commitment, type TokenBalance, type VersionedTransactionResponse } from '@solana/web3.js';
+import { TransactionBuilder } from '@orca-so/common-sdk';
+import { type Commitment, type ParsedTransactionWithMeta, type SendTransactionError, type VersionedTransactionResponse } from '@solana/web3.js';
 import BN from 'bn.js';
 import { green } from 'colors';
-import type { TransactionBuildOptions, TransactionMetadata, TransactionSendOptions, TransactionSummary } from './transaction.interfaces';
+import type { DecodedTransactionIx, TransactionBuildOptions, TransactionMetadata, TransactionSendOptions, TransactionSummary, TransferTotals } from './transaction.interfaces';
+
+const _txCache = new Map<string, ParsedTransactionWithMeta>();
+const _txSummaryCache = new Map<string, TransactionSummary>();
 
 /**
  * Executes a given transaction.
@@ -41,7 +45,8 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
 
         info('Executing Tx:', {
           ...txMetadata,
-          ...buildOpts.computeBudgetOption
+          ...buildOpts.computeBudgetOption,
+          retry,
         });
 
         const signature = await tx.buildAndExecute(buildOpts, sendOpts);
@@ -55,8 +60,8 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
       },
       {
         retryFilter: (result, err) =>
-            !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash that is 'too old' and tx wasn't processed in time.
-          || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found'), // Blockhash that is 'too new' and RPC node is a bit behind.
+             !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash 'too old' - tx wasn't processed in time.
+          || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found'),                       // Blockhash 'too new' - RPC node is behind or on minority fork.
       }
     );
   } catch (err) {
@@ -73,14 +78,14 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
  *
  * @param signature The signature of the transaction to verify.
  * @param txMetadata Metadata pertaining to the transaction to verify.
- * @param commitment The commitment level to use for the verification. Defaults to `finalized`.
+ * @param commitment The commitment level to use for the verification. Defaults to `confirmed`.
  * @returns A {@link Promise} that resolves when the transaction is confirmed.
  * @throws An {@link Error} if the transaction cannot be confirmed.
  */
 export async function verifyTransaction<TMeta extends TransactionMetadata>(
   signature: string,
   txMetadata: TMeta,
-  commitment: Commitment = 'finalized'
+  commitment: Commitment = 'confirmed'
 ): Promise<void> {
   debug(`Verifying Tx ( Commitment: ${green(commitment)} ):`, {
     ...txMetadata,
@@ -101,15 +106,23 @@ export async function verifyTransaction<TMeta extends TransactionMetadata>(
  *
  * @param signature The signature of the transaction to get.
  * @returns A {@link Promise} that resolves to the {@link VersionedTransactionResponse};
- * `null` if the transaction cannot be retrieved.
+ * `undefined` if the transaction cannot be retrieved.
  */
 export async function getTransaction(
   signature: string,
-): Promise<VersionedTransactionResponse | null> {
+): Promise<ParsedTransactionWithMeta | undefined> {
   debug('Getting Tx:', signature);
 
   return expBackoff(
-    () => rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 }),
+    async () => {
+      if (!_txCache.has(signature)) {
+        const tx = await rpc().getParsedTransaction(signature, { maxSupportedTransactionVersion: 0 });
+        if (tx) {
+          _txCache.set(signature, tx);
+        }
+      }
+      return _txCache.get(signature);
+    },
     { retryFilter: (result, err) => !result || !!err }
   );
 }
@@ -118,66 +131,113 @@ export async function getTransaction(
  * Gets the summary of a transaction.
  *
  * @param signature The signature of the transaction.
- * @param tokens The {@link Address}es of the tokens to collect summary data for.
  * @returns A {@link Promise} that resolves to the summary of the transaction.
  */
 export async function getTransactionSummary(
   signature: string,
-  tokens: Address[]
 ): Promise<TransactionSummary> {
-  debug('Generating Tx Summary...');
+  if (!_txSummaryCache.has(signature)) {
+    debug('Generating Tx Summary...');
 
-  const txSummary: TransactionSummary = {
-    fee: 0,
-    signature,
-    tokens: new Map<string, BN>(),
-    usd: 0,
-  };
+    const txSummary: TransactionSummary = {
+      fee: 0,
+      signature,
+      tokens: new Map<string, BN>(),
+      decodedIxs: [],
+      usd: 0,
+    };
 
-  const transaction = await getTransaction(signature);
-  if (!transaction?.meta?.preTokenBalances || !transaction.meta.postTokenBalances) {
-    error('Transaction token balances not found:', signature);
-    return txSummary;
+    const transaction = await getTransaction(signature);
+
+    if (transaction?.meta?.innerInstructions?.length) {
+      txSummary.fee = transaction.meta.fee;
+      txSummary.decodedIxs = await getDecodedTransactionIxs(transaction);
+
+      const { tokenTotals, usd } = await getTransactionTransferTotals(txSummary.decodedIxs);
+      txSummary.tokens = tokenTotals;
+      txSummary.usd = usd;
+    } else {
+      warn('Transaction inner instructions not found:', signature);
+    }
+
+    _txSummaryCache.set(signature, txSummary);
   }
 
-  txSummary.fee = transaction.meta.fee;
+  return _txSummaryCache.get(signature)!;
+}
 
-  tokens = tokens.map((addr) => AddressUtil.toString(addr));
+/**
+ * Gets the decoded instructions of a transaction.
+ *
+ * @param tx The transaction to get the decoded instructions of.
+ * @returns A {@link Promise} that resolves to the decoded instructions of the transaction.
+ */
+export async function getDecodedTransactionIxs(tx: ParsedTransactionWithMeta): Promise<DecodedTransactionIx[]> {
+  const innerIxs = tx?.meta?.innerInstructions ?? [];
+  const rawIxs = tx?.transaction.message.instructions ?? [];
+  const ixs: DecodedTransactionIx[] = [];
+  const tempTokenAccounts = new Map<string, TempTokenAccount>();
 
-  // Extract token balance and total USD deltas from the transaction
-  for (let i = 0; i < transaction.meta.preTokenBalances.length && tokens.length; i++) {
-    const preBalance = transaction.meta.preTokenBalances[i];
-    const postBalance = transaction.meta.postTokenBalances[i];
-
-    if (tokens.find((token) => token === preBalance.mint)) {
-      tokens = tokens.filter((token) => token !== preBalance.mint);
-
-      const token = await getToken(preBalance.mint);
-      if (!token) {
-        error('Token not found for:', preBalance.mint);
-        continue;
+  for (let i = 0; i < rawIxs.length; i++) {
+    const rawIx = rawIxs[i];
+    const decodedIx = await decodeIx(rawIx, tempTokenAccounts);
+    if (decodedIx) {
+      // Record any potential temp token accounts created during the transaction
+      if (decodedIx.programName === 'spl-token' && decodedIx.name === 'initializeAccount') {
+        const initAccountData = decodedIx.data as TempTokenAccount;
+        tempTokenAccounts.set(initAccountData.account, initAccountData);
       }
 
-      const tokenPrice = await getTokenPrice(token);
-      if (!tokenPrice) {
-        error('Token price not found for:', token.metadata.symbol);
-        continue;
+      const rawInnerIxs = innerIxs.find((innerIx) => innerIx.index === i)?.instructions ?? [];
+      decodedIx.innerInstructions ??= [];
+
+      for (const rawInnerIx of rawInnerIxs) {
+        const decodedInnerIx = await decodeIx(rawInnerIx, tempTokenAccounts);
+        if (decodedInnerIx) {
+          decodedIx.innerInstructions.push(decodedInnerIx);
+        }
       }
+    }
+    ixs.push(decodedIx);
+  }
 
-      const tokenDelta = _calcDelta(preBalance, postBalance);
-      txSummary.tokens.set(preBalance.mint, tokenDelta);
+  return ixs;
+}
 
-      txSummary.usd += toNum(toUSD(tokenDelta, tokenPrice, token.mint.decimals));
+/**
+ * Gets the total token transfer amounts and USD delta of a transaction.
+ *
+ * @param decodedIxs The {@link DecodedTransactionIx Decoded Instructions} of the transaction.
+ * @returns A {@link Promise} that resolves to the {@link TransferTotals} of the transaction.
+ */
+export async function getTransactionTransferTotals(
+  decodedIxs: DecodedTransactionIx[],
+): Promise<TransferTotals> {
+  const tokenTotals = new Map<string, BN>();
+  let usd = 0;
+
+  // Calculate total token transfer amount deltas and USD delta
+  for (const ix of decodedIxs) {
+    for (const innerIx of ix.innerInstructions) {
+      if (innerIx.name === 'transfer') {
+        const transferData = innerIx.data as SplTokenTransferIxData;
+
+        // Add token delta to total token delta
+        const baseAmount = tokenTotals.get(transferData.mint) ?? new BN(0);
+        const deltaAmount = (transferData.destinationOwner === wallet().publicKey.toBase58())
+          ? transferData.amount
+          : transferData.amount.neg();
+        tokenTotals.set(transferData.mint, baseAmount.add(deltaAmount));
+
+        // Add token delta to total USD delta
+        const token = await getToken(transferData.mint);
+        const tokenPrice = await getTokenPrice(token);
+        usd += toNum(toUSD(deltaAmount, tokenPrice, token?.mint.decimals));
+      }
     }
   }
 
-  return txSummary;
-}
-
-function _calcDelta(preBalance: TokenBalance, postBalance: TokenBalance): BN {
-  return (preBalance.owner === wallet().publicKey.toBase58())
-    ? new BN(postBalance.uiTokenAmount.amount).sub(new BN(preBalance.uiTokenAmount.amount))
-    : new BN(preBalance.uiTokenAmount.amount).sub(new BN(postBalance.uiTokenAmount.amount));
+  return { tokenTotals, usd };
 }
 
 export type * from './transaction.interfaces';
