@@ -1,9 +1,9 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { DAOInsertOptions } from '@/interfaces/dao.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { FeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
 import db, { handleInsertError } from '@/util/db/db';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
 import { debug } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { type Position } from '@orca-so/whirlpools-sdk';

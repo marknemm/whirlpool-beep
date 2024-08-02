@@ -1,13 +1,13 @@
 import anchor from '@/util/anchor/anchor';
 import rpc from '@/util/rpc/rpc';
 import { DecodedTransactionIx } from '@/util/transaction/transaction.interfaces';
-import { BorshCoder, Program, type Address, type Idl } from '@coral-xyz/anchor';
+import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
 import { AddressUtil } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID } from '@orca-so/whirlpools-sdk';
 import { IDL } from '@orca-so/whirlpools-sdk/dist/artifacts/whirlpool';
-import { ComputeBudgetProgram, PublicKey, type ParsedAccountData, type ParsedInstruction, type PartiallyDecodedInstruction } from '@solana/web3.js';
+import { ComputeBudgetProgram, PublicKey, SendTransactionError, type ParsedAccountData, type ParsedInstruction, type PartiallyDecodedInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
-import type { TempTokenAccount, SplTokenTransferIxData } from './program.interfaces';
+import type { TempTokenAccount, SplTokenTransferIxData, ProgramErrorInfo } from './program.interfaces';
 
 const _idlCache = new Map<string, Idl>([
   [ORCA_WHIRLPOOL_PROGRAM_ID.toBase58(), IDL],
@@ -30,6 +30,46 @@ export async function getIdl(programId: Address): Promise<Idl | undefined> {
   }
 
   return _idlCache.get(programId);
+}
+
+/**
+ * Gets the {@link TxProgramErrorInfo} for a given error.
+ *
+ * @param err The error to get the {@link TxProgramErrorInfo} for.
+ * Should typically be a `string`, {@link Error}, or {@link SendTransactionError}.
+ * @returns The {@link TxProgramErrorInfo} for the given error, if it exists, otherwise `undefined`.
+ */
+export function getProgramErrorInfo(err: unknown): ProgramErrorInfo | undefined {
+  // Extract error message from error.
+  const errMessage = (typeof err === 'string')
+    ? err
+    : (err instanceof Error)
+      ? err.message
+      : (err instanceof SendTransactionError)
+        ? err.transactionError.message
+        : '';
+
+  // Extract error code from error message - can be hex or decimal.
+  const errCodeStr = errMessage.match(/(?:anchor|idl|program) error:? ((?:0x)?\d+)/i)?.[1];
+  if (!errCodeStr) return;
+  const errCode = parseInt(errCodeStr);
+
+  // Smart Contract IDL error.
+  if (errCode >= 6000) {
+    for (const idl of _idlCache.values()) {
+      const error = idl.errors?.find((error) => error.code === errCode);
+      if (error) return error;
+    }
+  }
+
+  // Anchor IDL error.
+  return {
+    code: errCode,
+    msg: LangErrorMessage.get(errCode),
+    name: Object.keys(LangErrorCode).find((key) =>
+      LangErrorCode[key as keyof typeof LangErrorCode] === errCode
+    ) ?? ''
+  };
 }
 
 /**

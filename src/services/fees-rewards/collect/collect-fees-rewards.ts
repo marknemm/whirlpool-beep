@@ -1,16 +1,14 @@
 import FeeRewardTxDAO from '@/data/fee-reward-tx/fee-reward-tx.dao';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff } from '@/util/async/async';
-import { getTxProgramErrorInfo } from '@/util/error/error';
 import { debug, error, info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
-import type { SplTokenTransferIxData } from '@/util/program/program.interfaces';
+import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { getToken } from '@/util/token/token';
 import { executeTransaction, getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
 import { collectFeesQuote, collectRewardsQuote, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
@@ -53,50 +51,59 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
  * @returns A {@link Promise} that resolves to a {@link FeesRewardsTxSummary} once the transaction completes.
  */
 export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary | undefined> {
-  return expBackoff(async (retry) => {
-    info('\n-- Collect Fees and Rewards --\n', {
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      retry,
-    });
+  const opMetadata = {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+  };
 
-    // Must refresh data if retrying, or may generate error due to stale data.
-    if (retry) {
-      await position.refreshData();
-    }
+  try {
+    return expBackoff(async (retry) => {
+      info('\n-- Collect Fees and Rewards --\n', {
+        ...opMetadata,
+        retry,
+      });
 
-    const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-    const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
+      // Must refresh data if retrying, or may generate error due to stale data.
+      if (retry) {
+        await position.refreshData();
+      }
 
-    const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
-    const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
-    if (!hasFees && !hasRewards) {
-      info('No fees or rewards to collect:', {
+      const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+      const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
+
+      const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
+      const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
+      if (!hasFees && !hasRewards) {
+        info('No fees or rewards to collect:', {
+          whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+          position: position.getAddress().toBase58(),
+        });
+        return undefined;
+      }
+
+      const signature = await executeTransaction(tx, {
+        name: 'Collect Fees and Rewards',
         whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
         position: position.getAddress().toBase58(),
+        [`${tokenA.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedA, tokenA.mint.decimals),
+        [`${tokenB.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedB, tokenB.mint.decimals),
       });
-      return undefined;
-    }
+      await position.refreshData();
 
-    const signature = await executeTransaction(tx, {
-      name: 'Collect Fees and Rewards',
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      [`${tokenA.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedB, tokenB.mint.decimals),
+      const txSummary = await genFeesRewardsTxSummary(position, signature);
+      await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
+
+      return txSummary;
+    }, {
+      retryFilter: (result, err) => {
+        const errInfo = getProgramErrorInfo(err);
+        return ['InvalidTimestamp'].includes(errInfo?.name ?? '');
+      }
     });
-    await position.refreshData();
-
-    const txSummary = await genFeesRewardsTxSummary(position, signature);
-    await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
-
-    return txSummary;
-  }, {
-    retryFilter: (result, err) => {
-      const errInfo = getTxProgramErrorInfo(err);
-      return ['InvalidTimestamp'].includes(errInfo?.name ?? '');
-    }
-  });
+  } catch (err) {
+    error('Failed to collect fees and rewards:', opMetadata);
+    throw err;
+  }
 }
 
 /**
@@ -243,14 +250,6 @@ export async function genFeesRewardsTxSummary(
   });
 
   return feesRewardsTxSummary;
-}
-
-function _logFeesRewardsTxData(txData: FeesRewardsTxSummary, tokenA: DigitalAsset, tokenB: DigitalAsset): void {
-  info(`Collected ${green(`'${tokenA.metadata.symbol}'`)} liquidity:`,
-    toStr(txData.tokenAmountA.abs(), tokenA.mint.decimals));
-
-  info(`Collected ${green(`'${tokenB.metadata.symbol}'`)} liquidity:`,
-    toStr(txData.tokenAmountB.abs(), tokenB.mint.decimals));
 }
 
 export type * from './collect-fees-rewards.interfaces';

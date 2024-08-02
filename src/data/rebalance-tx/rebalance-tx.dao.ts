@@ -1,6 +1,6 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { DAOInsertOptions } from '@/interfaces/dao.interfaces';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { RebalanceTxSummary } from '@/services/position/rebalance/rebalance-position.interfaces';
 import db, { handleInsertError } from '@/util/db/db';

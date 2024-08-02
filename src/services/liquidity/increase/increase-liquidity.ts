@@ -6,9 +6,9 @@ import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff } from '@/util/async/async';
 import env from '@/util/env/env';
-import { getTxProgramErrorInfo } from '@/util/error/error';
 import { debug, error, info } from '@/util/log/log';
 import { toBN, toDecimal, toStr, toTokenAmount } from '@/util/number-conversion/number-conversion';
+import { getProgramErrorInfo } from '@/util/program/program';
 import { getTokenPrice } from '@/util/token/token';
 import { executeTransaction } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
@@ -81,43 +81,52 @@ export async function increaseLiquidity(
   amount: BN | Decimal | number,
   unit: LiquidityUnit = 'usd'
 ): Promise<LiquidityTxSummary> {
-  return expBackoff(async (retry) => {
-    info('\n-- Increasing liquidity --\n', {
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      amount: `${toStr(amount)} ${unit}`,
-      retry,
+  const opMetadata = {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+    amount: `${toStr(amount)} ${unit}`,
+  };
+
+  try {
+    return expBackoff(async (retry) => {
+      info('\n-- Increasing liquidity --\n', {
+        ...opMetadata,
+        retry,
+      });
+
+      // Must refresh data if retrying, or may generate error due to stale data.
+      if (retry) {
+        await position.refreshData();
+      }
+
+      // Get token pair and generate increase liquidity transaction
+      const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+      const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
+
+      // Execute Tx and get signature
+      const signature = await executeTransaction(tx, {
+        name: 'Increase Liquidity',
+        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+        position: position.getAddress().toBase58(),
+        [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
+        [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+      });
+
+      // Get Liquidity tx summary and insert into DB
+      const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
+      await LiquidityTxDAO.insert(liquidityDelta, { catchErrors: true });
+
+      return liquidityDelta;
+    }, {
+      retryFilter: (result, err) => {
+        const errInfo = getProgramErrorInfo(err);
+        return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '');
+      }
     });
-
-    // Must refresh data if retrying, or may generate error due to stale data.
-    if (retry) {
-      await position.refreshData();
-    }
-
-    // Get token pair and generate increase liquidity transaction
-    const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-    const { quote, tx } = await genIncreaseLiquidityTx(position, amount, unit);
-
-    // Execute Tx and get signature
-    const signature = await executeTransaction(tx, {
-      name: 'Increase Liquidity',
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
-    });
-
-    // Get Liquidity tx summary and insert into DB
-    const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
-    await LiquidityTxDAO.insert(liquidityDelta, { catchErrors: true });
-
-    return liquidityDelta;
-  }, {
-    retryFilter: (result, err) => {
-      const errInfo = getTxProgramErrorInfo(err);
-      return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '');
-    }
-  });
+  } catch (err) {
+    error('Failed to increase liquidity:', opMetadata);
+    throw err;
+  }
 }
 
 /**

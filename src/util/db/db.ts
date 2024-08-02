@@ -1,7 +1,7 @@
 import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import env from '@/util/env/env';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
 import { debug, error, info } from '@/util/log/log';
 import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';

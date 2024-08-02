@@ -2,7 +2,8 @@ import PositionDAO from '@/data/position/position.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { getPositionBundle } from '@/services/position-bundle/query/query-position-bundle';
 import { expBackoff } from '@/util/async/async';
-import { debug, info } from '@/util/log/log';
+import { debug, error, info } from '@/util/log/log';
+import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { toPriceRange, toTickRange } from '@/util/tick-range/tick-range';
 import { executeTransaction } from '@/util/transaction/transaction';
@@ -11,55 +12,69 @@ import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whir
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type { GenOpenPositionTxReturn } from './open-position.interfaces';
+import type { GenOpenPositionTxReturn, OpenPositionOptions } from './open-position.interfaces';
 
 /**
  * Opens a {@link Position} in a {@link Whirlpool}.
  *
- * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
- * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
- * Defaults to `3%`.
+ * @param options The {@link OpenPositionOptions}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(
-  whirlpool: Whirlpool,
-  priceMargin = Percentage.fromFraction(3, 100)
-): Promise<BundledPosition> {
-  info('\n-- Open Position --\n', {
-    whirlpool: await formatWhirlpool(whirlpool),
+export async function openPosition(options: OpenPositionOptions): Promise<BundledPosition> {
+  const {
+    whirlpool,
+    priceMargin = Percentage.fromFraction(3, 100)
+  } = options;
+
+  const opMetadata = {
+    whirlpool: whirlpool.getAddress().toBase58(),
     priceMargin: priceMargin.toString(),
-  });
+  };
 
-  const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(whirlpool, priceMargin);
+  try {
+    return expBackoff(async () => {
+      info('\n-- Open Position --\n', opMetadata);
 
-  // Execute and verify the transaction
-  const signature = await executeTransaction(tx, {
-    name: 'Open Position',
-    whirlpool: await formatWhirlpool(whirlpool),
-    position: address.toBase58(),
-    bundleIndex,
-    positionBundle: positionBundle.positionBundleMint.toBase58(),
-  });
+      const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(options);
 
-  // Get, store, and return the newly opened position
-  const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
-  await PositionDAO.insert(position, signature, { catchErrors: true });
+      // Execute and verify the transaction
+      const signature = await executeTransaction(tx, {
+        name: 'Open Position',
+        whirlpool: await formatWhirlpool(whirlpool),
+        position: address.toBase58(),
+        bundleIndex,
+        positionBundle: positionBundle.positionBundleMint.toBase58(),
+      });
 
-  return { bundleIndex, position, positionBundle };
+      // Get, store, and return the newly opened position
+      const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
+      await PositionDAO.insert(position, signature, { catchErrors: true });
+
+      return { bundleIndex, position, positionBundle };
+    }, {
+      retryFilter: (result, err) => {
+        const errInfo = getProgramErrorInfo(err);
+        return errInfo?.code === 0x0; // Retry if error is due to new position address clash.
+      }
+    });
+  } catch (err) {
+    error('Failed to open position:', opMetadata);
+    throw err;
+  }
 }
 
 /**
  * Creates a transaction to open a {@link Position} in a {@link Whirlpool}.
  *
- * @param whirlpool The {@link Whirlpool} to open a {@link Position} in.
- * @param priceMargin The price margin {@link Percentage} to use for the {@link Position}.
- * Defaults to `3%`.
+ * @param options The {@link OpenPositionOptions}.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-export async function genOpenPositionTx(
-  whirlpool: Whirlpool,
-  priceMargin = Percentage.fromFraction(3, 100)
-): Promise<GenOpenPositionTxReturn> {
+export async function genOpenPositionTx({
+  bumpIndex = 0,
+  bundleIndex,
+  priceMargin = Percentage.fromFraction(3, 100),
+  whirlpool
+}: OpenPositionOptions): Promise<GenOpenPositionTxReturn> {
   info('Creating Tx to open position:', {
     whirlpool: await formatWhirlpool(whirlpool),
     priceMargin: priceMargin.toString(),
@@ -83,7 +98,10 @@ export async function genOpenPositionTx(
   if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
 
   // Find an unoccupied bundle index for the new position
-  const bundleIndex = PositionBundleUtil.findUnoccupiedBundleIndex(positionBundle);
+  const emptyIdxs = PositionBundleUtil.getUnoccupiedBundleIndexes(positionBundle);
+  if (bundleIndex == null || !emptyIdxs.includes(bundleIndex)) {
+    bundleIndex = emptyIdxs[bumpIndex % emptyIdxs.length];
+  }
   if (bundleIndex == null) throw new Error('No unoccupied bundle index found in position bundle');
 
   // Get PDA for the new position

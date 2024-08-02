@@ -1,5 +1,5 @@
 import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao.interfaces';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug } from '@/util/log/log';

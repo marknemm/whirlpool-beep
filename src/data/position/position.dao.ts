@@ -1,8 +1,8 @@
 import WhirlpoolDAO from '@/data/whirlpool/whirlpool.dao';
 import type { DAOOptions } from '@/interfaces/dao.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
 import { debug, error } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { toPriceRange } from '@/util/tick-range/tick-range';

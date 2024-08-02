@@ -6,7 +6,9 @@ import { collectFeesRewards, genCollectFeesRewardsTx, genFeesRewardsTxSummary } 
 import { decreaseLiquidity, genDecreaseLiquidityTx } from '@/services/liquidity/decrease/decrease-liquidity';
 import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
+import { expBackoff } from '@/util/async/async';
 import { debug, error, info } from '@/util/log/log';
+import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { executeTransaction } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
@@ -53,50 +55,72 @@ export async function closePosition({
   separateTxs = false,
 }: ClosePositionOptions): Promise<void> {
   const { position } = bundledPosition;
-
-  info('\n-- Close Position --');
-
-  if (separateTxs) {
-    if (!excludeDecreaseLiquidity) {
-      const { liquidity } = position.getData();
-
-      !liquidity.isZero()
-        ? await decreaseLiquidity(position, liquidity)
-        : info('No liquidity to decrease:', {
-          whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-          position: position.getAddress().toBase58(),
-        });
-    }
-
-    if (!excludeCollectFeesRewards) {
-      await collectFeesRewards(position);
-    }
-  }
-
-  const { feesRewardsTx, decreaseLiquidityTx, tx } = await genClosePositionTx({
-    bundledPosition,
-    excludeCollectFeesRewards: excludeCollectFeesRewards || separateTxs,
-    excludeDecreaseLiquidity: excludeDecreaseLiquidity || separateTxs,
-  });
-
-  const signature = await executeTransaction(tx, {
-    name: 'Close Position',
+  const opMetadata = {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
-  });
+  };
 
-  if (decreaseLiquidityTx) {
-    const feesRewardsTxSummary = await genFeesRewardsTxSummary(position, signature);
-    await FeeRewardTxDAO.insert(feesRewardsTxSummary);
+  try {
+    return expBackoff(async (retry) => {
+      info('\n-- Close Position --\n', {
+        ...opMetadata,
+        retry,
+      });
+
+      // Must refresh data if retrying, or may generate error due to stale data.
+      if (retry) {
+        await position.refreshData();
+      }
+
+      if (separateTxs) {
+        if (!excludeDecreaseLiquidity) {
+          const { liquidity } = position.getData();
+
+          !liquidity.isZero()
+            ? await decreaseLiquidity(position, liquidity)
+            : info('No liquidity to decrease:', {
+              whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+              position: position.getAddress().toBase58(),
+            });
+        }
+
+        if (!excludeCollectFeesRewards) {
+          await collectFeesRewards(position);
+        }
+      }
+
+      const { feesRewardsTx, decreaseLiquidityTx, tx } = await genClosePositionTx({
+        bundledPosition,
+        excludeCollectFeesRewards: excludeCollectFeesRewards || separateTxs,
+        excludeDecreaseLiquidity: excludeDecreaseLiquidity || separateTxs,
+      });
+
+      const signature = await executeTransaction(tx, {
+        name: 'Close Position',
+        position: position.getAddress().toBase58(),
+      });
+
+      if (decreaseLiquidityTx) {
+        const feesRewardsTxSummary = await genFeesRewardsTxSummary(position, signature);
+        await FeeRewardTxDAO.insert(feesRewardsTxSummary);
+      }
+
+      if (feesRewardsTx) {
+        const liquidityTxSummary = await genLiquidityTxSummary(position, signature);
+        await LiquidityTxDAO.insert(liquidityTxSummary);
+      }
+
+      await PositionDAO.updateClosed(position, signature, { catchErrors: true });
+    }, {
+      retryFilter: (result, err) => {
+        const errInfo = getProgramErrorInfo(err);
+        return ['InvalidTimestamp', 'LiquidityUnderflow', 'TokenMinSubceeded'].includes(errInfo?.name ?? '');
+      },
+    });
+  } catch (err) {
+    error('Close Position Failed:', opMetadata);
+    throw err;
   }
-
-  if (feesRewardsTx) {
-    const liquidityTxSummary = await genLiquidityTxSummary(position, signature);
-    await LiquidityTxDAO.insert(liquidityTxSummary);
-  }
-
-  await PositionDAO.updateClosed(position, signature, { catchErrors: true });
-
-  info('Position closed:', position.getAddress());
 }
 
 /**

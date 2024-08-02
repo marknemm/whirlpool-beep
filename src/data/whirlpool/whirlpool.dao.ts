@@ -1,8 +1,8 @@
 import TokenDAO from '@/data/token/token.dao';
 import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao.interfaces';
+import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
-import type { ErrorWithCode } from '@/util/error/error.interfaces';
 import { debug } from '@/util/log/log';
 import { getWhirlpoolTokenPair, toWhirlpoolData } from '@/util/whirlpool/whirlpool';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';

@@ -1,4 +1,5 @@
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
+import type { BundledPosition } from '@/interfaces/position.interfaces';
 import type { Address, Percentage } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
@@ -15,6 +16,37 @@ export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
    * The {@link Address} of the {@link Whirlpool} to rebalance all {@link Position}s in.
    */
   whirlpoolAddress?: Address;
+
+}
+
+/**
+ * The result of rebalancing all {@link Position}s.
+ */
+export interface RebalanceAllPositionsResult {
+
+  /**
+   * The {@link Error}s that occurred during rebalancing.
+   *
+   * Each error should be associated with a {@link BundledPosition} in the {@link failures} array.
+   */
+  errs: unknown[];
+
+  /**
+   * The {@link BundledPosition}s that failed during rebalancing.
+   *
+   * Each failed {@link BundledPosition} should be associated with an {@link Error} in the {@link errs} array.
+   */
+  failures: BundledPosition[];
+
+  /**
+   * The {@link BundledPosition}s that were skipped during rebalancing.
+   */
+  skips: BundledPosition[];
+
+  /**
+   * The new {@link BundledPosition}s that were successfully created during rebalancing.
+   */
+  successes: BundledPosition[];
 
 }
 
@@ -49,6 +81,27 @@ export interface RebalancePositionOptions {
    * Defaults to the same price margin of original {@link Position}.
    */
   priceMargin?: Percentage;
+
+}
+
+export interface RebalancePositionResult {
+
+  /**
+   * The {@link Position} that was rebalanced.
+   */
+  bundledPosition: BundledPosition;
+
+  /**
+   * The status of the rebalance transaction.
+   *
+   * Either `'rebalanced'` or `'skipped'`.
+   */
+  status: 'succeeded' | 'skipped'
+
+  /**
+   * The summary of the rebalance transaction.
+   */
+  txSummary?: RebalanceTxSummary;
 
 }
 

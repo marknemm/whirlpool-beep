@@ -1,6 +1,32 @@
 import type BN from 'bn.js';
 
 /**
+ * Error information pertaining to `IDL` errors thrown by `Anchor` or a `Smart Contract`.
+ */
+export interface ProgramErrorInfo {
+
+  /**
+   * The error code.
+   *
+   * `< 6000` -> `Anchor`.
+   *
+   * `>= 6000` -> `Smart Contracts (Orca Whirlpool)`.
+   */
+  code: number;
+
+  /**
+   * The error message.
+   */
+  msg?: string;
+
+  /**
+   * The error name.
+   */
+  name: string;
+
+}
+
+/**
  * The decoded data of a SPL token transfer instruction.
  */
 export interface SplTokenTransferIxData {

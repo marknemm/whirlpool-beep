@@ -45,7 +45,10 @@ async function handler(argv: CliArgs<typeof cli.options>) {
     const whirlpool = await getWhirlpoolFromCliArgs(argv);
     if (!whirlpool) throw new Error('Whirlpool not found');
 
-    const { position } = await openPosition(whirlpool, Percentage.fromFraction(argv.priceMargin, 100));
+    const { position } = await openPosition({
+      whirlpool,
+      priceMargin: Percentage.fromFraction(argv.priceMargin, 100),
+    });
     if (argv.liquidity) {
       await increaseLiquidity(position, argv.liquidity, argv.liquidityUnit);
     }

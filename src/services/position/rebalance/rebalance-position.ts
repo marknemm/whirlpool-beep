@@ -10,7 +10,8 @@ import { calcPriceMargin, toPriceRange } from '@/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { RebalanceAllPositionsOptions, RebalancePositionOptions, RebalanceTxSummary } from './rebalance-position.interfaces';
+import type { RebalanceAllPositionsOptions, RebalanceAllPositionsResult, RebalancePositionOptions, RebalancePositionResult, RebalanceTxSummary } from './rebalance-position.interfaces';
+import { timeout } from '@/util/async/async';
 
 // TODO: Improve efficiency by consolidating collect, decrease liquidity, close, and open transactions.
 
@@ -23,24 +24,52 @@ import type { RebalanceAllPositionsOptions, RebalancePositionOptions, RebalanceT
  */
 export async function rebalanceAllPositions(
   options: RebalanceAllPositionsOptions
-): Promise<BundledPosition[]> {
-  info('\n-- Rebalance All Positions --');
+): Promise<RebalanceAllPositionsResult> {
+  info('\n-- Rebalance All Positions --\n');
 
   const { whirlpoolAddress } = options;
   const bundledPositions = await getPositions({ whirlpoolAddress, ...IGNORE_CACHE });
+
+  const allResults: RebalanceAllPositionsResult = {
+    successes: [],
+    skips: [],
+    failures: [],
+    errs: [],
+  };
 
   whirlpoolAddress
     ? info(`Rebalancing ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
     : info(`Rebalancing ${bundledPositions.length} positions...`);
 
-  const promises = bundledPositions.map((bundledPosition) =>
-    rebalancePosition(bundledPosition, options)
-      .catch((err) => { error(err); })
-  );
+  const promises = bundledPositions.map(async (bundledPosition, idx) => {
+    await timeout(250 * idx); // Stagger rebalance requests to avoid rate limiting
 
-  return (await Promise.all(promises)).filter(
-    (bundledPosition) => !!bundledPosition
-  );
+    return rebalancePosition(bundledPosition, options)
+      .then((result) => {
+        (result.status === 'succeeded')
+          ? allResults.successes.push(result.bundledPosition)
+          : allResults.skips.push(result.bundledPosition);
+      })
+      .catch((err) => {
+        allResults.failures.push(bundledPosition);
+        allResults.errs.push(err);
+        error(err);
+      });
+  });
+
+  await Promise.all(promises);
+
+  info('\n-- Rebalance All Positions Complete --', {
+    successCnt: allResults.successes.length,
+    successes: allResults.successes.map((bundledPosition) => bundledPosition.position.getAddress().toBase58()),
+    skipCnt: allResults.skips.length,
+    skips: allResults.skips.map((bundledPosition) => bundledPosition.position.getAddress().toBase58()),
+    failureCnt: allResults.failures.length,
+    failures: allResults.failures.map((bundledPosition) => bundledPosition.position.getAddress().toBase58()),
+    errs: allResults.errs,
+  });
+
+  return allResults;
 }
 
 /**
@@ -54,7 +83,7 @@ export async function rebalanceAllPositions(
 export async function rebalancePosition(
   bundledPosition: BundledPosition,
   options: RebalancePositionOptions
-): Promise<BundledPosition> {
+): Promise<RebalancePositionResult> {
   const { liquidity, liquidityUnit } = options;
   const positionOld = bundledPosition.position;
 
@@ -67,24 +96,45 @@ export async function rebalancePosition(
 
   // TODO: Condense into less transactions
   if (await options.filter(positionOld)) {
-    info('\n-- Rebalance Position --\n', opMetadata);
+    try {
+      info('\n-- Rebalance Position --\n', opMetadata);
 
-    await closePosition({ bundledPosition });
+      await closePosition({ bundledPosition });
 
-    const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
-    const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
-    const newBundledPosition = await openPosition(whirlpool, priceMargin);
-    const positionNew = newBundledPosition.position;
-    await increaseLiquidity(positionNew, liquidity, liquidityUnit);
+      const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
+      const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
+      const newBundledPosition = await openPosition({
+        whirlpool,
+        priceMargin,
+        bundleIndex: bundledPosition.bundleIndex // Use same bundle index to maintain position address
+      });
+      const positionNew = newBundledPosition.position;
+      await increaseLiquidity(positionNew, liquidity, liquidityUnit);
 
-    const txSummary: RebalanceTxSummary = { positionOld, positionNew };
-    await RebalanceTxDAO.insert(txSummary, { catchErrors: true });
+      const txSummary: RebalanceTxSummary = { positionOld, positionNew };
+      await RebalanceTxDAO.insert(txSummary, { catchErrors: true });
 
-    return newBundledPosition;
+      info('Rebalance Position Succeeded:', {
+        ...opMetadata,
+        positionNew: positionNew.getAddress().toBase58(),
+      });
+
+      return {
+        bundledPosition: newBundledPosition,
+        status: 'succeeded',
+        txSummary
+      };
+    } catch (err) {
+      error('Rebalance Position Failed:', opMetadata);
+      throw err;
+    }
   }
 
   info('\n-- Rebalance Position Not Required: Skipping --\n', opMetadata);
-  return bundledPosition;
+  return {
+    bundledPosition,
+    status: 'skipped'
+  };
 }
 
 /**

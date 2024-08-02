@@ -4,9 +4,9 @@ import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff } from '@/util/async/async';
 import env from '@/util/env/env';
-import { getTxProgramErrorInfo } from '@/util/error/error';
 import { error, info } from '@/util/log/log';
 import { toBN, toStr } from '@/util/number-conversion/number-conversion';
+import { getProgramErrorInfo } from '@/util/program/program';
 import { executeTransaction } from '@/util/transaction/transaction';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { BN } from '@coral-xyz/anchor';
@@ -60,43 +60,52 @@ export async function decreaseLiquidity(
   position: Position,
   amount: BN | number
 ): Promise<LiquidityTxSummary> {
-  return expBackoff(async (retry) => {
-    info('\n-- Decreasing liquidity --\n', {
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      amount: toStr(amount),
-      retry,
+  const opMetadata = {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+    amount: toStr(amount),
+  };
+
+  try {
+    return expBackoff(async (retry) => {
+      info('\n-- Decreasing liquidity --\n', {
+        ...opMetadata,
+        retry,
+      });
+
+      // Must refresh data if retrying, or may generate error due to stale data.
+      if (retry) {
+        await position.refreshData();
+      }
+
+      // Generate transaction to decrease liquidity
+      const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
+      const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
+
+      // Execute and verify the transaction
+      const signature = await executeTransaction(tx, {
+        name: 'Decrease Liquidity',
+        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+        position: position.getAddress().toBase58(),
+        [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
+        [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+      });
+
+      // Get Liquidity tx summary and insert into DB
+      const txSummary = await genLiquidityTxSummary(position, signature, quote);
+      await LiquidityTxDAO.insert(txSummary, { catchErrors: true });
+
+      return txSummary;
+    }, {
+      retryFilter: (result, err) => {
+        const errInfo = getProgramErrorInfo(err);
+        return ['InvalidTimestamp', 'LiquidityUnderflow', 'TokenMinSubceeded'].includes(errInfo?.name ?? '');
+      },
     });
-
-    // Must refresh data if retrying, or may generate error due to stale data.
-    if (retry) {
-      await position.refreshData();
-    }
-
-    // Generate transaction to decrease liquidity
-    const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-    const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
-
-    // Execute and verify the transaction
-    const signature = await executeTransaction(tx, {
-      name: 'Decrease Liquidity',
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
-    });
-
-    // Get Liquidity tx summary and insert into DB
-    const txSummary = await genLiquidityTxSummary(position, signature, quote);
-    await LiquidityTxDAO.insert(txSummary, { catchErrors: true });
-
-    return txSummary;
-  }, {
-    retryFilter: (result, err) => {
-      const errInfo = getTxProgramErrorInfo(err);
-      return ['InvalidTimestamp', 'LiquidityUnderflow', 'TokenMinSubceeded'].includes(errInfo?.name ?? '');
-    },
-  });
+  } catch (err) {
+    error('Failed to decrease liquidity:', opMetadata);
+    throw err;
+  }
 }
 
 /**
