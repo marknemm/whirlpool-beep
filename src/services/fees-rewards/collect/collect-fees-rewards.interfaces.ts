@@ -2,7 +2,7 @@ import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 
 /**
- * Summary of a fees and rewards transaction for a {@link Position}.
+ * Summary of a collect fees and rewards transaction for a {@link Position}.
  */
 export interface FeesRewardsTxSummary {
 

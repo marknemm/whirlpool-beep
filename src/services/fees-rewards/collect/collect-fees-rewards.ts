@@ -210,7 +210,7 @@ async function _genCollectFeesRewardsQuote(
 }
 
 /**
- * Generates {@link FeesRewardsTxSummary}.
+ * Generates a {@link FeesRewardsTxSummary} for a collect fees / rewards transaction.
  *
  * @param position The {@link Position} to get the {@link FeesRewardsTxSummary} for.
  * @param signature The signature of the collection transaction.
@@ -224,11 +224,11 @@ export async function genFeesRewardsTxSummary(
 
   const txSummary = await getTransactionSummary(signature);
 
-  const liquidityIx = txSummary.decodedIxs.find(
+  const feesRewardsIx = txSummary.decodedIxs.find(
     (ix) => ix.name.toLowerCase().includes('fee')
   );
-  if (!liquidityIx) throw new Error('No liquidity instruction found in transaction');
-  const { tokenTotals, usd } = await getTransactionTransferTotals([liquidityIx]);
+  if (!feesRewardsIx) throw new Error('No collect fees / rewards instruction found in transaction');
+  const { tokenTotals, usd } = await getTransactionTransferTotals([feesRewardsIx]);
 
   const feesRewardsTxSummary: FeesRewardsTxSummary = {
     fee: txSummary.fee,

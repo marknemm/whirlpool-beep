@@ -25,18 +25,11 @@ export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
 export interface RebalanceAllPositionsResult {
 
   /**
-   * The {@link Error}s that occurred during rebalancing.
-   *
-   * Each error should be associated with a {@link BundledPosition} in the {@link failures} array.
-   */
-  errs: unknown[];
-
-  /**
    * The {@link BundledPosition}s that failed during rebalancing.
    *
    * Each failed {@link BundledPosition} should be associated with an {@link Error} in the {@link errs} array.
    */
-  failures: BundledPosition[];
+  failures: { bundledPosition: BundledPosition, err: unknown }[];
 
   /**
    * The {@link BundledPosition}s that were skipped during rebalancing.
@@ -44,9 +37,9 @@ export interface RebalanceAllPositionsResult {
   skips: BundledPosition[];
 
   /**
-   * The new {@link BundledPosition}s that were successfully created during rebalancing.
+   * The {@link RebalanceTxSummary}s for each successfully rebalanced {@link Position}.
    */
-  successes: BundledPosition[];
+  successes: RebalanceTxSummary[];
 
 }
 
@@ -113,11 +106,11 @@ export interface RebalanceTxSummary {
   /**
    * The old {@link Position} that existed prior to the rebalance.
    */
-  positionOld: Position;
+  bundledPositionOld: BundledPosition;
 
   /**
    * The new {@link Position} that was created after the rebalance.
    */
-  positionNew: Position;
+  bundledPositionNew: BundledPosition;
 
 }

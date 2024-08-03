@@ -29,8 +29,8 @@ export default class RebalanceTxDAO {
     if (!txSummary) return;
     debug('Inserting Rebalance Tx Summary into database...');
 
-    const positionOldAddress = txSummary.positionOld.getAddress().toBase58();
-    const positionNewAddress = txSummary.positionNew.getAddress().toBase58();
+    const positionOldAddress = txSummary.bundledPositionOld.position.getAddress().toBase58();
+    const positionNewAddress = txSummary.bundledPositionNew.position.getAddress().toBase58();
 
     try {
       const positionOldId = await PositionDAO.getId(positionOldAddress);

@@ -1,7 +1,10 @@
+import FeeRewardTxDAO from '@/data/fee-reward-tx/fee-reward-tx.dao';
+import LiquidityTxDAO from '@/data/liquidity-tx/liquidity-tx.dao';
 import WhirlpoolDAO from '@/data/whirlpool/whirlpool.dao';
 import type { DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
+import { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug, error } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
@@ -117,33 +120,41 @@ export default class PositionDAO {
    * Updates the status of a {@link Position} in the database by setting a closeTx signature.
    * If the given {@link position} or {@link txSignature} is {@link Null}, the operation is a no-op.
    *
-   * @param position The {@link Position} to update the status of.
-   * @param txSignature The signature of the close position transaction.
+   * @param txSummary The {@link ClosePositionTxSummary} to use for the update.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves when the operation is complete.
    */
   static async updateClosed(
-    position: Position | Null,
-    txSignature: string,
+    txSummary: ClosePositionTxSummary,
     opts?: DAOOptions
   ): Promise<void> {
-    if (!position || !txSignature) return;
+    const { bundledPosition, feesRewardsTxSummary, liquidityTxSummary, signature } = txSummary;
+    if (!bundledPosition || !signature) return;
+
+    const { position } = bundledPosition;
     const address = position.getAddress().toBase58();
+
+    if (feesRewardsTxSummary) {
+      await FeeRewardTxDAO.insert(feesRewardsTxSummary, opts);
+    }
+    if (liquidityTxSummary) {
+      await LiquidityTxDAO.insert(liquidityTxSummary, opts);
+    }
 
     debug('Closing Position in database:', address);
 
     try {
       await db().updateTable('position')
-        .set({ closeTx: txSignature })
+        .set({ closeTx: signature })
         .where('address', '=', address)
         .execute();
 
-      debug('Position closed in database:', `${address} -- ${txSignature}`);
+      debug('Position closed in database:', `${address} -- ${signature}`);
     } catch (err) {
       if (!opts?.catchErrors) {
         throw err;
       }
-      error('Failed to close position in database:', `${address} -- ${txSignature}`);
+      error('Failed to close position in database:', `${address} -- ${signature}`);
       error(err);
     }
   }
