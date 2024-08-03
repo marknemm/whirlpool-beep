@@ -46,14 +46,6 @@ export interface ClosePositionOptions {
    */
   excludeDecreaseLiquidity?: boolean;
 
-  /**
-   * Whether to separate transactions for collecting fees and rewards, decreasing liquidity, and closing the position.
-   * If `false`, all actions will be combined into a single transaction.
-   *
-   * @default false
-   */
-  separateTxs?: boolean;
-
 }
 
 /**
@@ -137,15 +129,6 @@ export interface GenClosePositionTxSummaryArgs {
    * @default false
    */
   excludeDecreaseLiquidity?: boolean;
-
-  /**
-   * Whether transactions for collecting fees and rewards, decreasing liquidity, and closing the position were separated.
-   *
-   * If `false`, a single transaction was used for all actions.
-   *
-   * @default false
-   */
-  separateTxs?: boolean;
 
   /**
    * The signature of the close position transaction.

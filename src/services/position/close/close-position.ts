@@ -1,7 +1,7 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import { collectFeesRewards, genCollectFeesRewardsTx, genFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
-import { decreaseLiquidity, genDecreaseLiquidityTx } from '@/services/liquidity/decrease/decrease-liquidity';
+import { genCollectFeesRewardsTx, genFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
+import { genDecreaseLiquidityTx } from '@/services/liquidity/decrease/decrease-liquidity';
 import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff, timeout } from '@/util/async/async';
@@ -34,6 +34,9 @@ export async function closeAllPositions(whirlpoolAddress: Address): Promise<Clos
   bundledPositions.length
     ? info(`Closing ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
     : info('No positions to close in whirlpool:', whirlpoolAddress);
+  info(bundledPositions.map((bundledPosition) =>
+    bundledPosition.position.getAddress().toBase58()
+  ));
 
   const promises = bundledPositions.map(async (bundledPosition, idx) => {
     await timeout(250 * idx); // Stagger requests to avoid rate limiting
@@ -73,7 +76,6 @@ export async function closePosition({
   bundledPosition,
   excludeCollectFeesRewards = false,
   excludeDecreaseLiquidity = false,
-  separateTxs = false,
 }: ClosePositionOptions): Promise<ClosePositionTxSummary> {
   const { position } = bundledPosition;
   const opMetadata = {
@@ -93,27 +95,10 @@ export async function closePosition({
         await position.refreshData();
       }
 
-      if (separateTxs) {
-        if (!excludeDecreaseLiquidity) {
-          const { liquidity } = position.getData();
-
-          !liquidity.isZero()
-            ? await decreaseLiquidity(position, liquidity)
-            : info('No liquidity to decrease:', {
-              whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-              position: position.getAddress().toBase58(),
-            });
-        }
-
-        if (!excludeCollectFeesRewards) {
-          await collectFeesRewards(position);
-        }
-      }
-
       const { tx } = await genClosePositionTx({
         bundledPosition,
-        excludeCollectFeesRewards: excludeCollectFeesRewards || separateTxs,
-        excludeDecreaseLiquidity: excludeDecreaseLiquidity || separateTxs,
+        excludeCollectFeesRewards,
+        excludeDecreaseLiquidity,
       });
 
       const signature = await executeTransaction(tx, {
@@ -125,7 +110,6 @@ export async function closePosition({
         bundledPosition,
         excludeCollectFeesRewards,
         excludeDecreaseLiquidity,
-        separateTxs,
         signature,
       });
 
@@ -233,7 +217,6 @@ export async function genClosePositionTxSummary({
   bundledPosition,
   excludeCollectFeesRewards = false,
   excludeDecreaseLiquidity = false,
-  separateTxs = false,
   signature
 }: GenClosePositionTxSummaryArgs): Promise<ClosePositionTxSummary> {
   const txSummary = await getTransactionSummary(signature);
@@ -246,13 +229,13 @@ export async function genClosePositionTxSummary({
 
   if (!excludeDecreaseLiquidity) {
     const liquidityTxSummary = await genLiquidityTxSummary(bundledPosition.position, signature);
-    if (!separateTxs) liquidityTxSummary.fee = 0;
+    liquidityTxSummary.fee = 0; // Fee is included in close position tx fee
     closePositionTxSummary.liquidityTxSummary = liquidityTxSummary;
   }
 
   if (!excludeCollectFeesRewards) {
     const feesRewardsTxSummary = await genFeesRewardsTxSummary(bundledPosition.position, signature);
-    if (!separateTxs) feesRewardsTxSummary.fee = 0;
+    feesRewardsTxSummary.fee = 0; // Fee is included in close position tx fee
     closePositionTxSummary.feesRewardsTxSummary = feesRewardsTxSummary;
   }
 
