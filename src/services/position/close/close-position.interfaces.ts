@@ -59,6 +59,11 @@ export interface ClosePositionTxSummary {
   bundledPosition: BundledPosition;
 
   /**
+   * The fee (base + priority) for the close position transaction.
+   */
+  fee: number;
+
+  /**
    * The {@link FeesRewardsTxSummary} for the collect fees and rewards transaction / instruction.
    *
    * `undefined` if the transaction was excluded via {@link ClosePositionOptions.excludeCollectFeesRewards}.
@@ -71,11 +76,6 @@ export interface ClosePositionTxSummary {
    * `undefined` if the transaction was excluded via {@link ClosePositionOptions.excludeDecreaseLiquidity}.
    */
   liquidityTxSummary?: LiquidityTxSummary;
-
-  /**
-   * The fee (base + priority) for the close position transaction.
-   */
-  fee: number;
 
   /**
    * The signature of the close position transaction.

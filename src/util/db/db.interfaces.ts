@@ -47,9 +47,11 @@ export interface LiquidityTx {
 
 export interface Position {
   address: string;
+  closeFee: Generated<Int8>;
   closeTx: string | null;
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
+  openFee: Int8;
   openTx: string;
   priceLower: Int8;
   priceMargin: number;

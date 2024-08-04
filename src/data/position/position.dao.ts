@@ -5,6 +5,7 @@ import type { DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
+import { OpenPositionTxSummary } from '@/services/position/open/open-position.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug, error } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
@@ -57,18 +58,26 @@ export default class PositionDAO {
    * Inserts a {@link Position} into the database.
    * If the {@link Position} already exists, the operation is a no-op.
    *
-   * `Note`: This method also inserts the {@link Whirlpool} associated with the {@link Position} via {@link WhirlpoolDAO}.
+   * Also inserts the {@link Whirlpool} associated with the {@link Position} via {@link WhirlpoolDAO},
    *
-   * @param position The {@link Position} to insert.
-   * @param txSignature The signature of the open position transaction.
+   * If the {@link Position} was opened with liquidity, then the associated {@link LiquidityTxSummary}
+   * is also inserted via {@link LiquidityTxDAO}.
+   *
+   * @param txSummary The {@link OpenPositionTxSummary} to use for the insert.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the inserted row's DB `id` when the operation is complete.
    * If the insert fails, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the insert fails with an error and
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async insert(position: Position | Null, txSignature: string, opts?: DAOOptions): Promise<number | undefined> {
-    if (!position) return;
+  static async insert(txSummary: OpenPositionTxSummary, opts?: DAOOptions): Promise<number | undefined> {
+    if (!txSummary?.bundledPosition) return;
+    const { bundledPosition, fee, liquidityTxSummary, signature } = txSummary;
+    const { position } = bundledPosition;
+
+    if (liquidityTxSummary) {
+      await LiquidityTxDAO.insert(liquidityTxSummary, opts);
+    }
 
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
     const whirlpoolData = position.getWhirlpoolData();
@@ -97,7 +106,8 @@ export default class PositionDAO {
       const result = await db().insertInto('position')
         .values({
           address,
-          openTx: txSignature,
+          openFee: fee,
+          openTx: signature,
           priceLower: toBigInt(priceLower, tokenB.mint.decimals),
           priceMargin,
           priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
@@ -119,6 +129,8 @@ export default class PositionDAO {
   /**
    * Updates the status of a {@link Position} in the database by setting a closeTx signature.
    * If the given {@link position} or {@link txSignature} is {@link Null}, the operation is a no-op.
+   *
+   * `Note`: This method also inserts the {@link FeeRewardTxSummary} and {@link LiquidityTxSummary} associated with the close operation.
    *
    * @param txSummary The {@link ClosePositionTxSummary} to use for the update.
    * @param opts The {@link DAOOptions} to use for the operation.
@@ -145,7 +157,10 @@ export default class PositionDAO {
 
     try {
       await db().updateTable('position')
-        .set({ closeTx: signature })
+        .set({
+          closeFee: toBigInt(txSummary.fee),
+          closeTx: signature,
+        })
         .where('address', '=', address)
         .execute();
 

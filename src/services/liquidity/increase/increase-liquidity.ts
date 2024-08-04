@@ -30,7 +30,7 @@ import type Decimal from 'decimal.js';
  */
 export async function increaseAllLiquidity(
   whirlpoolAddress: Address,
-  amount: BN | Decimal | number,
+  amount: BN | Decimal.Value,
   unit: LiquidityUnit = 'usd'
 ): Promise<Map<string, LiquidityTxSummary>> {
   info('\n-- Increasing All liquidity --');

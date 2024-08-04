@@ -6,13 +6,13 @@ import { debug, error, info } from '@/util/log/log';
 import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { toPriceRange, toTickRange } from '@/util/tick-range/tick-range';
-import { executeTransaction } from '@/util/transaction/transaction';
+import { executeTransaction, getTransactionSummary } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool/whirlpool';
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type { GenOpenPositionTxReturn, OpenPositionOptions } from './open-position.interfaces';
+import type { GenOpenPositionTxReturn, OpenPositionOptions, OpenPositionTxSummary } from './open-position.interfaces';
 
 /**
  * Opens a {@link Position} in a {@link Whirlpool}.
@@ -20,7 +20,7 @@ import type { GenOpenPositionTxReturn, OpenPositionOptions } from './open-positi
  * @param options The {@link OpenPositionOptions}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(options: OpenPositionOptions): Promise<BundledPosition> {
+export async function openPosition(options: OpenPositionOptions): Promise<OpenPositionTxSummary> {
   const {
     whirlpool,
     priceMargin = Percentage.fromFraction(3, 100)
@@ -35,7 +35,7 @@ export async function openPosition(options: OpenPositionOptions): Promise<Bundle
     return expBackoff(async () => {
       info('\n-- Open Position --\n', opMetadata);
 
-      const { address, bundleIndex, positionBundle, tx } = await genOpenPositionTx(options);
+      const { address, bundleIndex, positionBundle, priceRange, tickRange, tx } = await genOpenPositionTx(options);
 
       // Execute and verify the transaction
       const signature = await executeTransaction(tx, {
@@ -44,13 +44,17 @@ export async function openPosition(options: OpenPositionOptions): Promise<Bundle
         position: address.toBase58(),
         bundleIndex,
         positionBundle: positionBundle.positionBundleMint.toBase58(),
+        priceMargin: priceMargin.toString(),
+        priceRange,
+        tickRange,
       });
 
-      // Get, store, and return the newly opened position
+      // Get, store, and return the open position transaction summary
       const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
-      await PositionDAO.insert(position, signature, { catchErrors: true });
-
-      return { bundleIndex, position, positionBundle };
+      const bundledPosition: BundledPosition = { bundleIndex, position, positionBundle };
+      const txSummary = await genOpenPositionTxSummary(bundledPosition, signature);
+      await PositionDAO.insert(txSummary, { catchErrors: true });
+      return txSummary;
     }, {
       retryFilter: (result, err) => {
         const errInfo = getProgramErrorInfo(err);
@@ -99,9 +103,7 @@ export async function genOpenPositionTx({
 
   // Find an unoccupied bundle index for the new position
   const emptyIdxs = PositionBundleUtil.getUnoccupiedBundleIndexes(positionBundle);
-  if (bundleIndex == null || !emptyIdxs.includes(bundleIndex)) {
-    bundleIndex = emptyIdxs[bumpIndex % emptyIdxs.length];
-  }
+  bundleIndex ??= emptyIdxs[bumpIndex % emptyIdxs.length];
   if (bundleIndex == null) throw new Error('No unoccupied bundle index found in position bundle');
 
   // Get PDA for the new position
@@ -142,14 +144,27 @@ export async function genOpenPositionTx({
   const tx = new TransactionBuilder(rpc(), wallet());
   tx.addInstruction(openPositionIx);
 
+  const { decimals: decimalsA } = whirlpool.getTokenAInfo();
+  const { decimals: decimalsB } = whirlpool.getTokenBInfo();
+  const priceRange = toPriceRange(tickRange, [decimalsA, decimalsB]);
+
   info('Created tx to open position:', {
     whirlpool: await formatWhirlpool(whirlpool),
     position: bundledPositionPda.publicKey.toBase58(),
     bundleIndex,
     positionBundle: positionBundle.positionBundleMint.toBase58(),
+    priceRange: priceRange.map((price) => price.toFixed(decimalsB)),
+    tickRange,
   });
 
-  return { address: bundledPositionPda.publicKey, bundleIndex, positionBundle, tx };
+  return {
+    address: bundledPositionPda.publicKey,
+    bundleIndex,
+    positionBundle,
+    priceRange,
+    tickRange,
+    tx
+  };
 }
 
 /**
@@ -180,29 +195,27 @@ async function _genPositionTickRange(
   const upperPrice = price.plus(priceMarginValue);
 
   // Calculate tick index range based on price range (may not map exactly to price range due to tick spacing)
-  const tickRange = toTickRange([lowerPrice, upperPrice], [decimalsA, decimalsB], tickSpacing);
-
-  _logPositionRange(tickRange, whirlpool);
-  return tickRange; // Subset of range [-443636, 443636]
+  return toTickRange([lowerPrice, upperPrice], [decimalsA, decimalsB], tickSpacing); // Subset of [-443636, 443636]
 }
 
 /**
- * Log the price range data for a {@link Whirlpool} position.
+ * Generates a summary of an open {@link Position} transaction.
  *
- * @param tickRange The tick range data to log.
- * @param whirlpool The {@link Whirlpool} to log the position range for.
+ * @param bundledPosition The {@link BundledPosition} that was opened.
+ * @param signature The signature of the open {@link Position} transaction.
+ * @returns A {@link Promise} that resolves to the {@link OpenPositionTxSummary}.
  */
-function _logPositionRange(tickRange: [number, number], whirlpool: Whirlpool) {
-  if (!tickRange || !whirlpool) return;
+export async function genOpenPositionTxSummary(
+  bundledPosition: BundledPosition,
+  signature: string
+): Promise<OpenPositionTxSummary> {
+  const txSummary = await getTransactionSummary(signature);
 
-  const { decimals: decimalsA } = whirlpool.getTokenAInfo();
-  const { decimals: decimalsB } = whirlpool.getTokenBInfo();
-
-  const priceRange = toPriceRange(tickRange, [decimalsA, decimalsB]);
-  const priceRangeStrs = priceRange.map((price) => price.toFixed(decimalsB));
-
-  info('Lower & upper tick index:', tickRange);
-  info('Lower & upper price:', priceRangeStrs);
+  return {
+    bundledPosition,
+    signature,
+    fee: txSummary.fee,
+  };
 }
 
 export type * from './open-position.interfaces';

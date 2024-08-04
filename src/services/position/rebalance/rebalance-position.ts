@@ -109,11 +109,12 @@ export async function rebalancePosition(
 
       const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
       const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
-      const bundledPositionNew = await openPosition({
+      const openPositionTxSummary = await openPosition({
         whirlpool,
         priceMargin,
         bundleIndex: bundledPosition.bundleIndex // Use same bundle index to maintain position address
       });
+      const bundledPositionNew = openPositionTxSummary.bundledPosition;
       const positionNew = bundledPositionNew.position;
       await increaseLiquidity(positionNew, liquidity, liquidityUnit);
 
