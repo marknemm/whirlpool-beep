@@ -56,7 +56,7 @@ export interface OpenPositionData {
 }
 
 /**
- * Instruction data for opening a {@link Position}.
+ * {@link Instruction} data for opening a {@link Position}.
  */
 export interface OpenPositionIx extends OpenPositionIxTxAssocData {
 

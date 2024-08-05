@@ -163,9 +163,9 @@ export interface ClosePositionTxSummaryArgs {
   bundledPosition: BundledPosition;
 
   /**
-   * The {@link ClosePositionTx} used to generate the summary.
+   * The {@link ClosePositionIx} or {@link ClosePositionTx} used to generate the summary.
    */
-  closePositionTx: ClosePositionTx;
+  closePositionIxTx: ClosePositionIx | ClosePositionTx;
 
   /**
    * The signature of the close {@link Position} transaction.

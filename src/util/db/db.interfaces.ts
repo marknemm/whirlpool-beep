@@ -64,9 +64,11 @@ export interface Position {
 
 export interface RebalanceTx {
   createdAt: Generated<Timestamp>;
+  fee: Int8;
   id: Generated<number>;
   positionNew: number;
   positionOld: number;
+  signature: string;
 }
 
 export interface Token {

@@ -7,7 +7,7 @@ import type { Null } from '@/interfaces/nullable.interfaces';
 import { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
 import { OpenPositionTxSummary } from '@/services/position/open/open-position.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
-import { debug, error } from '@/util/log/log';
+import { debug, error, warn } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { toPriceRange } from '@/util/tick-range/tick-range';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
@@ -136,12 +136,13 @@ export default class PositionDAO {
    *
    * @param txSummary The {@link ClosePositionTxSummary} to use for the update.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves when the operation is complete.
+   * @returns A {@link Promise} that resolves to the updated row's DB `id` when the operation is complete.
+   * If the update fails, then resolves to `undefined`.
    */
   static async updateClosed(
     txSummary: ClosePositionTxSummary,
     opts?: DAOOptions
-  ): Promise<void> {
+  ): Promise<number | undefined> {
     const { bundledPosition, collectFeesRewardsTxSummary, decreaseLiquidityTxSummary, signature } = txSummary;
     if (!bundledPosition || !signature) return;
 
@@ -158,15 +159,20 @@ export default class PositionDAO {
     debug('Closing Position in database:', address);
 
     try {
-      await db().updateTable('position')
+      const result = await db().updateTable('position')
         .set({
           closeFee: toBigInt(txSummary.fee),
           closeTx: signature,
         })
         .where('address', '=', address)
-        .execute();
+        .where('closeTx', 'is', null)
+        .returning('id')
+        .executeTakeFirst();
 
-      debug('Position closed in database:', `${address} -- ${signature}`);
+      result
+        ? debug('Position closed in database:', `${address} -- ${signature}`)
+        : warn('Failed to close position in database:', `${address} -- ${signature}`);
+      return result?.id;
     } catch (err) {
       if (!opts?.catchErrors) {
         throw err;

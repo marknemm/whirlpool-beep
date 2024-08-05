@@ -1,6 +1,8 @@
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import type { Address, Percentage } from '@orca-so/common-sdk';
+import type { ClosePositionIx, ClosePositionTxSummary } from '@/services/position/close/close-position';
+import type { OpenPositionIx, OpenPositionTxSummary } from '@/services/position/open/open-position';
+import type { Address, Instruction, Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
@@ -22,7 +24,7 @@ export interface RebalanceAllPositionsOptions extends RebalancePositionOptions {
 /**
  * The result of rebalancing all {@link Position}s.
  */
-export interface RebalanceAllPositionsResult {
+export interface RebalanceAllPositionsSummary {
 
   /**
    * The {@link BundledPosition}s that failed during rebalancing.
@@ -37,9 +39,9 @@ export interface RebalanceAllPositionsResult {
   skips: BundledPosition[];
 
   /**
-   * The {@link RebalanceTxSummary}s for each successfully rebalanced {@link Position}.
+   * The {@link RebalancePositionTxSummary}s for each successfully rebalanced {@link Position}.
    */
-  successes: RebalanceTxSummary[];
+  successes: RebalancePositionTxSummary[];
 
 }
 
@@ -77,40 +79,92 @@ export interface RebalancePositionOptions {
 
 }
 
-export interface RebalancePositionResult {
+/**
+ * {@link Instruction} data for rebalancing a {@link Position}.
+ */
+export interface RebalancePositionIx extends RebalancePositionIxTxAssocData {
 
   /**
-   * The {@link Position} that was rebalanced.
+   * The combined {@link Instruction} for rebalancing a {@link Position}.
    */
-  bundledPosition: BundledPosition;
+  ix: Instruction;
+
+}
+
+/**
+ * Transaction data for rebalancing a {@link Position}.
+ */
+export interface RebalancePositionTx extends RebalancePositionIxTxAssocData {
 
   /**
-   * The status of the rebalance transaction.
-   *
-   * Either `'rebalanced'` or `'skipped'`.
+   * The {@link TransactionBuilder} for the complete rebalance {@link Position} transaction.
    */
-  status: 'succeeded' | 'skipped'
+  tx: TransactionBuilder;
+
+}
+
+/**
+ * Data associated with rebalance position transaction instructions and transactions.
+ */
+interface RebalancePositionIxTxAssocData {
 
   /**
-   * The summary of the rebalance transaction.
+   * {@link Instruction} data for closing the old {@link Position}.
    */
-  txSummary?: RebalanceTxSummary;
+  closePositionIx: ClosePositionIx;
+
+  /**
+   * {@link Instruction} data for opening the new {@link Position}.
+   */
+  openPositionIx: OpenPositionIx;
 
 }
 
 /**
  * A summary of a rebalance transaction for a {@link Position}.
  */
-export interface RebalanceTxSummary {
+export interface RebalancePositionTxSummary {
 
   /**
-   * The old {@link Position} that existed prior to the rebalance.
+   * The summary of the close {@link Position} transaction.
    */
-  bundledPositionOld: BundledPosition;
+  closePositionTxSummary: ClosePositionTxSummary;
 
   /**
-   * The new {@link Position} that was created after the rebalance.
+   * TThe fee (base + priority) for the close {@link Position} transaction.
    */
-  bundledPositionNew: BundledPosition;
+  fee: number;
+
+  /**
+   * The summary of the open {@link Position} transaction.
+   */
+  openPositionTxSummary: OpenPositionTxSummary;
+
+  /**
+   * The transaction signature for the rebalance {@link Position} transaction.
+   */
+  signature: string;
+
+}
+
+/**
+ * Arguments for generating a {@link RebalancePositionTxSummary}.
+ */
+export interface RebalancePositionTxSummaryArgs {
+
+  /**
+   * The {@link BundledPosition} that was rebalanced.
+   */
+  bundledPosition: BundledPosition;
+
+  /**
+   * The {@link RebalancePositionIx} or {@link RebalancePositionTx} for the rebalance transaction.
+   */
+  rebalancePositionIxTx: RebalancePositionIx | RebalancePositionTx;
+
+  /**
+   * The transaction signature for the rebalance transaction.
+   */
+  signature: string;
 
 }
