@@ -135,3 +135,5 @@ wallet.json
 wallet-pk.json
 
 scratch.*
+
+.turbo

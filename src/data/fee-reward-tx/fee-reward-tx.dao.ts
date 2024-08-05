@@ -2,14 +2,14 @@ import PositionDAO from '@/data/position/position.dao';
 import type { DAOInsertOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
-import type { FeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
+import type { CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
 import db, { handleInsertError } from '@/util/db/db';
 import { debug } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
- * Pure static data access object for {@link FeesRewardsTxSummary} DB operations.
+ * Pure static data access object for {@link CollectFeesRewardsTxSummary} DB operations.
  */
 export default class FeeRewardTxDAO {
 
@@ -19,14 +19,17 @@ export default class FeeRewardTxDAO {
   private constructor() {}
 
   /**
-   * Inserts a {@link FeesRewardsTxSummary} record into the database.
+   * Inserts a {@link CollectFeesRewardsTxSummary} record into the database.
    *
-   * @param txSummary The {@link FeesRewardsTxSummary} to insert.
+   * @param txSummary The {@link CollectFeesRewardsTxSummary} to insert.
    * @param opts The {@link DAOInsertOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the inserted row's `address` when the operation is complete.
    * If the {@link Position} is {@link Null}, an empty string is returned.
    */
-  static async insert(txSummary: FeesRewardsTxSummary | Null, opts?: DAOInsertOptions): Promise<number | undefined> {
+  static async insert(
+    txSummary: CollectFeesRewardsTxSummary | Null,
+    opts?: DAOInsertOptions
+  ): Promise<number | undefined> {
     if (!txSummary) return;
     const positionAddress = txSummary.position.getAddress().toBase58();
 

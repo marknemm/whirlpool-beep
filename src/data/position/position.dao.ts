@@ -75,10 +75,6 @@ export default class PositionDAO {
     const { bundledPosition, fee, liquidityTxSummary, signature } = txSummary;
     const { position } = bundledPosition;
 
-    if (liquidityTxSummary) {
-      await LiquidityTxDAO.insert(liquidityTxSummary, opts);
-    }
-
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
     const whirlpoolData = position.getWhirlpoolData();
 
@@ -120,6 +116,12 @@ export default class PositionDAO {
         .executeTakeFirst();
 
       debug(`Inserted Position into database ( ID: ${result?.id} ):`, address);
+
+      // If the Position was opened with liquidity, insert the LiquidityTxSummary.
+      if (liquidityTxSummary) {
+        await LiquidityTxDAO.insert(liquidityTxSummary, opts);
+      }
+
       return result?.id;
     } catch (err) {
       handleInsertError(err as ErrorWithCode, 'Position', address, opts);
@@ -140,17 +142,17 @@ export default class PositionDAO {
     txSummary: ClosePositionTxSummary,
     opts?: DAOOptions
   ): Promise<void> {
-    const { bundledPosition, feesRewardsTxSummary, liquidityTxSummary, signature } = txSummary;
+    const { bundledPosition, collectFeesRewardsTxSummary, decreaseLiquidityTxSummary, signature } = txSummary;
     if (!bundledPosition || !signature) return;
 
     const { position } = bundledPosition;
     const address = position.getAddress().toBase58();
 
-    if (feesRewardsTxSummary) {
-      await FeeRewardTxDAO.insert(feesRewardsTxSummary, opts);
+    if (collectFeesRewardsTxSummary) {
+      await FeeRewardTxDAO.insert(collectFeesRewardsTxSummary, opts);
     }
-    if (liquidityTxSummary) {
-      await LiquidityTxDAO.insert(liquidityTxSummary, opts);
+    if (decreaseLiquidityTxSummary) {
+      await LiquidityTxDAO.insert(decreaseLiquidityTxSummary, opts);
     }
 
     debug('Closing Position in database:', address);

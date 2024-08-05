@@ -1,8 +1,7 @@
 import { genLiquidityCliOpts } from '@/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/util/cli/cli.interfaces';
-import { increaseLiquidity } from '@/services/liquidity/increase/increase-liquidity';
 import { openPosition } from '@/services/position/open/open-position';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
 import { error } from '@/util/log/log';
 import { Percentage } from '@orca-so/common-sdk';
 import { type Argv } from 'yargs';
@@ -45,13 +44,12 @@ async function handler(argv: CliArgs<typeof cli.options>) {
     const whirlpool = await getWhirlpoolFromCliArgs(argv);
     if (!whirlpool) throw new Error('Whirlpool not found');
 
-    const { bundledPosition } = await openPosition({
+    await openPosition({
       whirlpool,
+      liquidity: argv.liquidity,
+      liquidityUnit: argv.liquidityUnit,
       priceMargin: Percentage.fromFraction(argv.priceMargin, 100),
     });
-    if (argv.liquidity) {
-      await increaseLiquidity(bundledPosition.position, argv.liquidity, argv.liquidityUnit);
-    }
   } catch (err) {
     error(err);
     process.exit(1);

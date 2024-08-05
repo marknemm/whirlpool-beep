@@ -13,7 +13,11 @@ import type { GetWhirlpoolKeyOpts, GetWhirlpoolOpts } from './query-whirlpool.in
  * @returns A {@link Promise} that resolves to the {@link Whirlpool}.
  */
 export async function getWhirlpool(opts: GetWhirlpoolOpts): Promise<Whirlpool> {
-  const whirlpoolKey = opts.whirlpoolAddress ?? await getWhirlpoolKey(opts);
+  if (!opts.whirlpoolAddress && !opts.tokenA && !opts.tokenB && !opts.tickSpacing) {
+    throw new Error('Must provide either a whirlpool address or token A, token B, and tick spacing.');
+  }
+
+  const whirlpoolKey = opts.whirlpoolAddress ?? await getWhirlpoolKey(opts as GetWhirlpoolKeyOpts);
 
   const whirlpool = await whirlpoolClient().getPool(whirlpoolKey, opts);
   await WhirlpoolDAO.insert(whirlpool, { catchErrors: true });

@@ -1,8 +1,8 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
-import { encodeBase58 } from '@/util/encode/encode';
 import env from '@/util/env/env';
 import { debug, error } from '@/util/log/log';
 import { toLamports } from '@/util/number-conversion/number-conversion';
+import { encodeBase58 } from '@/util/pki/pki';
 import rpc from '@/util/rpc/rpc';
 import type { TransactionBuildOptions } from '@/util/transaction/transaction.interfaces';
 import wallet from '@/util/wallet/wallet';

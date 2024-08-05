@@ -1,7 +1,8 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import { genCollectFeesRewardsTx, genFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
-import { genDecreaseLiquidityTx } from '@/services/liquidity/decrease/decrease-liquidity';
+import { genCollectFeesRewardsIx, genCollectFeesRewardsTxSummary, type CollectFeesRewardsIx } from '@/services/fees-rewards/collect/collect-fees-rewards';
+import { genDecreaseLiquidityIx } from '@/services/liquidity/decrease/decrease-liquidity';
+import { DecreaseLiquidityIx } from '@/services/liquidity/decrease/decrease-liquidity.interfaces';
 import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff, timeout } from '@/util/async/async';
@@ -11,9 +12,9 @@ import rpc from '@/util/rpc/rpc';
 import { executeTransaction, getTransactionSummary } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool } from '@/util/whirlpool/whirlpool';
-import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
+import { TransactionBuilder, type Address, type Instruction } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { CloseAllPositionsResult, ClosePositionOptions, ClosePositionTxSummary, GenClosePositionTxResult, GenClosePositionTxSummaryArgs } from './close-position.interfaces';
+import type { CloseAllPositionsSummary, ClosePositionIx, ClosePositionOptions, ClosePositionTx, ClosePositionTxSummary, ClosePositionTxSummaryArgs } from './close-position.interfaces';
 
 /**
  * Closes all {@link Position}s in a {@link Whirlpool}.
@@ -21,12 +22,12 @@ import type { CloseAllPositionsResult, ClosePositionOptions, ClosePositionTxSumm
  * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to close all positions in.
  * @returns A {@link Promise} that resolves once all positions are closed.
  */
-export async function closeAllPositions(whirlpoolAddress: Address): Promise<CloseAllPositionsResult> {
+export async function closeAllPositions(whirlpoolAddress: Address): Promise<CloseAllPositionsSummary> {
   info('\n-- Close All Positions --');
 
   const bundledPositions = await getPositions({ whirlpoolAddress, ...IGNORE_CACHE });
 
-  const allResults: CloseAllPositionsResult = {
+  const allResults: CloseAllPositionsSummary = {
     failures: [],
     successes: [],
   };
@@ -95,21 +96,20 @@ export async function closePosition({
         await position.refreshData();
       }
 
-      const { tx } = await genClosePositionTx({
+      const closePositionTx = await genClosePositionTx({
         bundledPosition,
         excludeCollectFeesRewards,
         excludeDecreaseLiquidity,
       });
 
-      const signature = await executeTransaction(tx, {
+      const signature = await executeTransaction(closePositionTx.tx, {
         name: 'Close Position',
         ...opMetadata
-      });
+      }, undefined, { commitment: 'finalized' });
 
       const closePositionTxSummary = await genClosePositionTxSummary({
         bundledPosition,
-        excludeCollectFeesRewards,
-        excludeDecreaseLiquidity,
+        closePositionTx,
         signature,
       });
 
@@ -128,6 +128,21 @@ export async function closePosition({
 }
 
 /**
+ * Generates a {@link ClosePositionIx} for closing a {@link Position} in a {@link Whirlpool}.
+ *
+ * @param opts The {@link ClosePositionOptions} for generating the {@link ClosePositionIx}.
+ * @returns A {@link Promise} that resolves to the {@link ClosePositionIx}.
+ */
+export async function genClosePositionIx(opts: ClosePositionOptions): Promise<ClosePositionIx> {
+  const { tx, ...rest } = await genClosePositionTx(opts);
+
+  return {
+    ix: tx.compressIx(true),
+    ...rest,
+  };
+}
+
+/**
  * Creates a transaction to close a {@link Position} in a {@link Whirlpool}.
  *
  * @param bundledPosition The {@link BundledPosition} to close.
@@ -137,42 +152,92 @@ export async function genClosePositionTx({
   bundledPosition,
   excludeCollectFeesRewards = false,
   excludeDecreaseLiquidity = false,
-}: ClosePositionOptions): Promise<GenClosePositionTxResult> {
-  const { bundleIndex, position, positionBundle } = bundledPosition;
-  const result: GenClosePositionTxResult = { tx: new TransactionBuilder(rpc(), wallet()) };
+}: ClosePositionOptions): Promise<ClosePositionTx> {
+  const { position } = bundledPosition;
 
   info('Creating close position transaction for position:', position.getAddress());
 
-  if (!excludeDecreaseLiquidity) {
-    const { liquidity } = position.getData();
+  const decreaseLiquidityIx = !excludeDecreaseLiquidity
+    ? await _genEmptyLiquidityIx(position)
+    : null;
 
-    if (!liquidity.isZero()) {
-      const { tx: decreaseLiquidityTx } = await genDecreaseLiquidityTx(position, liquidity);
-      result.decreaseLiquidityTx = decreaseLiquidityTx;
-      result.tx.addInstruction(decreaseLiquidityTx.compressIx(true));
-    } else {
-      info('No liquidity to decrease:', {
-        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-        position: position.getAddress().toBase58(),
-      });
-    }
+  const collectFeesRewardsIx = !excludeCollectFeesRewards
+    ? await _genCollectFeesRewardsIx(position)
+    : null;
+
+  const closePositionIx = await _genClosePositionIx(bundledPosition);
+
+  const tx = new TransactionBuilder(rpc(), wallet());
+  if (decreaseLiquidityIx) {
+    tx.addInstruction(decreaseLiquidityIx.ix);
+  }
+  if (collectFeesRewardsIx) {
+    tx.addInstruction(collectFeesRewardsIx.ix);
+  }
+  tx.addInstruction(closePositionIx);
+
+  return {
+    closePositionIx,
+    collectFeesQuote: collectFeesRewardsIx?.collectFeesQuote,
+    collectFeesIx: collectFeesRewardsIx?.collectFeesIx,
+    collectRewardsQuote: collectFeesRewardsIx?.collectRewardsQuote,
+    collectRewardsIxs: collectFeesRewardsIx?.collectRewardsIxs ?? [],
+    decreaseLiquidityQuote: decreaseLiquidityIx?.quote,
+    decreaseLiquidityIx: decreaseLiquidityIx?.ix,
+    tx,
+  };
+}
+
+/**
+ * Generates a {@link DecreaseLiquidityIx} for emptying the liquidity in the given {@link Position}.
+ *
+ * @param position The {@link Position} to decrease the liquidity of.
+ * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityIx}.
+ * If the position has no liquidity, returns `null`.
+ */
+async function _genEmptyLiquidityIx(position: Position): Promise<DecreaseLiquidityIx | null> {
+  const { liquidity } = position.getData();
+
+  if (!liquidity.isZero()) {
+    return await genDecreaseLiquidityIx(position, liquidity);
   }
 
-  if (!excludeCollectFeesRewards) {
-    const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position, false); // false no update fees and rewards
-    const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
-    const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
+  info('No liquidity to decrease:', {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+  });
+  return null;
+}
 
-    if (hasFees || hasRewards) {
-      result.feesRewardsTx = tx;
-      result.tx.addInstruction(tx.compressIx(true));
-    } else {
-      info('No fees or rewards to collect:', {
-        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-        position: position.getAddress().toBase58(),
-      });
-    }
+/**
+ * Generates a {@link CollectFeesRewardsIx} for collecting fees and rewards from the given {@link Position}.
+ *
+ * @param position The {@link Position} to collect fees and rewards from.
+ * @returns A {@link Promise} that resolves to the {@link CollectFeesRewardsIx}.
+ * If there are no fees or rewards to collect, returns `null`.
+ */
+async function _genCollectFeesRewardsIx(position: Position): Promise<CollectFeesRewardsIx | null> {
+  const collectFeesRewardsIx = await genCollectFeesRewardsIx(position, false);
+
+  if (collectFeesRewardsIx.collectFeesIx || collectFeesRewardsIx.collectRewardsIxs.length) {
+    return collectFeesRewardsIx;
   }
+
+  info('No fees or rewards to collect:', {
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
+  });
+  return null;
+}
+
+/**
+ * Generates an {@link Instruction} to close a {@link Position} in a {@link Whirlpool}.
+ *
+ * @param bundledPosition The {@link BundledPosition} to close.
+ * @returns A {@link Promise} that resolves to the {@link Instruction}.
+ */
+async function _genClosePositionIx(bundledPosition: BundledPosition): Promise<Instruction> {
+  const { bundleIndex, position, positionBundle } = bundledPosition;
 
   const positionBundleATA = await wallet().getNFTAccount(positionBundle.positionBundleMint);
   if (!positionBundleATA) throw new Error('Position bundle token account (ATA) cannot be found');
@@ -191,7 +256,7 @@ export async function genClosePositionTx({
     receiver: wallet().publicKey.toBase58(),
   });
 
-  const closeBundledPositionIx = WhirlpoolIx.closeBundledPositionIx(
+  return WhirlpoolIx.closeBundledPositionIx(
     whirlpoolClient().getContext().program,
     {
       bundledPosition: position.getAddress(),
@@ -202,9 +267,6 @@ export async function genClosePositionTx({
       receiver: wallet().publicKey,
     }
   );
-  result.tx.addInstruction(closeBundledPositionIx);
-
-  return result;
 }
 
 /**
@@ -215,28 +277,30 @@ export async function genClosePositionTx({
  */
 export async function genClosePositionTxSummary({
   bundledPosition,
-  excludeCollectFeesRewards = false,
-  excludeDecreaseLiquidity = false,
+  closePositionTx,
   signature
-}: GenClosePositionTxSummaryArgs): Promise<ClosePositionTxSummary> {
+}: ClosePositionTxSummaryArgs): Promise<ClosePositionTxSummary> {
+  const { collectFeesIx, decreaseLiquidityIx, decreaseLiquidityQuote } = closePositionTx;
   const txSummary = await getTransactionSummary(signature);
 
   const closePositionTxSummary: ClosePositionTxSummary = {
     bundledPosition,
+    collectFeesRewardsTxSummary: undefined,
+    decreaseLiquidityTxSummary: undefined,
     signature,
     fee: txSummary.fee,
   };
 
-  if (!excludeDecreaseLiquidity) {
-    const liquidityTxSummary = await genLiquidityTxSummary(bundledPosition.position, signature);
+  if (decreaseLiquidityIx) {
+    const liquidityTxSummary = await genLiquidityTxSummary(bundledPosition.position, signature, decreaseLiquidityQuote);
     liquidityTxSummary.fee = 0; // Fee is included in close position tx fee
-    closePositionTxSummary.liquidityTxSummary = liquidityTxSummary;
+    closePositionTxSummary.decreaseLiquidityTxSummary = liquidityTxSummary;
   }
 
-  if (!excludeCollectFeesRewards) {
-    const feesRewardsTxSummary = await genFeesRewardsTxSummary(bundledPosition.position, signature);
-    feesRewardsTxSummary.fee = 0; // Fee is included in close position tx fee
-    closePositionTxSummary.feesRewardsTxSummary = feesRewardsTxSummary;
+  if (collectFeesIx) {
+    const collectFeesRewardsTxSummary = await genCollectFeesRewardsTxSummary(bundledPosition.position, signature);
+    collectFeesRewardsTxSummary.fee = 0; // Fee is included in close position tx fee
+    closePositionTxSummary.collectFeesRewardsTxSummary = collectFeesRewardsTxSummary;
   }
 
   info('Close position tx summary:', {

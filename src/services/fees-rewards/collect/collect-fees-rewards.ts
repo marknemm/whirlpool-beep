@@ -5,15 +5,16 @@ import { debug, error, info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
 import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
+import { toTickRangeKeys } from '@/util/tick-range/tick-range';
 import { getToken } from '@/util/token/token';
 import { executeTransaction, getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { TransactionBuilder, type Address } from '@orca-so/common-sdk';
-import { collectFeesQuote, collectRewardsQuote, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
+import { TransactionBuilder, type Address, type Instruction } from '@orca-so/common-sdk';
+import { collectFeesQuote, collectRewardsQuote, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
 import { green } from 'colors';
-import type { FeesRewardsTxSummary } from './collect-fees-rewards.interfaces';
+import type { CollectFeesRewardsIx, CollectFeesRewardsQuotes, CollectFeesRewardsTx, CollectFeesRewardsTxSummary } from './collect-fees-rewards.interfaces';
 
 /**
  * Collects all fee rewards for all positions.
@@ -48,9 +49,9 @@ export async function collectAllFeesRewards(whirlpoolAddress?: Address): Promise
  * Collects the fee reward for a given {@link position}.
  *
  * @param position The {@link Position} to collect the fee reward for.
- * @returns A {@link Promise} that resolves to a {@link FeesRewardsTxSummary} once the transaction completes.
+ * @returns A {@link Promise} that resolves to a {@link CollectFeesRewardsTxSummary} once the transaction completes.
  */
-export async function collectFeesRewards(position: Position): Promise<FeesRewardsTxSummary | undefined> {
+export async function collectFeesRewards(position: Position): Promise<CollectFeesRewardsTxSummary | undefined> {
   const opMetadata = {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
@@ -69,11 +70,9 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
       }
 
       const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-      const { feesQuote, rewardsQuote, tx } = await genCollectFeesRewardsTx(position);
+      const { collectFeesIx, collectFeesQuote, collectRewardsIxs, tx } = await genCollectFeesRewardsTx(position);
 
-      const hasFees = !feesQuote.feeOwedA.isZero() || !feesQuote.feeOwedB.isZero();
-      const hasRewards = rewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero());
-      if (!hasFees && !hasRewards) {
+      if (!collectFeesIx && !collectRewardsIxs.length) {
         info('No fees or rewards to collect:', {
           whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
           position: position.getAddress().toBase58(),
@@ -85,12 +84,12 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
         name: 'Collect Fees and Rewards',
         whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
         position: position.getAddress().toBase58(),
-        [`${tokenA.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedA, tokenA.mint.decimals),
-        [`${tokenB.metadata.symbol} Fee Estimate:`]: toStr(feesQuote.feeOwedB, tokenB.mint.decimals),
+        [`${tokenA.metadata.symbol} Fee Estimate:`]: toStr(collectFeesQuote.feeOwedA, tokenA.mint.decimals),
+        [`${tokenB.metadata.symbol} Fee Estimate:`]: toStr(collectFeesQuote.feeOwedB, tokenB.mint.decimals),
       });
       await position.refreshData();
 
-      const txSummary = await genFeesRewardsTxSummary(position, signature);
+      const txSummary = await genCollectFeesRewardsTxSummary(position, signature);
       await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
 
       return txSummary;
@@ -107,6 +106,25 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
 }
 
 /**
+ * Generates a {@link CollectFeesRewardsIx} for a collect fees / rewards transaction.
+ *
+ * @param position The {@link Position} to collect fees and rewards from.
+ * @param updateFeesAndRewards Whether to update the fees and rewards for the position.
+ * @returns A {@link Promise} that resolves to the {@link CollectFeesRewardsIx}.
+ */
+export async function genCollectFeesRewardsIx(
+  position: Position,
+  updateFeesAndRewards = !position.getData().liquidity.isZero()
+): Promise<CollectFeesRewardsIx> {
+  const { tx, ...rest } = await genCollectFeesRewardsTx(position, updateFeesAndRewards);
+
+  return {
+    ix: tx.compressIx(true),
+    ...rest,
+  };
+}
+
+/**
  * Creates a transaction to collect fees and rewards for a given {@link position}.
  *
  * @param position The {@link Position} to collect fees and rewards for.
@@ -118,23 +136,39 @@ export async function collectFeesRewards(position: Position): Promise<FeesReward
 export async function genCollectFeesRewardsTx(
   position: Position,
   updateFeesAndRewards = !position.getData().liquidity.isZero()
-): Promise<{ feesQuote: CollectFeesQuote, rewardsQuote: CollectRewardsQuote, tx: TransactionBuilder }> {
+): Promise<CollectFeesRewardsTx> {
   info('Creating collect fees and rewards transaction:', {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
   });
 
-  const { feesQuote, rewardsQuote } = await _genCollectFeesRewardsQuote(position);
+  await position.refreshData(); // Want accurate data for transaction
 
-  await position.refreshData();
-  const collectFeesTx = await position.collectFees(updateFeesAndRewards);
-  const collectRewardsTxs = await position.collectRewards(undefined, updateFeesAndRewards);
+  // Generate collect fees and rewards quotes
+  const { collectFeesQuote, collectRewardsQuote } = await _genCollectFeesRewardsQuotes(position);
 
+  // Generate collect fees instruction
+  let collectFeesIx: Instruction | undefined;
+  if (!collectFeesQuote.feeOwedA.isZero() || !collectFeesQuote.feeOwedB.isZero()) {
+    const collectFeesTx = await position.collectFees(updateFeesAndRewards);
+    collectFeesIx = collectFeesTx.compressIx(true);
+  }
+
+  // Generate collect rewards instructions
+  const collectRewardsIxs: Instruction[] = [];
+  if (collectRewardsQuote.rewardOwed.some((reward) => reward && !reward.isZero())) {
+    const collectRewardsTxs = await position.collectRewards(undefined, updateFeesAndRewards);
+    collectRewardsIxs.push(...collectRewardsTxs.map((tx) => tx.compressIx(true)));
+  }
+
+  // Generate transaction
   const tx = new TransactionBuilder(rpc(), wallet());
-  tx.addInstruction(collectFeesTx.compressIx(true));
-  collectRewardsTxs.forEach((ix) => tx.addInstruction(ix.compressIx(true)));
+  if (collectFeesIx) {
+    tx.addInstruction(collectFeesIx);
+  }
+  collectRewardsIxs.forEach((ix) => tx.addInstruction(ix));
 
-  return { tx, feesQuote, rewardsQuote };
+  return { collectFeesIx, collectFeesQuote, collectRewardsIxs, collectRewardsQuote, tx };
 }
 
 /**
@@ -143,26 +177,18 @@ export async function genCollectFeesRewardsTx(
  * @param position The {@link Position} to generate the {@link CollectFeesQuote} and {@link CollectRewardsQuote} for.
  * @returns A {@link Promise} that resolves to an object containing the {@link CollectFeesQuote} and {@link CollectRewardsQuote}.
  */
-async function _genCollectFeesRewardsQuote(
+async function _genCollectFeesRewardsQuotes(
   position: Position
-): Promise<{ feesQuote: CollectFeesQuote, rewardsQuote: CollectRewardsQuote }> {
+): Promise<CollectFeesRewardsQuotes> {
   const { tickLowerIndex, tickUpperIndex, whirlpool: whirlpoolAddress } = position.getData();
   const { tickSpacing } = position.getWhirlpoolData();
   const accountFetcher = whirlpoolClient().getFetcher();
 
-  const tickArrayLowerAddress = PDAUtil.getTickArrayFromTickIndex(
-    tickLowerIndex,
-    tickSpacing,
+  const [tickArrayLowerAddress, tickArrayUpperAddress] = toTickRangeKeys(
     whirlpoolAddress,
-    ORCA_WHIRLPOOL_PROGRAM_ID
-  ).publicKey;
-
-  const tickArrayUpperAddress = PDAUtil.getTickArrayFromTickIndex(
-    tickUpperIndex,
-    tickSpacing,
-    whirlpoolAddress,
-    ORCA_WHIRLPOOL_PROGRAM_ID
-  ).publicKey;
+    [tickLowerIndex, tickUpperIndex],
+    tickSpacing
+  );
 
   const tickArrayLower = await accountFetcher.getTickArray(tickArrayLowerAddress);
   const tickArrayUpper = await accountFetcher.getTickArray(tickArrayUpperAddress);
@@ -206,20 +232,20 @@ async function _genCollectFeesRewardsQuote(
     }
   }
 
-  return { feesQuote, rewardsQuote };
+  return { collectFeesQuote: feesQuote, collectRewardsQuote: rewardsQuote };
 }
 
 /**
- * Generates a {@link FeesRewardsTxSummary} for a collect fees / rewards transaction.
+ * Generates a {@link CollectFeesRewardsTxSummary} for a collect fees / rewards transaction.
  *
- * @param position The {@link Position} to get the {@link FeesRewardsTxSummary} for.
+ * @param position The {@link Position} to get the {@link CollectFeesRewardsTxSummary} for.
  * @param signature The signature of the collection transaction.
- * @returns A {@link Promise} that resolves to the {@link FeesRewardsTxSummary}.
+ * @returns A {@link Promise} that resolves to the {@link CollectFeesRewardsTxSummary}.
  */
-export async function genFeesRewardsTxSummary(
+export async function genCollectFeesRewardsTxSummary(
   position: Position,
   signature: string,
-): Promise<FeesRewardsTxSummary> {
+): Promise<CollectFeesRewardsTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 
   const txSummary = await getTransactionSummary(signature);
@@ -230,7 +256,7 @@ export async function genFeesRewardsTxSummary(
   if (!feesRewardsIx) throw new Error('No collect fees / rewards instruction found in transaction');
   const { tokenTotals, usd } = await getTransactionTransferTotals([feesRewardsIx]);
 
-  const feesRewardsTxSummary: FeesRewardsTxSummary = {
+  const feesRewardsTxSummary: CollectFeesRewardsTxSummary = {
     fee: txSummary.fee,
     position,
     signature,

@@ -10,8 +10,9 @@ import { getProgramErrorInfo } from '@/util/program/program';
 import { executeTransaction } from '@/util/transaction/transaction';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { BN } from '@coral-xyz/anchor';
-import { type Address, Percentage, type TransactionBuilder } from '@orca-so/common-sdk';
-import { type DecreaseLiquidityQuote, decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, type Position, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
+import { Percentage, type Address, type TransactionBuilder } from '@orca-so/common-sdk';
+import { decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, TokenExtensionUtil, type Position } from '@orca-so/whirlpools-sdk';
+import type { DecreaseLiquidityIx, DecreaseLiquidityTx } from './decrease-liquidity.interfaces';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -109,7 +110,27 @@ export async function decreaseLiquidity(
 }
 
 /**
- * Creates a transaction to decrease liquidity in a given {@link position}.
+ * Creates an {@link Instruction} to decrease liquidity in a given {@link Position}.
+ *
+ * @param position The {@link Position} to decrease the liquidity of.
+ * @param amount The amount of liquidity to withdraw from the {@link Position}.
+ * @returns A {@link Promise} that resolves to the {@link Instruction}.
+ * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
+ */
+export async function genDecreaseLiquidityIx(
+  position: Position,
+  amount: BN | number
+): Promise<DecreaseLiquidityIx> {
+  const { tx, ...rest } = await genDecreaseLiquidityTx(position, amount);
+
+  return {
+    ix: tx.compressIx(true),
+    ...rest,
+  };
+}
+
+/**
+ * Creates a transaction to decrease liquidity in a given {@link Position}.
  *
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
@@ -119,7 +140,7 @@ export async function decreaseLiquidity(
 export async function genDecreaseLiquidityTx(
   position: Position,
   amount: BN | number
-): Promise<{ quote: DecreaseLiquidityQuote, tx: TransactionBuilder }> {
+): Promise<DecreaseLiquidityTx> {
   info('Creating Tx to decrease liquidity:', {
     position: position.getAddress().toBase58(),
     amount: toStr(amount),
@@ -162,3 +183,5 @@ export async function genDecreaseLiquidityTx(
   const tx = await position.decreaseLiquidity(quote);
   return { quote, tx };
 }
+
+export type * from './decrease-liquidity.interfaces';

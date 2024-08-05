@@ -1,6 +1,5 @@
 import RebalanceTxDAO from '@/data/rebalance-tx/rebalance-tx.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import { increaseLiquidity } from '@/services/liquidity/increase/increase-liquidity';
 import { closePosition } from '@/services/position/close/close-position';
 import { openPosition } from '@/services/position/open/open-position';
 import { getPositions } from '@/services/position/query/query-position';
@@ -111,12 +110,13 @@ export async function rebalancePosition(
       const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
       const openPositionTxSummary = await openPosition({
         whirlpool,
+        liquidity,
+        liquidityUnit,
         priceMargin,
         bundleIndex: bundledPosition.bundleIndex // Use same bundle index to maintain position address
       });
       const bundledPositionNew = openPositionTxSummary.bundledPosition;
       const positionNew = bundledPositionNew.position;
-      await increaseLiquidity(positionNew, liquidity, liquidityUnit);
 
       const txSummary: RebalanceTxSummary = { bundledPositionOld, bundledPositionNew };
       await RebalanceTxDAO.insert(txSummary, { catchErrors: true });

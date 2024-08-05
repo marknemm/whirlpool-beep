@@ -1,6 +1,6 @@
 import type { CliArgs } from '@/util/cli/cli.interfaces';
 import { prompt } from '@/util/cli/cli';
-import { decodeBase58, encodeBase58 } from '@/util/encode/encode';
+import { decodeBase58, encodeBase58 } from '@/util/pki/pki';
 import { error, info } from '@/util/log/log';
 import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';

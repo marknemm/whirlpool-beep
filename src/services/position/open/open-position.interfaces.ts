@@ -1,16 +1,17 @@
-import { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
+import type { Null } from '@/interfaces/nullable.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
-import type { Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
+import type { Instruction, PDA, Percentage, TransactionBuilder } from '@orca-so/common-sdk';
+import type { IncreaseLiquidityQuote, Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
+import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
 
 /**
- * The return type of `genOpenPositionTx` function.
+ * The data pertaining to the {@link Position} that is being opened.
  */
-export interface GenOpenPositionTxReturn {
+export interface OpenPositionData {
 
   /**
    * The {@link PublicKey} address of the new {@link Position}.
@@ -23,9 +24,19 @@ export interface GenOpenPositionTxReturn {
   bundleIndex: number;
 
   /**
+   * The {@link PDA} for the new bundled {@link Position}.
+   */
+  bundledPositionPda: PDA;
+
+  /**
    * The {@link PositionBundleData PositionBundle} that will contain the new {@link Position}.
    */
   positionBundle: PositionBundleData;
+
+  /**
+   * The {@link PDA} for the new {@link Position}'s bundle.
+   */
+  positionBundlePda: PDA;
 
   /**
    * The computed price range for the new {@link Position}.
@@ -38,9 +49,60 @@ export interface GenOpenPositionTxReturn {
   tickRange: [number, number];
 
   /**
+   * The {@link Whirlpool} that the new {@link Position} is in.
+   */
+  whirlpool: Whirlpool;
+
+}
+
+/**
+ * Instruction data for opening a {@link Position}.
+ */
+export interface OpenPositionIx extends OpenPositionIxTxAssocData {
+
+  /**
+   * The combined {@link Instruction} for opening a new {@link Position} and increasing its liquidity.
+   */
+  ix: Instruction;
+
+}
+
+/**
+ * Transaction data for opening a {@link Position}.
+ */
+export interface OpenPositionTx extends OpenPositionIxTxAssocData{
+
+  /**
    * The {@link TransactionBuilder} for creating the new {@link Position}.
    */
   tx: TransactionBuilder;
+
+}
+
+/**
+ * Data associated with open position transaction instructions and transactions.
+ */
+interface OpenPositionIxTxAssocData {
+
+  /**
+   * The {@link IncreaseLiquidityQuote} for increasing liquidity in the new {@link Position}.
+   */
+  increaseLiquidityQuote: IncreaseLiquidityQuote | Null;
+
+  /**
+   * The {@link Instruction} for increasing liquidity in the new {@link Position}.
+   */
+  increaseLiquidityIx: Instruction | Null;
+
+  /**
+   * The {@link OpenPositionData} for the new {@link Position}.
+   */
+  openPositionData: OpenPositionData;
+
+  /**
+   * The {@link Instruction} for opening the new {@link Position}.
+   */
+  openPositionIx: Instruction;
 
 }
 

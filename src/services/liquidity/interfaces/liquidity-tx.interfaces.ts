@@ -1,3 +1,4 @@
+import type { Null } from '@/interfaces/nullable.interfaces';
 import type { Position, DecreaseLiquidityQuote, IncreaseLiquidityQuote } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 
@@ -19,7 +20,7 @@ export interface LiquidityTxSummary {
   /**
    * The quote for the liquidity change.
    */
-  quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote;
+  quote: DecreaseLiquidityQuote | IncreaseLiquidityQuote | Null;
 
   /**
    * The signature of the transaction.

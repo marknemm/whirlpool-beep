@@ -1,6 +1,7 @@
 import { getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { Percentage } from '@orca-so/common-sdk';
-import { type Position, PriceMath } from '@orca-so/whirlpools-sdk';
+import { Address, AddressUtil, Percentage } from '@orca-so/common-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, TickUtil, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { type PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
 /**
@@ -71,4 +72,27 @@ export function toTickRange(
       PriceMath.priceToTickIndex(priceRange[0], decimalsA, decimalsB),
       PriceMath.priceToTickIndex(priceRange[1], decimalsA, decimalsB),
     ];
+}
+
+/**
+ * Converts a given tick range to a pair of tick array {@link PublicKey}s.
+ *
+ * @param whirlpoolAddress The {@link Address} of the {@link Whirlpool} to get the tick array keys for.
+ * @param tickRange The tick index range to get the tick array keys for.
+ * @param tickSpacing The tick spacing of the {@link Whirlpool}.
+ * @returns The pair of tick array {@link PublicKey}s.
+ */
+export function toTickRangeKeys(
+  whirlpoolAddress: Address,
+  tickRange: [number, number],
+  tickSpacing: number
+): [PublicKey, PublicKey] {
+  return tickRange.map((tickIdx) =>
+    PDAUtil.getTickArrayFromTickIndex(
+      tickIdx,
+      tickSpacing,
+      AddressUtil.toPubKey(whirlpoolAddress),
+      ORCA_WHIRLPOOL_PROGRAM_ID
+    ).publicKey
+  ) as [PublicKey, PublicKey];
 }

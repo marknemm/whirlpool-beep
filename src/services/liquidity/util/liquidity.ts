@@ -1,3 +1,4 @@
+import type { Null } from '@/interfaces/nullable.interfaces';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
@@ -17,7 +18,7 @@ import BN from 'bn.js';
 export async function genLiquidityTxSummary(
   position: Position,
   signature: string,
-  quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote
+  quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote | Null
 ): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
 

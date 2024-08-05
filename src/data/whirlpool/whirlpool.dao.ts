@@ -4,10 +4,10 @@ import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug } from '@/util/log/log';
+import { isAddress } from '@/util/pki/pki';
 import { getWhirlpoolTokenPair, toWhirlpoolData } from '@/util/whirlpool/whirlpool';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
-import { PublicKey } from '@solana/web3.js';
 
 /**
  * Pure static data access object for {@link Whirlpool} DB operations.
@@ -86,7 +86,7 @@ export default class WhirlpoolDAO {
      * `Note`: This method also inserts the token pair associated with the whirlpool into the database.
      *
      * @param whirlpool The {@link Whirlpool} or {@link WhirlpoolData} to insert.
-     * @param address The {@link Address} of the whirlpool to insert. Required if `whirlpool` is a {@link WhirlpoolData}.
+     * @param addressOrOpts The {@link Address} of the whirlpool to insert or the {@link DAOInsertOptions} to use for the operation.
      * @param opts The {@link DAOInsertOptions} to use for the operation.
      * @returns A {@link Promise} that resolves to the inserted row's `id` when the operation is complete.
      * If the insert fails, then resolves to `undefined`.
@@ -95,22 +95,25 @@ export default class WhirlpoolDAO {
      */
     static async insert(
       whirlpool: Whirlpool | WhirlpoolData | Null,
-      address?: Address | DAOInsertOptions | Null,
+      addressOrOpts?: Address | DAOInsertOptions | Null,
       opts?: DAOInsertOptions
     ): Promise<number | undefined> {
       if (!whirlpool) return;
 
+      // Process variadic arguments and coalesce to correct types.
+      opts ??= !isAddress(addressOrOpts)
+        ? addressOrOpts as DAOInsertOptions ?? {}
+        : {};
+      opts.ignoreDuplicates ??= true;
+      const address = isAddress(addressOrOpts)
+        ? AddressUtil.toString(addressOrOpts as Address)
+        : (whirlpool as Whirlpool).getAddress().toBase58();
+
       // Get token pair from whirlpool data, and implicitly store tokens in database if not already present.
       const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
+      const whirlpoolData = toWhirlpoolData(whirlpool);
 
       debug('Inserting Whirlpool into database:', address);
-
-      // Process variadic arguments and coalesce to correct types.
-      opts ??= (address && typeof address !== 'string' && !(address instanceof PublicKey)) ? address : {};
-      opts.ignoreDuplicates ??= true;
-      address ??= (whirlpool as Whirlpool).getAddress();
-      address = AddressUtil.toString(address as Address);
-      const whirlpoolData = toWhirlpoolData(whirlpool);
 
       try {
         const tokenIdA = await TokenDAO.getId(tokenA.mint.publicKey);

@@ -8,7 +8,7 @@ import type { Whirlpool, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpool
  * @augments WhirlpoolAccountFetchOptions
  * @augments GetWhirlpoolKeyOpts
  */
-export interface GetWhirlpoolOpts extends WhirlpoolAccountFetchOptions, GetWhirlpoolKeyOpts {
+export interface GetWhirlpoolOpts extends WhirlpoolAccountFetchOptions, Partial<GetWhirlpoolKeyOpts> {
 
   /**
    * The {@link Whirlpool} {@link Address}.
