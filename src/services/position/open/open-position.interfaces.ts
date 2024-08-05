@@ -178,3 +178,25 @@ export interface OpenPositionTxSummary {
   signature: string;
 
 }
+
+/**
+ * Arguments for generating a {@link OpenPositionTxSummary}.
+ */
+export interface OpenPositionTxSummaryArgs {
+
+  /**
+   * The {@link BundledPosition} that was opened.
+   */
+  bundledPosition: BundledPosition;
+
+  /**
+   * The {@link OpenPositionIx} or {@link OpenPositionTx} used to generate the summary.
+   */
+  openPositionIxTx: OpenPositionTx | OpenPositionIx;
+
+  /**
+   * The signature of the open {@link Position} transaction.
+   */
+  signature: string;
+
+}

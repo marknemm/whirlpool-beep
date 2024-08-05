@@ -12,8 +12,6 @@ import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { RebalanceAllPositionsOptions, RebalanceAllPositionsResult, RebalancePositionOptions, RebalancePositionResult, RebalanceTxSummary } from './rebalance-position.interfaces';
 
-// TODO: Improve efficiency by consolidating collect, decrease liquidity, close, and open transactions.
-
 /**
  * Rebalances all {@link Position}s based on given {@link options}.
  *
@@ -99,7 +97,6 @@ export async function rebalancePosition(
     liquidityUnit: liquidityUnit ?? 'usd',
   };
 
-  // TODO: Condense into less transactions
   if (await options.filter(positionOld)) {
     try {
       info('\n-- Rebalance Position --\n', opMetadata);

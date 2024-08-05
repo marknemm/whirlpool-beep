@@ -109,7 +109,7 @@ export async function closePosition({
 
       const closePositionTxSummary = await genClosePositionTxSummary({
         bundledPosition,
-        closePositionTx,
+        closePositionIxTx: closePositionTx,
         signature,
       });
 
@@ -277,10 +277,10 @@ async function _genClosePositionIx(bundledPosition: BundledPosition): Promise<In
  */
 export async function genClosePositionTxSummary({
   bundledPosition,
-  closePositionTx,
+  closePositionIxTx,
   signature
 }: ClosePositionTxSummaryArgs): Promise<ClosePositionTxSummary> {
-  const { collectFeesIx, decreaseLiquidityIx, decreaseLiquidityQuote } = closePositionTx;
+  const { collectFeesIx, decreaseLiquidityIx, decreaseLiquidityQuote } = closePositionIxTx;
   const txSummary = await getTransactionSummary(signature);
 
   const closePositionTxSummary: ClosePositionTxSummary = {

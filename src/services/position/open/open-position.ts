@@ -1,6 +1,5 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
-import type { Null } from '@/interfaces/nullable.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { genIncreaseLiquidityIx, type IncreaseLiquidityIx } from '@/services/liquidity/increase/increase-liquidity';
 import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
@@ -14,11 +13,11 @@ import { executeTransaction, getTransactionSummary } from '@/util/transaction/tr
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool/whirlpool';
 import { Percentage, TransactionBuilder, type Instruction } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
-import type { OpenPositionData, OpenPositionIx, OpenPositionOptions, OpenPositionTx, OpenPositionTxSummary } from './open-position.interfaces';
+import type { OpenPositionData, OpenPositionIx, OpenPositionOptions, OpenPositionTx, OpenPositionTxSummary, OpenPositionTxSummaryArgs } from './open-position.interfaces';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
@@ -48,7 +47,8 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
         await whirlpool.refreshData();
       }
 
-      const { increaseLiquidityQuote, openPositionData, tx } = await genOpenPositionTx(options);
+      const openPositionTx = await genOpenPositionTx(options);
+      const { openPositionData, tx } = openPositionTx;
 
       const {
         address,
@@ -73,7 +73,11 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
       // Get, store, and return the open position transaction summary
       const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
       const bundledPosition: BundledPosition = { bundleIndex, position, positionBundle };
-      const txSummary = await genOpenPositionTxSummary(bundledPosition, increaseLiquidityQuote, signature);
+      const txSummary = await genOpenPositionTxSummary({
+        bundledPosition,
+        openPositionIxTx: openPositionTx,
+        signature,
+      });
       await PositionDAO.insert(txSummary, { catchErrors: true });
       return txSummary;
     }, {
@@ -299,16 +303,15 @@ async function _genIncreaseLiquidityIx(
 /**
  * Generates a summary of an open {@link Position} transaction.
  *
- * @param bundledPosition The {@link BundledPosition} that was opened.
- * @param increaseLiquidityQuote The {@link IncreaseLiquidityQuote} used for increasing liquidity in the new {@link Position}.
- * @param signature The signature of the open {@link Position} transaction.
+ * @param args The {@link OpenPositionTxSummaryArgs}.
  * @returns A {@link Promise} that resolves to the {@link OpenPositionTxSummary}.
  */
-export async function genOpenPositionTxSummary(
-  bundledPosition: BundledPosition,
-  increaseLiquidityQuote: IncreaseLiquidityQuote | Null,
-  signature: string
-): Promise<OpenPositionTxSummary> {
+export async function genOpenPositionTxSummary({
+  bundledPosition,
+  openPositionIxTx,
+  signature
+}: OpenPositionTxSummaryArgs): Promise<OpenPositionTxSummary> {
+  const { increaseLiquidityQuote } = openPositionIxTx;
   const txSummary = await getTransactionSummary(signature);
 
   const openPositionTxSummary: OpenPositionTxSummary = {
