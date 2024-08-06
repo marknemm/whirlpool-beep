@@ -1,6 +1,6 @@
 import { expBackoff } from '@/util/async/async';
 import env from '@/util/env/env';
-import { debug, error, info, warn } from '@/util/log/log';
+import { debug, info, warn } from '@/util/log/log';
 import { toNum, toUSD } from '@/util/number-conversion/number-conversion';
 import { decodeIx, type SplTokenTransferIxData, type TempTokenAccount } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
@@ -11,7 +11,7 @@ import { TransactionBuilder } from '@orca-so/common-sdk';
 import { type Commitment, type ParsedTransactionWithMeta, type SendTransactionError, type VersionedTransactionResponse } from '@solana/web3.js';
 import BN from 'bn.js';
 import { green } from 'colors';
-import type { DecodedTransactionIx, TransactionBuildOptions, TransactionMetadata, TransactionSendOptions, TransactionSummary, TransferTotals } from './transaction.interfaces';
+import type { DecodedTransactionIx, TransactionBuildOptions, TransactionError, TransactionMetadata, TransactionSendOptions, TransactionSummary, TransferTotals } from './transaction.interfaces';
 
 const _txCache = new Map<string, ParsedTransactionWithMeta>();
 const _txSummaryCache = new Map<string, TransactionSummary>();
@@ -50,7 +50,7 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
         });
 
         const signature = await tx.buildAndExecute(buildOpts, sendOpts);
-        await verifyTransaction(signature, txMetadata, sendOpts.commitment);
+        await verifyTransaction(signature, txMetadata, sendOpts.verifyCommitment);
 
         info('Tx executed and verified:', {
           ...txMetadata,
@@ -65,10 +65,7 @@ export async function executeTransaction<TMeta extends TransactionMetadata>(
       }
     );
   } catch (err) {
-    error('Tx execution failed:', {
-      ...txMetadata,
-      error: err,
-    });
+    warn('Tx execution failed:', txMetadata);
     throw err;
   }
 }
@@ -97,7 +94,13 @@ export async function verifyTransaction<TMeta extends TransactionMetadata>(
   const confirmResponse = await rpc().confirmTransaction({ signature, ...latestBlockhash }, commitment);
 
   if (confirmResponse.value.err) {
-    throw new Error(confirmResponse.value.err.toString());
+    const txErr = confirmResponse.value.err as TransactionError;
+    if (txErr.InstructionError) {
+      throw new Error(`Error in transaction: instruction index ${txErr.InstructionError[0]}, `
+        + `custom program error ${txErr.InstructionError[1].Custom}`);
+    }
+
+    throw new Error(`Error in transaction: ${JSON.stringify(txErr)}`);
   }
 }
 

@@ -1,6 +1,7 @@
 import env from '@/util/env/env'; // Load and validate env variables ASAP
 
 import { prompt, promptCliCommand, promptCliScript } from '@/util/cli/cli';
+import { migrateDb } from '@/util/db/db';
 import { debug, error, info } from '@/util/log/log';
 import { blue } from 'colors';
 import { join } from 'node:path';
@@ -11,6 +12,11 @@ import { join } from 'node:path';
 async function main() {
   process.env.NO_EXEC_CLI = 'true'; // Prevent command execution in CLI modules
   debug('Environment variables loaded and validated:', { ...env }, '\n');
+
+  // Migrate the database if the DB_MIGRATE env variable is set
+  if (env.DB_MIGRATE) {
+    await migrateDb();
+  }
 
   const { script, commandsDir } = await promptCliScript();
 

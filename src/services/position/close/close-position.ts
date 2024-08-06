@@ -105,7 +105,7 @@ export async function closePosition({
       const signature = await executeTransaction(closePositionTx.tx, {
         name: 'Close Position',
         ...opMetadata
-      }, undefined, { commitment: 'finalized' });
+      }, undefined, { verifyCommitment: 'finalized' });
 
       const closePositionTxSummary = await genClosePositionTxSummary({
         bundledPosition,

@@ -39,6 +39,11 @@ export interface OpenPositionData {
   positionBundlePda: PDA;
 
   /**
+   * The price margin {@link Percentage} for the new {@link Position}.
+   */
+  priceMargin: Percentage;
+
+  /**
    * The computed price range for the new {@link Position}.
    */
   priceRange: [Decimal, Decimal];
@@ -173,9 +178,24 @@ export interface OpenPositionTxSummary {
   liquidityTxSummary?: LiquidityTxSummary;
 
   /**
+   * The price margin {@link Percentage} for the new {@link Position}.
+   */
+  priceMargin: Percentage;
+
+  /**
+   * The price range for the new {@link Position}.
+   */
+  priceRange: [Decimal, Decimal];
+
+  /**
    * The signature of the open position transaction.
    */
   signature: string;
+
+  /**
+   * The tick index range for the new {@link Position}.
+   */
+  tickRange: [number, number];
 
 }
 

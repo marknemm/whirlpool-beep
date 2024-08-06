@@ -3,7 +3,10 @@ import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import env from '@/util/env/env';
 import { debug, error, info } from '@/util/log/log';
-import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
+import { path as appRootPath } from 'app-root-path';
+import { promises as fs } from 'fs';
+import { CamelCasePlugin, FileMigrationProvider, Kysely, Migrator, PostgresDialect, type MigrationResult } from 'kysely';
+import path from 'path';
 import { Pool } from 'pg';
 import type { DB } from './db.interfaces';
 
@@ -90,6 +93,46 @@ export function handleSelectError(
   }
 
   throw err;
+}
+
+/**
+ * Migrates the database to the latest version.
+ *
+ * @returns A {@link Promise} that resolves to the {@link MigrationResult} list data.
+ * @throws An {@link Error} if the migration fails.
+ */
+export async function migrateDb(): Promise<MigrationResult[]> {
+  info('\n-- Migrating DB Schema to latest version --');
+
+  const migrator = new Migrator({
+    db: db(),
+    provider: new FileMigrationProvider({
+      fs,
+      path,
+      migrationFolder: path.join(appRootPath, 'migrations'),
+    }),
+  });
+
+  const { error: err, results } = await migrator.migrateToLatest();
+
+  for (const res of results ?? []) {
+    switch (res.status) {
+      case 'Success':
+        info(`migration '${res.migrationName}' was executed successfully`);
+        break;
+      case 'Error':
+        error(`failed to execute migration "${res.migrationName}"`);
+        break;
+    }
+  }
+
+  if (err) {
+    error('failed to migrate');
+    throw err;
+  }
+
+  info(`DB schema migration finished, completed ${(results ?? []).length} migrations\n`);
+  return results ?? [];
 }
 
 /**

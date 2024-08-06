@@ -36,6 +36,22 @@ export type TransactionBuildOptions = Partial<BuildOptions> & {
 }
 
 /**
+ * A transaction error.
+ */
+export interface TransactionError {
+
+  /**
+   * The instruction error.
+   */
+  InstructionError: [
+    number,
+    {
+      Custom: number;
+    }
+  ]
+}
+
+/**
  * Metadata for a transaction.
  */
 export interface TransactionMetadata {
@@ -55,14 +71,40 @@ export interface TransactionMetadata {
 /**
  * Options for sending a transaction.
  */
-export type TransactionSendOptions = Partial<SendOptions> & {
+export interface TransactionSendOptions {
+
+  /**
+   * Maximum number of times for the RPC node to retry sending the transaction to the leader.
+   *
+   * @default 3
+   */
+  maxRetries?: number;
+
+  /**
+   * The minimum slot that the request can be evaluated at.
+   */
+  minContextSlot?: number;
+
+  /**
+   * The preflight {@link Commitment} level.
+   *
+   * @default 'confirmed'
+   */
+  preflightCommitment?: Commitment;
+
+  /**
+   * Whether to skip the preflight check.
+   *
+   * @default false
+   */
+  skipPreflight?: boolean;
 
   /**
    * Wait for the sent transaction to be confirmed up to this level.
    *
    * @default 'confirmed'
    */
-  commitment?: Commitment;
+  verifyCommitment?: Commitment;
 
 }
 

@@ -9,7 +9,6 @@ import { OpenPositionTxSummary } from '@/services/position/open/open-position.in
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug, error, warn } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
-import { toPriceRange } from '@/util/tick-range/tick-range';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
@@ -72,7 +71,7 @@ export default class PositionDAO {
    */
   static async insert(txSummary: OpenPositionTxSummary, opts?: DAOOptions): Promise<number | undefined> {
     if (!txSummary?.bundledPosition) return;
-    const { bundledPosition, fee, liquidityTxSummary, signature } = txSummary;
+    const { bundledPosition, fee, liquidityTxSummary, priceMargin, priceRange, signature, tickRange } = txSummary;
     const { position } = bundledPosition;
 
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
@@ -87,17 +86,11 @@ export default class PositionDAO {
         throw new Error(`Failed to get Whirlpool for Position Insert: ${position.getData().whirlpool}`);
       }
 
-      const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
-      const { tickLowerIndex, tickUpperIndex } = position.getData();
+      const [, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
+      const [tickLowerIndex, tickUpperIndex] = tickRange;
 
       const priceOrigin = await getWhirlpoolPrice(whirlpoolData);
-
-      const [priceLower, priceUpper] = toPriceRange(
-        [tickLowerIndex, tickUpperIndex],
-        [tokenA.mint.decimals, tokenB.mint.decimals]
-      );
-
-      const priceMargin = priceOrigin.minus(priceLower).div(priceOrigin).mul(100).round().toNumber();
+      const [priceLower, priceUpper] = priceRange;
 
       const result = await db().insertInto('position')
         .values({
@@ -105,7 +98,7 @@ export default class PositionDAO {
           openFee: fee,
           openTx: signature,
           priceLower: toBigInt(priceLower, tokenB.mint.decimals),
-          priceMargin,
+          priceMargin: priceMargin.toDecimal().mul(100).round().toNumber(),
           priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
           priceUpper: toBigInt(priceUpper, tokenB.mint.decimals),
           tickLowerIndex,

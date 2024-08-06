@@ -68,7 +68,7 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
         priceMargin: priceMargin.toString(),
         priceRange,
         tickRange,
-      }, undefined, { commitment: 'finalized' });
+      }, undefined, { verifyCommitment: 'finalized' });
 
       // Get, store, and return the open position transaction summary
       const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
@@ -198,6 +198,7 @@ async function _genOpenPositionData({
     bundledPositionPda,
     positionBundle,
     positionBundlePda,
+    priceMargin,
     priceRange,
     tickRange,
     whirlpool,
@@ -311,13 +312,17 @@ export async function genOpenPositionTxSummary({
   openPositionIxTx,
   signature
 }: OpenPositionTxSummaryArgs): Promise<OpenPositionTxSummary> {
-  const { increaseLiquidityQuote } = openPositionIxTx;
+  const { increaseLiquidityQuote, openPositionData } = openPositionIxTx;
+  const { priceMargin, priceRange, tickRange } = openPositionData;
   const txSummary = await getTransactionSummary(signature);
 
   const openPositionTxSummary: OpenPositionTxSummary = {
     fee: txSummary.fee,
     bundledPosition,
+    priceMargin,
+    priceRange,
     signature,
+    tickRange,
   };
 
   if (increaseLiquidityQuote) {

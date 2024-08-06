@@ -32,6 +32,13 @@ const env = cleanEnv(process.env, {
   DB_HOST: str(),
 
   /**
+   * Whether to automatically migrate the database schema on startup.
+   *
+   * @default false
+   */
+  DB_MIGRATE: bool({ default: false }),
+
+  /**
    * The database name.
    */
   DB_NAME: str(),

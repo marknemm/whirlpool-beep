@@ -16,6 +16,11 @@ export async function rebalance() {
 
   info('Environment variables loaded and validated:', { ...env }, '\n');
 
+  if (env.DB_MIGRATE) {
+    const { migrateDb } = await import('@/util/db/db');
+    await migrateDb();
+  }
+
   await rebalanceAllPositions({
     filter: genPriceRangeRebalanceFilter(),
     liquidity: env.INCREASE_LIQUIDITY,

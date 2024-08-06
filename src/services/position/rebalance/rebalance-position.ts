@@ -41,7 +41,7 @@ export async function rebalanceAllPositions(
   ));
 
   const promises = bundledPositions.map(async (bundledPosition, idx) => {
-    await timeout(250 * idx); // Stagger requests to avoid rate limiting
+    await timeout(1000 * idx); // Stagger requests to avoid rate limiting
 
     try {
       const result = await rebalancePosition(bundledPosition, options);
