@@ -35,7 +35,7 @@ export const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 export const SECRETS_REGEX = new RegExp(
   getSecretEnvVars()
     .map((key) => env[key]?.toString().replace(REGEX_ESCAPE, '\\$&'))
-    .join('|'),
+    .join('|').replace(/\|{2,}/g, '|'),
   'g'
 );
 

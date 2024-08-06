@@ -132,6 +132,10 @@ export async function getPriorityFeeEstimate(
 export async function getHeliusPriorityFeeEstimate(
   tx?: Transaction | VersionedTransaction | Null
 ): Promise<PriorityFeeEstimate> {
+  if (!env.HELIUS_API_KEY) {
+    throw new Error('HELIUS_API_KEY env var not set, cannot fetch priority fee via Helius RPC endpoint');
+  }
+
   debug('Fetching priority fee estimate via Helius RPC Endpoint:', env.HELIUS_RPC_ENDPOINT);
 
   const response = await axios.post<PriorityFeeEstimateResponse>(env.HELIUS_RPC_ENDPOINT, {

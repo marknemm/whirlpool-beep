@@ -3,6 +3,8 @@ import { path as appRootPath } from 'app-root-path';
 import { glob } from 'glob';
 import { createInterface } from 'node:readline/promises';
 import prompts from 'prompts';
+import { info } from '../log/log';
+import { sep } from 'node:path';
 
 /**
  * Prompts the user to choose a CLI script to run.
@@ -11,8 +13,9 @@ import prompts from 'prompts';
  */
 export async function promptCliScript(): Promise<{ script: string, commandsDir: string }> {
   const cliScripts = (await glob(`${appRootPath}/src/cli/*.ts`, { withFileTypes: false }))
-    .map((path) => path.split('/').pop()!.replace('.ts', ''))
+    .map((path) => path.split(sep).pop()!.replace('.ts', ''))
     .sort();
+  info(cliScripts);
 
   const { script } = await prompts({
     type: 'select',
@@ -24,6 +27,7 @@ export async function promptCliScript(): Promise<{ script: string, commandsDir: 
       value: script,
     })),
   });
+  info(script);
 
   const [commandsDir] = await glob(`${appRootPath}/src/cli/${script}-cmds`, { withFileTypes: false });
 
@@ -38,7 +42,7 @@ export async function promptCliScript(): Promise<{ script: string, commandsDir: 
  */
 export async function promptCliCommand(script: string): Promise<string> {
   const cliCommands = (await glob(`${appRootPath}/src/cli/${script}-cmds/*.ts`, { withFileTypes: false }))
-    .map((path) => path.split('/').pop()!.replace('.ts', ''))
+    .map((path) => path.split(sep).pop()!.replace('.ts', ''))
     .filter((cmd) => env.NODE_ENV === 'development' || cmd !== 'airdrop')
     .sort();
 
