@@ -51,9 +51,7 @@ async function handler(argv: CliArgs<typeof cli.options>) {
       whirlpoolAddress: await getWhirlpoolAddressFromCliArgs(argv),
       liquidity: argv.liquidity,
       liquidityUnit: argv.liquidityUnit,
-      filter: genPriceRangeRebalanceFilter(
-        Percentage.fromFraction(argv.priceRangeMargin, 100)
-      )
+      filter: async () => true,
     };
 
     if (argv.bundleIndex || argv.position) {

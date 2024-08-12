@@ -1,53 +1,13 @@
-import type { Instruction, TransactionBuilder } from '@orca-so/common-sdk';
+import type { InstructionData } from '@/util/transaction-context/transaction-context.interfaces';
+import type { Instruction } from '@orca-so/common-sdk';
 import type { CollectFeesQuote, CollectRewardsQuote, Position } from '@orca-so/whirlpools-sdk';
+import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
 /**
  * The result of generating an {@link Instruction} to collect fees and rewards from a {@link Position}.
  */
-export interface CollectFeesRewardsIx extends CollectFeesRewardsIxTxAssocData {
-
-  /**
-   * The {@link Instruction} for collecting fees and rewards.
-   */
-  ix: Instruction;
-
-}
-
-/**
- * Container for the {@link CollectFeesQuote} and {@link CollectRewardsQuote}
- * used to generate a collect fees and rewards transaction.
- */
-export interface CollectFeesRewardsQuotes {
-
-  /**
-   * The {@link CollectFeesQuote} used to generate the transaction.
-   */
-  collectFeesQuote: CollectFeesQuote;
-
-  /**
-   * The {@link CollectRewardsQuote} used to generate the transaction.
-   */
-  collectRewardsQuote: CollectRewardsQuote;
-
-}
-
-/**
- * The result of generating a transaction to collect fees and rewards from a {@link Position}.
- */
-export interface CollectFeesRewardsTx extends CollectFeesRewardsIxTxAssocData {
-
-  /**
-   * The {@link TransactionBuilder} for collecting fees and rewards.
-   */
-  tx: TransactionBuilder;
-
-}
-
-/**
- * Data associated with collect fees and rewards transaction instructions and transactions.
- */
-interface CollectFeesRewardsIxTxAssocData {
+export interface CollectFeesRewardsIxData extends InstructionData {
 
   /**
    * The collect fees {@link Instruction}.
@@ -63,6 +23,24 @@ interface CollectFeesRewardsIxTxAssocData {
    * The collect rewards {@link Instruction}s.
    */
   collectRewardsIxs: Instruction[];
+
+  /**
+   * The {@link CollectRewardsQuote} used to generate the transaction.
+   */
+  collectRewardsQuote: CollectRewardsQuote;
+
+}
+
+/**
+ * Container for the {@link CollectFeesQuote} and {@link CollectRewardsQuote}
+ * used to generate a collect fees and rewards transaction.
+ */
+export interface CollectFeesRewardsQuotes {
+
+  /**
+   * The {@link CollectFeesQuote} used to generate the transaction.
+   */
+  collectFeesQuote: CollectFeesQuote;
 
   /**
    * The {@link CollectRewardsQuote} used to generate the transaction.
@@ -91,7 +69,7 @@ export interface CollectFeesRewardsTxSummary {
   /**
    * The signature of the transaction.
    */
-  signature: string;
+  signature: TransactionSignature;
 
   /**
    * The amount of token A fees that were collected.

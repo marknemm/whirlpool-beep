@@ -1,13 +1,14 @@
 import { expBackoff } from '@/util/async/async';
 import { debug, info } from '@/util/log/log';
 import rpc from '@/util/rpc/rpc';
-import { executeTransaction } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient from '@/util/whirlpool/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type PositionBundleData, WhirlpoolIx } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, type PublicKey } from '@solana/web3.js';
+import { CreatePositionBundleIxData } from './create-position-bundle.interfaces';
+import TransactionContext from '@/util/transaction-context/transaction-context';
 
 /**
  * Creates a position bundle.
@@ -27,13 +28,16 @@ import { Keypair, type PublicKey } from '@solana/web3.js';
 export async function createPositionBundle(): Promise<PositionBundleData> {
   info('\n-- Create Position Bundle --');
 
-  const { positionBundleKey, tx } = await createPositionBundleTx();
+  const transactionCtx = new TransactionContext();
 
-  // Execute and verify transaction
-  await executeTransaction(tx, {
-    name: 'Initialize Position Bundle',
-    positionBundle: positionBundleKey.toBase58(),
-  });
+  // Generate instruction data for creating position bundle
+  const createPositionBundleIxData = await genCreatePositionBundleIxData();
+  const positionBundleKey = createPositionBundleIxData.positionBundlePda.publicKey;
+
+  // Send transaction to create position bundle
+  await transactionCtx
+    .resetInstructionData(createPositionBundleIxData)
+    .send();
 
   // Get and return position bundle data
   const positionBundle = await expBackoff(() =>
@@ -44,12 +48,11 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
 }
 
 /**
- * Creates a transaction to initialize a position bundle.
+ * Creates {@link CreatePositionBundleIxData} to initialize a position bundle.
  *
- * @returns A {@link Promise} that resolves to an object containing
- * the {@link PublicKey} (address) of the position bundle and the {@link TransactionBuilder}.
+ * @returns A {@link Promise} that resolves to the {@link CreatePositionBundleIxData}.
  */
-export async function createPositionBundleTx(): Promise<{ positionBundleKey: PublicKey, tx: TransactionBuilder }> {
+export async function genCreatePositionBundleIxData(): Promise<CreatePositionBundleIxData> {
   info('Creating Tx to initialize position bundle...');
 
   // Generate keypair and PDAs for position bundle
@@ -92,5 +95,18 @@ export async function createPositionBundleTx(): Promise<{ positionBundleKey: Pub
     positionBundleTokenAccount: positionBundleTokenAccount.toBase58(),
   });
 
-  return { positionBundleKey: positionBundlePda.publicKey, tx };
+  return {
+    ...initPositionBundleIx,
+    owner: wallet().publicKey,
+    positionBundleMintKeypair,
+    positionBundlePda,
+    positionBundleMetadataPda,
+    positionBundleTokenAccount,
+    debugData: {
+      name: 'Create Position Bundle',
+      positionBundle: positionBundlePda.publicKey.toBase58()
+    }
+  };
 }
+
+export type * from './create-position-bundle.interfaces';

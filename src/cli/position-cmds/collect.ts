@@ -2,7 +2,7 @@ import { genGetPositionCliOpts } from '@/cli/common/position-opts';
 import { genTransactionCliOpts } from '@/cli/common/transaction-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
 import type { CliArgs } from '@/util/cli/cli.interfaces';
-import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsTx } from '@/services/fees-rewards/collect/collect-fees-rewards';
+import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsIxData } from '@/services/fees-rewards/collect/collect-fees-rewards';
 import { getPosition, getPositionAtIdx } from '@/services/position/query/query-position';
 import { error, info } from '@/util/log/log';
 import { genComputeBudget } from '@/util/transaction-budget/transaction-budget';
@@ -48,8 +48,8 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     if (position) {
       if (argv.dryRun) {
-        const { tx } = await genCollectFeesRewardsTx(position);
-        const computeBudget = await genComputeBudget(tx);
+        const { instructions } = await genCollectFeesRewardsIxData(position);
+        const computeBudget = await genComputeBudget(instructions);
         info('Transaction budget:', computeBudget);
       } else {
         await collectFeesRewards(position);

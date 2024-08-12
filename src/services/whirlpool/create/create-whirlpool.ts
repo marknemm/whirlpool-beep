@@ -2,12 +2,12 @@ import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
 import { expBackoff } from '@/util/async/async';
 import { info } from '@/util/log/log';
 import { getTokenPair } from '@/util/token/token';
-import { executeTransaction } from '@/util/transaction/transaction';
+import TransactionContext from '@/util/transaction-context/transaction-context';
 import whirlpoolClient from '@/util/whirlpool/whirlpool';
-import { type Address, type TransactionBuilder } from '@orca-so/common-sdk';
+import { AddressUtil, type Address } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
-import { type PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
+import type { CreateWhirlpoolIxData } from './create-whirlpool.interfaces';
 
 /**
  * Creates a {@link Whirlpool}.
@@ -25,6 +25,7 @@ export async function createWhirlpool(
   tickSpacing: number,
   initialPrice: Decimal
 ): Promise<Whirlpool> {
+  const transactionCtx = new TransactionContext();
   const [tokenA, tokenB] = await getTokenPair(tokenAddrA, tokenAddrB);
 
   info('\n-- Create Whirlpool --\n', {
@@ -33,36 +34,32 @@ export async function createWhirlpool(
     tickSpacing,
   });
 
-  const { poolKey, tx } = await genCreateWhirlpoolTx(tokenAddrA, tokenAddrB, tickSpacing, initialPrice);
+  const createWhirlpoolIxData = await genCreateWhirlpoolIxData(tokenAddrA, tokenAddrB, tickSpacing, initialPrice);
+  const { whirlpoolAddress } = createWhirlpoolIxData;
 
-  await executeTransaction(tx, {
-    name: 'Create Whirlpool',
-    whirlpool: poolKey.toBase58(),
-    tokenA: tokenA.metadata.symbol,
-    tokenB: tokenB.metadata.symbol,
-    tickSpacing,
-  });
+  await transactionCtx
+    .resetInstructionData(createWhirlpoolIxData)
+    .send();
 
-  return await expBackoff(() => whirlpoolClient().getPool(poolKey));
+  return await expBackoff(() => whirlpoolClient().getPool(whirlpoolAddress));
 }
 
 /**
- * Creates a transaction that creates a {@link Whirlpool}.
+ * Creates {@link CreateWhirlpoolIxData} that creates a {@link Whirlpool}.
  *
- * @param tokenAddrA The token A {@link Address}.
- * @param tokenAddrB The token B {@link Address}.
+ * @param tokenAddressA The token A {@link Address}.
+ * @param tokenAddressB The token B {@link Address}.
  * @param tickSpacing The tick spacing defined for the {@link Whirlpool}.
  * @param initialPrice The initial price of token A in terms of token B.
- * @returns A {@link Promise} that resolves to an object containing the {@link PublicKey}
- * of the new whirlpool and the {@link TransactionBuilder}.
+ * @returns A {@link Promise} that resolves to the {@link CreateWhirlpoolIxData}.
  */
-export async function genCreateWhirlpoolTx(
-  tokenAddrA: Address,
-  tokenAddrB: Address,
+export async function genCreateWhirlpoolIxData(
+  tokenAddressA: Address,
+  tokenAddressB: Address,
   tickSpacing: number,
   initialPrice: Decimal
-): Promise<{ poolKey: PublicKey, tx: TransactionBuilder }> {
-  const [tokenA, tokenB] = await getTokenPair(tokenAddrA, tokenAddrB);
+): Promise<CreateWhirlpoolIxData> {
+  const [tokenA, tokenB] = await getTokenPair(tokenAddressA, tokenAddressB);
 
   info('Creating Tx to create Whirlpool:', `( ${tokenA.metadata.symbol} <=> ${tokenB.metadata.symbol} )`);
 
@@ -72,12 +69,30 @@ export async function genCreateWhirlpoolTx(
     tokenB.mint.decimals
   );
 
-  return whirlpoolClient().createPool(
+  const { poolKey, tx } = await whirlpoolClient().createPool(
     WHIRLPOOL_CONFIG_PUBLIC_KEY,
-    tokenAddrA,
-    tokenAddrB,
+    tokenAddressA,
+    tokenAddressB,
     tickSpacing,
     initialTick,
     whirlpoolClient().getContext().wallet.publicKey
   );
+
+  return {
+    ...tx.compressIx(false),
+    initialTick,
+    tickSpacing,
+    tokenAddressA,
+    tokenAddressB,
+    whirlpoolAddress: poolKey,
+    debugData: {
+      name: 'Create Whirlpool',
+      whirlpool: AddressUtil.toString(poolKey),
+      tokenA: tokenA.metadata.symbol,
+      tokenB: tokenB.metadata.symbol,
+      tickSpacing,
+    }
+  };
 }
+
+export type * from './create-whirlpool.interfaces';

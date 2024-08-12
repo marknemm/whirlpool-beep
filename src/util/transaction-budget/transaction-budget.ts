@@ -1,82 +1,100 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
 import env from '@/util/env/env';
 import { debug, error } from '@/util/log/log';
-import { toLamports } from '@/util/number-conversion/number-conversion';
-import { encodeBase58 } from '@/util/pki/pki';
+import { toLamports, toMicroLamports } from '@/util/number-conversion/number-conversion';
 import rpc from '@/util/rpc/rpc';
-import type { TransactionBuildOptions } from '@/util/transaction/transaction.interfaces';
 import wallet from '@/util/wallet/wallet';
-import { TransactionBuilder } from '@orca-so/common-sdk';
 import { getSimulationComputeUnits } from '@solana-developers/helpers';
-import { Transaction, VersionedTransaction, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Transaction, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import axios from 'axios';
-import type { DeepReadonly } from 'utility-types';
-import type { ComputeBudget, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces';
+import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces';
 
 /**
  * Generates a {@link ComputeBudget} for a transaction.
  *
- * @param tx The {@link TransactionBuilder} to generate the {@link ComputeBudget} for.
- * @param buildOpts The {@link TransactionBuildOptions} used for the transaction.
- * @param retry The retry count for the transaction execution. Defaults to `0`.
- * @returns A {@link Promise} that resolves to the generated {@link ComputeBudget}.
+ * @param ixs The {@link TransactionInstruction}s to generate the {@link ComputeBudget} instructions for.
+ * @param opts The {@link ComputeBudgetOptions} to use for generating the {@link ComputeBudget} instructions.
+ * Defaults to {@link env.PRIORITY_LEVEL_DEFAULT}.
+ * @param retry The send transaction retry count used to boost the generated priority fee. Defaults to `0`.
+ * @returns A {@link Promise} that resolves to the generated {@link ComputeBudget} {@link TransactionInstruction}s.
  */
 export async function genComputeBudget(
-  tx: TransactionBuilder,
-  buildOpts: DeepReadonly<TransactionBuildOptions> = {},
+  ixs: readonly TransactionInstruction[],
+  opts: ComputeBudgetOptions = env.PRIORITY_LEVEL_DEFAULT,
   retry = 0
 ): Promise<ComputeBudget> {
-  const computeBudgetLimit = (buildOpts.computeBudgetOption as ComputeBudget)?.computeBudgetLimit
-    ?? await getComputeLimitEstimate(tx);
+  const computeBudget: ComputeBudget = {
+    computeUnitLimit: (opts as ComputeBudget)?.computeUnitLimit
+      ?? await getComputeLimitEstimate(ixs),
+    instructions: [],
+    priorityFeeLamports: (opts as ComputeBudget)?.priorityFeeLamports,
+  };
 
-  let priority = buildOpts.priority ?? env.PRIORITY_LEVEL_DEFAULT;
-  if (retry) { // Every 2 retries, increase the priority level - caps at 'veryHigh'
-    priority = getNextPriorityLevel(priority, Math.floor(retry / 2));
+  if (!computeBudget.priorityFeeLamports && computeBudget.computeUnitLimit) {
+    let priority = (opts as TransactionPriority)
+      ?? (opts as { priority: TransactionPriority })?.priority
+      ?? env.PRIORITY_LEVEL_DEFAULT;
+    if (retry) { // Every 2 retries, increase the priority level - caps at 'veryHigh'
+      priority = getNextPriorityLevel(priority, Math.floor(retry / 2));
+    }
+
+    const priorityFeeEstimate = await getPriorityFeeEstimate(ixs);
+    const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[priority], 'Micro Lamports');
+    const priorityFeeEstimateTotal = Math.ceil(priorityFeeEstimateLamports * computeBudget.computeUnitLimit);
+
+    computeBudget.priorityFeeLamports = Math.min(
+      Math.ceil(
+        Math.max(
+          priorityFeeEstimateTotal,
+          env.PRIORITY_FEE_MIN_LAMPORTS
+        ) * (retry * 0.1 + 1)
+      ),
+      env.PRIORITY_FEE_MAX_LAMPORTS
+    );
   }
 
-  const priorityFeeEstimate = await getPriorityFeeEstimate(tx);
-  const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[priority], 'Micro Lamports');
+  if (computeBudget.computeUnitLimit) {
+    computeBudget.instructions.push(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeBudget.computeUnitLimit,
+      })
+    );
+  }
 
-  const priorityFeeLamports = Math.min(
-    Math.max(
-      Math.ceil(priorityFeeEstimateLamports * (computeBudgetLimit ?? 0)),
-      env.PRIORITY_FEE_MIN_LAMPORTS
-    ) + (retry * env.PRIORITY_FEE_MIN_LAMPORTS),
-    env.PRIORITY_FEE_MAX_LAMPORTS
-  );
+  if (computeBudget.priorityFeeLamports && computeBudget.computeUnitLimit) {
+    const microLamportsTotal = toMicroLamports(computeBudget.priorityFeeLamports, 'Lamports');
 
-  return {
-    computeBudgetLimit,
-    priorityFeeLamports,
-    type: 'fixed',
-  };
+    computeBudget.instructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: Math.floor(microLamportsTotal / computeBudget.computeUnitLimit),
+      })
+    );
+  }
+
+  return computeBudget;
 }
 
 /**
  * Simulates a transaction to estimate the max `CU` (compute units) required to execute it.
  *
- * @param tx The transaction to simulate. Either a {@link TransactionBuilder} or an array of {@link TransactionInstruction}s.
+ * @param ixs The {@link TransactionInstruction}s to simulate.
  * @returns A {@link Promise} that resolves to the estimated `CU` required to execute the transaction.
  * If the transaction simulation fails, resolves to `null`.
  */
 export async function getComputeLimitEstimate(
-  tx: TransactionBuilder | TransactionInstruction[]
+  ixs: readonly TransactionInstruction[]
 ): Promise<number | undefined> {
-  const instructions = tx instanceof TransactionBuilder
-    ? tx.compressIx(true).instructions
-    : tx;
-
   debug('Estimating Compute Units via transaction simulation...');
 
-  let minComputeUnits = await getSimulationComputeUnits(rpc(), instructions, wallet().publicKey, []) ?? undefined;
+  let computeUnits = await getSimulationComputeUnits(rpc(), [...ixs], wallet().publicKey, []) ?? undefined;
 
-  minComputeUnits = minComputeUnits
-    ? Math.floor(minComputeUnits * (1 + (env.COMPUTE_LIMIT_MARGIN / 100))) // Add buffer in case extra CU are needed for PDA ops.
+  computeUnits = computeUnits
+    ? Math.floor(computeUnits * (1 + (env.COMPUTE_LIMIT_MARGIN / 100))) // Add buffer in case extra CU are needed for PDA ops.
     : undefined;
 
-  debug('Estimated Compute Units:', minComputeUnits);
+  debug('Estimated Compute Units:', computeUnits);
 
-  return minComputeUnits;
+  return computeUnits;
 }
 
 /**
@@ -96,26 +114,23 @@ export function getNextPriorityLevel(priority: TransactionPriority, jump = 1): T
 /**
  * Gets the {@link PriorityFeeEstimate} for a transaction.
  *
- * @param tx The transaction to get the {@link PriorityFeeEstimate} for. Either a {@link TransactionBuilder} or a {@link Transaction}.
+ * @param ixs The {@link TransactionInstruction}s to get the {@link PriorityFeeEstimate} for.
+ * If provided, will attempt to generate a priority fee based on specific instructions.
  * @returns A {@link Promise} that resolves to the {@link PriorityFeeEstimate}.
  */
 export async function getPriorityFeeEstimate(
-  tx?: Transaction | VersionedTransaction | TransactionBuilder | Null
+  ixs?: readonly TransactionInstruction[] | Null
 ): Promise<PriorityFeeEstimate> {
-  tx = (tx instanceof TransactionBuilder)
-    ? (await tx.build()).transaction
-    : tx;
-
   if (env.HELIUS_API_KEY && env.NODE_ENV === 'production') {
     try {
-      return await getHeliusPriorityFeeEstimate(tx);
+      return await getHeliusPriorityFeeEstimate(ixs);
     } catch(err) {
       error('Failed to fetch priority fee estimate:', err);
     }
   }
 
   try {
-    return await getFallbackPriorityFeeEstimate();
+    return await getFallbackPriorityFeeEstimate(ixs);
   } catch(err) {
     error('Failed to fetch fallback priority fee estimate:', err);
   }
@@ -126,11 +141,11 @@ export async function getPriorityFeeEstimate(
 /**
  * Fetches the {@link PriorityFeeEstimate} via the Helius API.
  *
- * @param tx The transaction to get the {@link PriorityFeeEstimate} for.
+ * @param ixs The {@link TransactionInstruction}s {@link PriorityFeeEstimate} for.
  * @returns A {@link Promise} that resolves to the {@link PriorityFeeEstimate}.
  */
 export async function getHeliusPriorityFeeEstimate(
-  tx?: Transaction | VersionedTransaction | Null
+  ixs?: readonly TransactionInstruction[] | Null
 ): Promise<PriorityFeeEstimate> {
   if (!env.HELIUS_API_KEY) {
     throw new Error('HELIUS_API_KEY env var not set, cannot fetch priority fee via Helius RPC endpoint');
@@ -138,13 +153,17 @@ export async function getHeliusPriorityFeeEstimate(
 
   debug('Fetching priority fee estimate via Helius RPC Endpoint:', env.HELIUS_RPC_ENDPOINT);
 
+  const lockedWritableAccounts = _getWriteableAccounts(ixs);
+
   const response = await axios.post<PriorityFeeEstimateResponse>(env.HELIUS_RPC_ENDPOINT, {
     jsonrpc: '2.0',
     id: '1',
     method: 'getPriorityFeeEstimate',
     params: [{
-      options: { includeAllPriorityFeeLevels: true },
-      transaction: tx ? encodeBase58(tx.serialize()) : undefined,
+      accountKeys: lockedWritableAccounts?.map((key) => key.toBase58()) ?? undefined,
+      options: {
+        includeAllPriorityFeeLevels: true,
+      },
     }]
   }, {
     headers: { 'Content-Type': 'application/json' },
@@ -162,29 +181,25 @@ export async function getHeliusPriorityFeeEstimate(
 /**
  * Fetches the {@link PriorityFeeEstimate} via a fallback RPC call.
  *
- * @param tx The transaction to get the {@link PriorityFeeEstimate} for.
+ * @param ixs The {@link TransactionInstruction}s to get the {@link PriorityFeeEstimate} for.
  * @returns A {@link Promise} that resolves to the {@link PriorityFeeEstimate}.
  */
 export async function getFallbackPriorityFeeEstimate(
-  tx?: Transaction | VersionedTransaction | Null
+  ixs?: readonly TransactionInstruction[] | Null
 ): Promise<PriorityFeeEstimate> {
   debug('Fetching fallback priority fee estimate via RPC:', 'getRecentPrioritizationFees');
 
-  const lockedWritableAccounts = _getWriteableAccounts(tx);
+  const lockedWritableAccounts = _getWriteableAccounts(ixs);
   const fallbackResponse = await rpc().getRecentPrioritizationFees({ lockedWritableAccounts });
-
-  const total = fallbackResponse.reduce((prev, current) => prev + current.prioritizationFee, 0);
-  const mean = total / fallbackResponse.length;
-  const squaredDiffs = fallbackResponse.map((value) => (value.prioritizationFee - mean) ** 2);
-  const variance = squaredDiffs.reduce((prev, current) => prev + current, 0) / fallbackResponse.length;
+  const sortedPriorityFees = fallbackResponse.map((value) => value.prioritizationFee).sort((a, b) => a - b);
 
   const estimate = {
-    min: Math.max(mean - (2 * variance), 0),
-    low: Math.max(mean - variance, 0),
-    medium: mean,
-    high: mean + variance,
-    veryHigh: mean + (2 * variance),
-    unsafeMax: mean + (3 * variance),
+    min: sortedPriorityFees[0],
+    low: sortedPriorityFees[Math.floor(fallbackResponse.length / 4)],
+    medium: sortedPriorityFees[Math.floor(fallbackResponse.length / 2)],
+    high: sortedPriorityFees[Math.floor((fallbackResponse.length / 4) * 3)],
+    veryHigh: sortedPriorityFees[Math.floor(fallbackResponse.length * 0.9)],
+    unsafeMax: sortedPriorityFees[sortedPriorityFees.length - 1],
   };
 
   debug('Fallback priority fee estimate:', estimate);
@@ -194,33 +209,19 @@ export async function getFallbackPriorityFeeEstimate(
 /**
  * Gets the writeable accounts for a transaction.
  *
- * @param tx The transaction to get the writeable accounts for. Either a {@link Transaction} or a {@link VersionedTransaction}.
+ * @param ixs The {@link TransactionInstruction}s to get the writeable accounts for.
  * @returns A {@link Promise} that resolves to an array of {@link PublicKey}s for the writeable accounts.
  */
 function _getWriteableAccounts(
-  tx?: Transaction | VersionedTransaction | Null
+  ixs?: readonly TransactionInstruction[] | Null
 ): PublicKey[] | undefined {
-  if (!tx) return undefined;
+  if (!ixs?.length) return undefined;
 
-  const lockedWritableAccounts = (tx instanceof Transaction)
-    ? tx.instructions
-      .flatMap((ix) => ix.keys)
-      .filter((key) => key.isWritable)
-      .map((key) => key.pubkey)
-    : [];
-
-  if (tx instanceof VersionedTransaction) {
-    const accountKeys = tx.message.getAccountKeys();
-    for (let i = 0; i < accountKeys.length; i++) {
-      if (tx.message.isAccountWritable(i)) {
-        lockedWritableAccounts.push(accountKeys.get(i)!);
-      }
-    }
-  }
-
-  return lockedWritableAccounts;
+  return ixs
+    .flatMap((ix) => ix.keys)
+    .filter((key) => key.isWritable)
+    .map((key) => key.pubkey);
 }
 
-export type { ComputeBudget } from '@/util/transaction/transaction.interfaces';
 export type * from './transaction-budget.interfaces';
 

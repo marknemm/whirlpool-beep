@@ -3,7 +3,7 @@ import env from '@/util/env/env';
 import { error, info } from '@/util/log/log';
 import { toLamports } from '@/util/number-conversion/number-conversion';
 import rpc from '@/util/rpc/rpc';
-import { verifyTransaction } from '@/util/transaction/transaction';
+import { confirmTx } from '@/util/transaction/transaction';
 import wallet from '@/util/wallet/wallet';
 import { type Argv } from 'yargs';
 
@@ -37,11 +37,7 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     // Send the transaction
     const signature = await rpc().requestAirdrop(wallet().publicKey, toLamports(argv.amount));
-    verifyTransaction(signature, {
-      name: 'Airdrop',
-      destination: wallet().publicKey.toBase58(),
-      amount: argv.amount,
-    });
+    await confirmTx(signature, 'finalized');
 
     info('Airdrop complete - wallet balance:', await wallet().getBalance());
   } catch (err) {

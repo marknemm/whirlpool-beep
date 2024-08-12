@@ -1,3 +1,4 @@
+import { type Commitment } from '@solana/web3.js';
 import { bool, cleanEnv, num, str, url } from 'envalid';
 
 /**
@@ -13,6 +14,14 @@ const env = cleanEnv(process.env, {
    * `devnet`= 103
    */
   CHAIN_ID: num(),
+
+  /**
+   * The default {@link Commitment} level to use when sending transactions.
+   */
+  COMMITMENT_DEFAULT: str({
+    choices: ['confirmed', 'finalized', 'max', 'processed', 'recent', 'root', 'single', 'singleGossip'],
+    default: 'confirmed'
+  }),
 
   /**
    * The margin to add to the compute unit estimate for a transaction. A percentage [0, 100].

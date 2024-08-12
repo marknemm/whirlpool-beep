@@ -7,12 +7,12 @@ import env from '@/util/env/env';
 import { error, info } from '@/util/log/log';
 import { toBN, toStr } from '@/util/number-conversion/number-conversion';
 import { getProgramErrorInfo } from '@/util/program/program';
-import { executeTransaction } from '@/util/transaction/transaction';
+import TransactionContext from '@/util/transaction-context/transaction-context';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { BN } from '@coral-xyz/anchor';
-import { Percentage, type Address, type TransactionBuilder } from '@orca-so/common-sdk';
+import { type Address, type BN } from '@coral-xyz/anchor';
+import { Percentage } from '@orca-so/common-sdk';
 import { decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, TokenExtensionUtil, type Position } from '@orca-so/whirlpools-sdk';
-import type { DecreaseLiquidityIx, DecreaseLiquidityTx } from './decrease-liquidity.interfaces';
+import { DecreaseLiquidityIxData } from './decrease-liquidity.interfaces';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -61,6 +61,7 @@ export async function decreaseLiquidity(
   position: Position,
   amount: BN | number
 ): Promise<LiquidityTxSummary> {
+  const transactionCtx = new TransactionContext();
   const opMetadata = {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
@@ -79,18 +80,14 @@ export async function decreaseLiquidity(
         await position.refreshData();
       }
 
-      // Generate transaction to decrease liquidity
-      const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-      const { quote, tx } = await genDecreaseLiquidityTx(position, amount);
+      // Generate instruction data to decrease liquidity
+      const decreaseLiquidityIxData = await genDecreaseLiquidityIxData(position, amount);
+      const { quote } = decreaseLiquidityIxData;
 
       // Execute and verify the transaction
-      const signature = await executeTransaction(tx, {
-        name: 'Decrease Liquidity',
-        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-        position: position.getAddress().toBase58(),
-        [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
-        [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
-      });
+      const { signature } = await transactionCtx
+        .resetInstructionData(decreaseLiquidityIxData)
+        .send();
 
       // Get Liquidity tx summary and insert into DB
       const txSummary = await genLiquidityTxSummary(position, signature, quote);
@@ -110,37 +107,17 @@ export async function decreaseLiquidity(
 }
 
 /**
- * Creates an {@link Instruction} to decrease liquidity in a given {@link Position}.
+ * Creates {@link DecreaseLiquidityIxData} to decrease liquidity in a given {@link Position}.
  *
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link Instruction}.
+ * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityIxData}.
  * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
  */
-export async function genDecreaseLiquidityIx(
+export async function genDecreaseLiquidityIxData(
   position: Position,
   amount: BN | number
-): Promise<DecreaseLiquidityIx> {
-  const { tx, ...rest } = await genDecreaseLiquidityTx(position, amount);
-
-  return {
-    ix: tx.compressIx(true),
-    ...rest,
-  };
-}
-
-/**
- * Creates a transaction to decrease liquidity in a given {@link Position}.
- *
- * @param position The {@link Position} to decrease the liquidity of.
- * @param amount The amount of liquidity to withdraw from the {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
- * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
- */
-export async function genDecreaseLiquidityTx(
-  position: Position,
-  amount: BN | number
-): Promise<DecreaseLiquidityTx> {
+): Promise<DecreaseLiquidityIxData> {
   info('Creating Tx to decrease liquidity:', {
     position: position.getAddress().toBase58(),
     amount: toStr(amount),
@@ -181,7 +158,19 @@ export async function genDecreaseLiquidityTx(
   });
 
   const tx = await position.decreaseLiquidity(quote);
-  return { quote, tx };
+  return {
+    ...tx.compressIx(false),
+    positionAddress: position.getAddress(),
+    quote,
+    whirlpoolAddress: position.getData().whirlpool,
+    debugData: {
+      name: 'Decrease Liquidity',
+      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+      position: position.getAddress().toBase58(),
+      [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+    }
+  };
 }
 
 export type * from './decrease-liquidity.interfaces';

@@ -1,21 +1,32 @@
+import { TransactionInstruction } from '@solana/web3.js';
+
+/**
+ * A compute budget for a transaction.
+ */
 export interface ComputeBudget {
 
   /**
-   * The limit of the compute budget measured in CU (compute units).
+   * The `CU` (compute units) limit.
    */
-  computeBudgetLimit: number | undefined;
+  computeUnitLimit?: number;
+
+  /**
+   * The compute budget {@link TransactionInstruction}s.
+   */
+  instructions: TransactionInstruction[];
 
   /**
    * The total priority fee to pay for the transaction in lamports.
    */
   priorityFeeLamports: number;
 
-  /**
-   * The type of compute budget to use.
-   */
-  type: 'fixed';
-
 }
+
+/**
+ * Compute budget options for a transaction.
+ */
+export type ComputeBudgetOptions = TransactionPriority
+                                 | (Omit<ComputeBudget, 'instructions'> & { priority?: TransactionPriority });
 
 /**
  * A priority fee estimate for a transaction.

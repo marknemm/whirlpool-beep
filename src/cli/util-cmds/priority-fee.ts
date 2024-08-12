@@ -1,7 +1,7 @@
 import type { CliArgs } from '@/util/cli/cli.interfaces';
 import { error, warn } from '@/util/log/log';
 import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@/util/transaction-budget/transaction-budget';
-import { VersionedTransaction } from '@solana/web3.js';
+import { getTxInstructions } from '@/util/transaction/transaction';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -34,13 +34,11 @@ const cli = {
  */
 async function handler(argv: CliArgs<typeof cli.options>) {
   try {
-    const tx = argv.transaction
-      ? VersionedTransaction.deserialize(Buffer.from(argv.transaction, 'base64'))
-      : undefined;
+    const ixs = getTxInstructions(argv.transaction);
 
     if (['all', 'helius'].find((s) => s === argv.estimator)) {
       try {
-        await getHeliusPriorityFeeEstimate(tx); // Will log the priority fee estimate via debug log.
+        await getHeliusPriorityFeeEstimate(ixs); // Will log the priority fee estimate via debug log.
       } catch (err) {
         const log = argv.estimator === 'helius'
           ? error
@@ -51,7 +49,7 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     if (['all', 'fallback'].find((s) => s === argv.estimator)) {
       try {
-        await getFallbackPriorityFeeEstimate(tx); // Will log the priority fee estimate via debug log.
+        await getFallbackPriorityFeeEstimate(ixs); // Will log the priority fee estimate via debug log.
       } catch (err) {
         error('Could not get fallback priority fee estimate:', err);
       }

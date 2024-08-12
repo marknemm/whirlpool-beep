@@ -2,9 +2,10 @@ import type { Null } from '@/interfaces/nullable.interfaces';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
-import { getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction/transaction';
+import { getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction-query/transaction-query';
 import { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type DecreaseLiquidityQuote, type IncreaseLiquidityQuote, type Position } from '@orca-so/whirlpools-sdk';
+import { type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
 
 /**
@@ -17,7 +18,7 @@ import BN from 'bn.js';
  */
 export async function genLiquidityTxSummary(
   position: Position,
-  signature: string,
+  signature: TransactionSignature,
   quote?: DecreaseLiquidityQuote | IncreaseLiquidityQuote | Null
 ): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
@@ -40,7 +41,7 @@ export async function genLiquidityTxSummary(
     usd: usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 
-  info(`${liquidityTxSummary.usd > 0 ? 'Increased' : 'Decreased'} liquidity:`, {
+  info(`${liquidityTxSummary.usd > 0 ? 'Increased' : 'Decreased'} liquidity tx summary:`, {
     whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
     position: liquidityTxSummary.position.getAddress().toBase58(),
     signature: liquidityTxSummary.signature,

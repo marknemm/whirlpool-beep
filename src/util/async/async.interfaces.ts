@@ -1,10 +1,18 @@
-import type { Null } from '@/interfaces/nullable.interfaces';
 import type { expBackoff } from '@/util/async/async'; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 /**
  * Options for the {@link expBackoff} function.
  */
 export interface ExpBackoffOpts<T = unknown> {
+
+  /**
+   * Callback function to execute after each attempt regardless of success or failure.
+   *
+   * @param attempt The current attempt number.
+   * @param result The result of the async function.
+   * @param err The error thrown by the async function.
+   */
+  afterAttempt?: (attempt: number, result?: T, err?: unknown) => void;
 
   /**
    * The base delay in milliseconds.
@@ -37,6 +45,6 @@ export interface ExpBackoffOpts<T = unknown> {
    * @returns `true` to retry; `false` to stop retrying.
    * @default `(result, err) => !!err`
    */
-  retryFilter?: (result: T | Null, err?: unknown) => boolean;
+  retryFilter?: (result?: T, err?: unknown) => boolean;
 
 }

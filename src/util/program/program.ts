@@ -1,13 +1,13 @@
 import anchor from '@/util/anchor/anchor';
 import rpc from '@/util/rpc/rpc';
-import { DecodedTransactionIx } from '@/util/transaction/transaction.interfaces';
+import { type DecodedTransactionIx } from '@/util/transaction-query/transaction-query';
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
 import { AddressUtil } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID } from '@orca-so/whirlpools-sdk';
 import { IDL } from '@orca-so/whirlpools-sdk/dist/artifacts/whirlpool';
 import { ComputeBudgetProgram, PublicKey, SendTransactionError, type ParsedAccountData, type ParsedInstruction, type PartiallyDecodedInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
-import type { TempTokenAccount, SplTokenTransferIxData, ProgramErrorInfo } from './program.interfaces';
+import type { ProgramErrorInfo, SplTokenTransferIxData, TempTokenAccount } from './program.interfaces';
 
 const _idlCache = new Map<string, Idl>([
   [ORCA_WHIRLPOOL_PROGRAM_ID.toBase58(), IDL],

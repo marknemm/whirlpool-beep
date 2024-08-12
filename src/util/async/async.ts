@@ -11,22 +11,27 @@ import type { ExpBackoffOpts } from './async.interfaces';
  * @throws If the maximum number of retries is exceeded.
  */
 export async function expBackoff<T>(
-  fn: (retry: number) => Promise<T>,
+  fn: (retry: number, err: unknown) => Promise<T>,
   opts: ExpBackoffOpts<T> = {}
 ): Promise<T> {
+  const afterAttempt = opts.afterAttempt ?? (() => {});
   const baseDelay = opts.baseDelay ?? env.RETRY_BASE_DELAY;
   const maxDelay = opts.maxDelay ?? env.RETRY_MAX_DELAY;
   const maxRetries = opts.maxRetries ?? env.RETRY_MAX_RETRIES;
   const retryFilter = opts.retryFilter ?? ((result, err) => !!err);
 
   let retry = 0;
+  let recentErr: unknown;
 
   do {
     try {
-      const result = await fn(retry);
+      const result = await fn(retry, recentErr);
+      afterAttempt(retry, result, undefined);
       if (retryFilter(result) && retry < maxRetries) continue;
       return result;
     } catch (err) {
+      recentErr = err;
+      afterAttempt(retry, undefined, err);
       if (!retryFilter(undefined, err) || retry >= maxRetries) {
         throw err;
       }

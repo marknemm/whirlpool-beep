@@ -1,5 +1,6 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { Position, DecreaseLiquidityQuote, IncreaseLiquidityQuote } from '@orca-so/whirlpools-sdk';
+import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
 /**
@@ -25,7 +26,7 @@ export interface LiquidityTxSummary {
   /**
    * The signature of the transaction.
    */
-  signature: string;
+  signature: TransactionSignature;
 
   /**
    * The amount of token A that was increased or decreased.

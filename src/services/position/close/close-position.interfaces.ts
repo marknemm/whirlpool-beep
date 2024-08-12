@@ -1,9 +1,10 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import type { CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
+import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
+import type { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity.interfaces';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { Instruction, TransactionBuilder } from '@orca-so/common-sdk';
-import type { CollectFeesQuote, CollectRewardsQuote, DecreaseLiquidityQuote } from '@orca-so/whirlpools-sdk';
+import type { InstructionData } from '@/util/transaction-context/transaction-context';
+import type { TransactionSignature } from '@solana/web3.js';
 
 /**
  * Close all {@link Position}s summary.
@@ -51,68 +52,19 @@ export interface ClosePositionOptions {
 }
 
 /**
- * {@link Instruction} data for closing a {@link Position}.
+ * Transaction instruction data for closing a {@link Position}.
  */
-export interface ClosePositionIx extends ClosePositionIxTxAssocData {
+export interface ClosePositionIxData extends InstructionData {
 
   /**
-   * The combined {@link Instruction} for preparing a {@link Position} to close and closing it.
+   * The {@link CollectFeesRewardsIxData} for the collect fees and rewards instruction.
    */
-  ix: Instruction;
-
-}
-
-/**
- * Transaction data for closing a {@link Position}.
- */
-export interface ClosePositionTx extends ClosePositionIxTxAssocData {
+  collectFeesRewardsIxData?: CollectFeesRewardsIxData;
 
   /**
-   * The {@link TransactionBuilder} for the complete close {@link Position} transaction.
+   * The {@link DecreaseLiquidityIxData} for the decrease liquidity instruction.
    */
-  tx: TransactionBuilder;
-
-}
-
-/**
- * Data associated with close position transaction instructions and transactions.
- */
-interface ClosePositionIxTxAssocData {
-
-  /**
-   * The close {@link Position} {@link Instruction}.
-   */
-  closePositionIx: Instruction;
-
-  /**
-   * The {@link CollectFeesQuote} used to generate the collect fees {@link Instruction}.
-   */
-  collectFeesQuote: CollectFeesQuote | Null;
-
-  /**
-   * The collect fees {@link Instruction}.
-   */
-  collectFeesIx: Instruction | Null;
-
-  /**
-   * The {@link CollectRewardsQuote} used to generate the collect rewards {@link Instruction}.
-   */
-  collectRewardsQuote: CollectRewardsQuote | Null;
-
-  /**
-   * The collect rewards {@link Instruction}s.
-   */
-  collectRewardsIxs: Instruction[];
-
-  /**
-   * The {@link DecreaseLiquidityQuote} used to generate the decrease liquidity {@link Instruction}.
-   */
-  decreaseLiquidityQuote: DecreaseLiquidityQuote | Null;
-
-  /**
-   * The decrease liquidity {@link Instruction}.
-   */
-  decreaseLiquidityIx: Instruction | Null;
+  decreaseLiquidityIxData?: DecreaseLiquidityIxData;
 
 }
 
@@ -148,7 +100,7 @@ export interface ClosePositionTxSummary {
   /**
    * The signature of the close {@link Position} transaction.
    */
-  signature: string;
+  signature: TransactionSignature;
 
 }
 
@@ -163,13 +115,13 @@ export interface ClosePositionTxSummaryArgs {
   bundledPosition: BundledPosition;
 
   /**
-   * The {@link ClosePositionIx} or {@link ClosePositionTx} used to generate the summary.
+   * The {@link ClosePositionIxData} used to generate the summary.
    */
-  closePositionIxTx: ClosePositionTx | ClosePositionIx;
+  closePositionIxData: ClosePositionIxData;
 
   /**
    * The signature of the close {@link Position} transaction.
    */
-  signature: string;
+  signature: TransactionSignature;
 
 }

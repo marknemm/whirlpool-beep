@@ -1,38 +1,25 @@
-import type { Instruction, TransactionBuilder } from '@orca-so/common-sdk';
-import type { DecreaseLiquidityQuote } from '@orca-so/whirlpools-sdk';
+import type { InstructionData } from '@/util/transaction-context/transaction-context';
+import type { Address } from '@coral-xyz/anchor';
+import type { DecreaseLiquidityQuote, Whirlpool } from '@orca-so/whirlpools-sdk';
 
 /**
- * {@link Instruction} data for decreasing liquidity in a {@link Position}.
+ * {@link DecreaseLiquidityIxData} for decreasing liquidity in a {@link Position}.
  */
-export interface DecreaseLiquidityIx extends DecreaseLiquidityIxTxAssocData {
+export interface DecreaseLiquidityIxData extends InstructionData {
 
   /**
-   * The {@link Instruction} for decreasing liquidity in a {@link Position}.
+   * The {@link Address} of the {@link Position} to decrease the liquidity of.
    */
-  ix: Instruction;
-
-}
-
-/**
- * Transaction data for decreasing liquidity in a {@link Position}.
- */
-export interface DecreaseLiquidityTx extends DecreaseLiquidityIxTxAssocData {
-
-  /**
-   * The {@link TransactionBuilder} for decreasing liquidity in a {@link Position}.
-   */
-  tx: TransactionBuilder;
-
-}
-
-/**
- * Data associated with decrease liquidity transaction instructions and transactions.
- */
-interface DecreaseLiquidityIxTxAssocData {
+  positionAddress: Address;
 
   /**
    * The {@link DecreaseLiquidityQuote} used to generate the transaction.
    */
   quote: DecreaseLiquidityQuote;
+
+  /**
+   * The {@link Address} of the {@link Whirlpool} containing the {@link Position} to decrease the liquidity of.
+   */
+  whirlpoolAddress: Address;
 
 }

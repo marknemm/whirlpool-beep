@@ -13,7 +13,7 @@ import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { toTickRangeKeys } from '@/util/tick-range/tick-range';
 import { getTokenPrice } from '@/util/token/token';
-import { executeTransaction } from '@/util/transaction/transaction';
+import TransactionContext from '@/util/transaction-context/transaction-context';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { BN } from '@coral-xyz/anchor';
@@ -24,7 +24,7 @@ import { increaseLiquidityIx, IncreaseLiquidityParams, increaseLiquidityV2Ix } f
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
-import type { IncreaseLiquidityIx, IncreaseLiquidityTx, IncreaseLiquidityTxArgs } from './increase-liquidity.interfaces';
+import type { IncreaseLiquidityIxData, IncreaseLiquidityTxArgs } from './increase-liquidity.interfaces';
 
 /**
  * Increases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -87,6 +87,7 @@ export async function increaseLiquidity(
   amount: BN | Decimal.Value,
   unit: LiquidityUnit = 'usd'
 ): Promise<LiquidityTxSummary> {
+  const transactionCtx = new TransactionContext();
   const whirlpool = await getWhirlpool({ whirlpoolAddress: position.getData().whirlpool });
 
   const opMetadata = {
@@ -107,9 +108,8 @@ export async function increaseLiquidity(
         await position.refreshData();
       }
 
-      // Get token pair and generate increase liquidity transaction
-      const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-      const { quote, tx } = await genIncreaseLiquidityTx({
+      // Generate instruction data to increase liquidity
+      const increaseLiquidityIxData = await genIncreaseLiquidityIxData({
         amount,
         positionAddress: position.getAddress(),
         positionMint: position.getData().positionMint,
@@ -117,15 +117,12 @@ export async function increaseLiquidity(
         whirlpool,
         unit,
       });
+      const { quote } = increaseLiquidityIxData;
 
-      // Execute Tx and get signature
-      const signature = await executeTransaction(tx, {
-        name: 'Increase Liquidity',
-        whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-        position: position.getAddress().toBase58(),
-        [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
-        [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
-      });
+      // Send transaction
+      const { signature } = await transactionCtx
+        .resetInstructionData(increaseLiquidityIxData)
+        .send();
 
       // Get Liquidity tx summary and insert into DB
       const liquidityDelta = await genLiquidityTxSummary(position, signature, quote);
@@ -145,36 +142,20 @@ export async function increaseLiquidity(
 }
 
 /**
- * Creates an {@link Instruction} to increase liquidity in a given {@link position}.
- *
- * @param args The arguments for generating an {@link Instruction} to increase liquidity in a {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link Instruction}.
- * @throws An {@link Error} if there's an insufficient wallet balance for token A or B.
- */
-export async function genIncreaseLiquidityIx(args: IncreaseLiquidityTxArgs): Promise<IncreaseLiquidityIx> {
-  const { tx, ...rest } = await genIncreaseLiquidityTx(args);
-
-  return {
-    ix: tx.compressIx(true),
-    ...rest,
-  };
-}
-
-/**
- * Creates a transaction to increase liquidity in a given {@link Position}.
+ * Generates {@link IncreaseLiquidityIxData} to increase liquidity in a given {@link Position}.
  *
  * @param args The arguments for generating a transaction to increase liquidity in a {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityTx} object.
+ * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityIxData}.
  * @throws An {@link Error} if there's an insufficient wallet balance for token A or B.
  */
-export async function genIncreaseLiquidityTx({
+export async function genIncreaseLiquidityIxData({
   amount,
   positionAddress,
   positionMint,
   tickRange,
   whirlpool,
   unit = 'usd'
-}: IncreaseLiquidityTxArgs): Promise<IncreaseLiquidityTx> {
+}: IncreaseLiquidityTxArgs): Promise<IncreaseLiquidityIxData> {
   info('Creating Tx to increase liquidity:', {
     whirlpool: await formatWhirlpool(whirlpool),
     position: AddressUtil.toString(positionAddress),
@@ -268,12 +249,24 @@ export async function genIncreaseLiquidityTx({
       ),
     });
 
-  const tx = new TransactionBuilder(rpc(), wallet());
-  tx.addInstruction(tokenOwnerAccountAIx);
-  tx.addInstruction(tokenOwnerAccountBIx);
-  tx.addInstruction(increaseIx);
+  const txBuilder = new TransactionBuilder(rpc(), wallet())
+    .addInstruction(tokenOwnerAccountAIx)
+    .addInstruction(tokenOwnerAccountBIx)
+    .addInstruction(increaseIx);
 
-  return { quote, tx };
+  return {
+    ...txBuilder.compressIx(false),
+    positionAddress,
+    quote,
+    whirlpool,
+    debugData: {
+      name: 'Increase Liquidity',
+      whirlpool: await formatWhirlpool(whirlpool),
+      position: AddressUtil.toString(positionAddress),
+      [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+    }
+  };
 }
 
 /**
