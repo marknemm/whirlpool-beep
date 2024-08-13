@@ -58,8 +58,10 @@ export interface RebalancePositionOptions {
 
   /**
    * The amount of liquidity to deposit into each {@link Position} where rebalancing is required.
+   *
+   * Defaults to the same liquidity amount initially deposited in the original {@link Position}.
    */
-  liquidity: Decimal | BN | number;
+  liquidity?: Decimal | BN | number;
 
   /**
    * The {@link LiquidityUnit} to use for the liquidity amount.
@@ -85,14 +87,9 @@ export interface RebalancePositionResult {
   bundledPosition: BundledPosition;
 
   /**
-   * The status of the rebalance transaction.
-   *
-   * Either `'rebalanced'` or `'skipped'`.
-   */
-  status: 'succeeded' | 'skipped'
-
-  /**
    * The summary of the rebalance transaction.
+   *
+   * `undefined` if the transaction was skipped.
    */
   txSummary?: RebalanceTxSummary;
 

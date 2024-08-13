@@ -1,7 +1,7 @@
 import { type Kysely } from 'kysely';
 
 /**
- * Migration up function for applying a DB patch.
+ * Add `openFee` and `closeFee` columns to the `position` table.
  *
  * @param db The {@link Kysely} DB instance.
  * @returns A {@link Promise} that resolves when the migration is complete.
@@ -18,7 +18,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 }
 
 /**
- * Migration down function for reverting a DB patch.
+ * Remove `openFee` and `closeFee` columns from the `position` table.
  *
  * @param db The {@link Kysely} DB instance.
  * @returns A {@link Promise} that resolves when the migration is complete.

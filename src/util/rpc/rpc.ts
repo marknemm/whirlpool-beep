@@ -1,6 +1,6 @@
 import env from '@/util/env/env';
 import { info } from '@/util/log/log';
-import { Connection } from '@solana/web3.js';
+import { Connection, type ConnectionConfig } from '@solana/web3.js';
 
 let _rpc: Connection;
 
@@ -11,9 +11,12 @@ let _rpc: Connection;
  */
 export default function rpc(): Connection {
   if (!_rpc) {
-    _rpc = new Connection(env.RPC_ENDPOINT);
+    const config: ConnectionConfig = {
+      commitment: env.COMMITMENT_DEFAULT,
+    };
+    _rpc = new Connection(env.RPC_ENDPOINT, config);
 
-    info('-- Initialized RPC Connection --');
+    info('-- Initialized RPC Connection --\n', config);
   }
 
   return _rpc;

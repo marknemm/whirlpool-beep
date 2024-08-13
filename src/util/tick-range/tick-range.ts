@@ -1,6 +1,6 @@
 import { getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { Address, AddressUtil, Percentage } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, TickUtil, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
+import { AddressUtil, Percentage, type Address } from '@orca-so/common-sdk';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 
@@ -21,8 +21,9 @@ export async function calcPriceMargin(position: Position): Promise<Percentage> {
 
   const oldPriceMid = oldPriceLower.add(oldPriceUpper).div(2);
   const calcPriceMargin = oldPriceMid.div(oldPriceLower).minus(1);
+  const priceMarginNumerator = Math.max(calcPriceMargin.mul(100).round().toNumber(), 1);
 
-  return Percentage.fromFraction(calcPriceMargin.mul(100).round().toNumber(), 100);
+  return Percentage.fromFraction(priceMarginNumerator, 100);
 }
 
 /**

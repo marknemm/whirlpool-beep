@@ -1,9 +1,8 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { genCollectFeesRewardsIxData, genCollectFeesRewardsTxSummary, type CollectFeesRewardsIxData } from '@/services/fees-rewards/collect/collect-fees-rewards';
-import { genDecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity';
+import { genDecreaseLiquidityIxData, genDecreaseLiquidityTxSummary } from '@/services/liquidity/decrease/decrease-liquidity';
 import { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity.interfaces';
-import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff, timeout } from '@/util/async/async';
 import { debug, error, info } from '@/util/log/log';
@@ -107,16 +106,16 @@ export async function closePosition({
         closePositionIxData.decreaseLiquidityIxData,
         closePositionIxData.collectFeesRewardsIxData,
         closePositionIxData
-      ).send({ confirmCommitment: 'finalized' });
+      ).send();
 
-      const closePositionTxSummary = await genClosePositionTxSummary({
+      const txSummary = await genClosePositionTxSummary({
         bundledPosition,
         closePositionIxData,
         signature,
       });
 
-      await PositionDAO.updateClosed(closePositionTxSummary, { catchErrors: true });
-      return closePositionTxSummary;
+      await PositionDAO.updateClosed(txSummary, { catchErrors: true });
+      return txSummary;
     }, {
       retryFilter: (result, err) => {
         const errInfo = getProgramErrorInfo(err);
@@ -177,7 +176,7 @@ async function _genEmptyLiquidityIxData(position: Position): Promise<DecreaseLiq
   const { liquidity } = position.getData();
 
   if (!liquidity.isZero()) {
-    return await genDecreaseLiquidityIxData(position, liquidity);
+    return await genDecreaseLiquidityIxData({ liquidity, position });
   }
 
   info('No liquidity to decrease:', {
@@ -268,23 +267,23 @@ export async function genClosePositionTxSummary({
     signature,
     fee: txSummary.fee,
   };
+  const { position } = bundledPosition;
 
   if (decreaseLiquidityIxData) {
-    const decreaseLiquidityQuote = decreaseLiquidityIxData.quote;
-    const liquidityTxSummary = await genLiquidityTxSummary(bundledPosition.position, signature, decreaseLiquidityQuote);
+    const liquidityTxSummary = await genDecreaseLiquidityTxSummary(position, decreaseLiquidityIxData, signature);
     liquidityTxSummary.fee = 0; // Fee is included in close position tx fee
     closePositionTxSummary.decreaseLiquidityTxSummary = liquidityTxSummary;
   }
 
   if (collectFeesRewardsIxData) {
-    const collectFeesRewardsTxSummary = await genCollectFeesRewardsTxSummary(bundledPosition.position, signature);
+    const collectFeesRewardsTxSummary = await genCollectFeesRewardsTxSummary(position, signature);
     collectFeesRewardsTxSummary.fee = 0; // Fee is included in close position tx fee
     closePositionTxSummary.collectFeesRewardsTxSummary = collectFeesRewardsTxSummary;
   }
 
   info('Close position tx summary:', {
-    whirlpool: await formatWhirlpool(bundledPosition.position.getWhirlpoolData()),
-    position: bundledPosition.position.getAddress().toBase58(),
+    whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
+    position: position.getAddress().toBase58(),
     signature,
     fee: closePositionTxSummary.fee,
   });

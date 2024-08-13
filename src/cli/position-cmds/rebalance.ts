@@ -30,7 +30,6 @@ const cli = {
     ...genLiquidityCliOpts({
       'liquidity': {
         describe: 'The amount of liquidity to deposit into the position if rebalancing is required',
-        demandOption: true,
       },
     }),
     'price-range-margin': {

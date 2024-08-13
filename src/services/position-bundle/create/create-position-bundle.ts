@@ -31,12 +31,12 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
   const transactionCtx = new TransactionContext();
 
   // Generate instruction data for creating position bundle
-  const createPositionBundleIxData = await genCreatePositionBundleIxData();
-  const positionBundleKey = createPositionBundleIxData.positionBundlePda.publicKey;
+  const ixData = await genCreatePositionBundleIxData();
+  const positionBundleKey = ixData.positionBundlePda.publicKey;
 
   // Send transaction to create position bundle
   await transactionCtx
-    .resetInstructionData(createPositionBundleIxData)
+    .resetInstructionData(ixData)
     .send();
 
   // Get and return position bundle data

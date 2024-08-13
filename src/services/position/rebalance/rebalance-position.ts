@@ -1,9 +1,11 @@
+import PositionDAO from '@/data/position/position.dao';
 import RebalanceTxDAO from '@/data/rebalance-tx/rebalance-tx.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { closePosition } from '@/services/position/close/close-position';
 import { openPosition } from '@/services/position/open/open-position';
 import { getPositions } from '@/services/position/query/query-position';
 import { timeout } from '@/util/async/async';
+import env from '@/util/env/env';
 import { error, info } from '@/util/log/log';
 import { toStr } from '@/util/number-conversion/number-conversion';
 import { calcPriceMargin, toPriceRange } from '@/util/tick-range/tick-range';
@@ -45,8 +47,8 @@ export async function rebalanceAllPositions(
 
     try {
       const result = await rebalancePosition(bundledPosition, options);
-      (result.status === 'succeeded')
-        ? allResults.successes.push(result.txSummary!)
+      result.txSummary
+        ? allResults.successes.push(result.txSummary)
         : allResults.skips.push(result.bundledPosition);
     } catch (err) {
       allResults.failures.push({ bundledPosition, err });
@@ -86,25 +88,31 @@ export async function rebalancePosition(
   bundledPosition: BundledPosition,
   options: RebalancePositionOptions
 ): Promise<RebalancePositionResult> {
-  const { liquidity, liquidityUnit } = options;
+  const { liquidityUnit } = options;
   const bundledPositionOld = bundledPosition;
   const positionOld = bundledPositionOld.position;
 
   const opMetadata = {
     whirlpool: await formatWhirlpool(bundledPosition.position.getWhirlpoolData()),
     position: bundledPosition.position.getAddress().toBase58(),
-    liquidity: toStr(liquidity),
-    liquidityUnit: liquidityUnit ?? 'usd',
   };
 
   if (await options.filter(positionOld)) {
     try {
       info('\n-- Rebalance Position --\n', opMetadata);
 
+      // Close old position
       await closePosition({ bundledPosition });
 
+      // Derive necessary data for opening new position
       const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
-      const priceMargin = options.priceMargin ?? await calcPriceMargin(positionOld);
+      const priceMargin = options.priceMargin
+        ?? await PositionDAO.getPriceMargin(positionOld.getAddress(), { catchErrors: true })
+        ?? await calcPriceMargin(positionOld);
+      const liquidity = options.liquidity
+        ?? env.INCREASE_LIQUIDITY;
+
+      // Open new position
       const openPositionTxSummary = await openPosition({
         whirlpool,
         liquidity,
@@ -112,20 +120,24 @@ export async function rebalancePosition(
         priceMargin,
         bundleIndex: bundledPosition.bundleIndex // Use same bundle index to maintain position address
       });
-      const bundledPositionNew = openPositionTxSummary.bundledPosition;
+      const { bundledPosition: bundledPositionNew, priceRange, tickRange } = openPositionTxSummary;
       const positionNew = bundledPositionNew.position;
 
+      // Record rebalance transaction summary
       const txSummary: RebalanceTxSummary = { bundledPositionOld, bundledPositionNew };
       await RebalanceTxDAO.insert(txSummary, { catchErrors: true });
 
       info('Rebalance Position Succeeded:', {
         ...opMetadata,
         positionNew: positionNew.getAddress().toBase58(),
+        priceMargin: priceMargin.toString(),
+        priceRange,
+        tickRange,
+        liquidity: `${toStr(liquidity)} ${liquidityUnit ?? 'usd'}`,
       });
 
       return {
         bundledPosition: bundledPositionNew,
-        status: 'succeeded',
         txSummary
       };
     } catch (err) {
@@ -135,10 +147,7 @@ export async function rebalancePosition(
   }
 
   info('\n-- Rebalance Position Not Required: Skipping --\n', opMetadata);
-  return {
-    bundledPosition,
-    status: 'skipped'
-  };
+  return { bundledPosition };
 }
 
 /**

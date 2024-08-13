@@ -6,41 +6,19 @@ import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
 
 /**
- * Instruction data for increasing liquidity in a {@link Position}.
+ * The arguments for generating a transaction instruction to increase liquidity in a {@link Position}.
  */
-export interface IncreaseLiquidityIxData extends InstructionData {
-
-  /**
-   * The {@link Address} of the {@link Position} to increase the liquidity of.
-   */
-  positionAddress: Address;
-
-  /**
-   * The {@link IncreaseLiquidityQuote} used to generate the transaction.
-   */
-  quote: IncreaseLiquidityQuote;
-
-  /**
-   * The {@link Whirlpool} containing the {@link Position} to increase the liquidity of.
-   */
-  whirlpool: Whirlpool;
-
-}
-
-/**
- * The arguments for generating a transaction to increase liquidity in a {@link Position}.
- */
-export interface IncreaseLiquidityTxArgs {
+export interface IncreaseLiquidityIxArgs {
 
   /**
    * The amount of liquidity to add to the {@link Position}.
    */
-  amount: BN | Decimal.Value;
+  liquidity: BN | Decimal.Value;
 
   /**
-   * The {@link LiquidityUnit} of the liquidity {@link amount}.
+   * The {@link LiquidityUnit} of the {@link liquidity}.
    */
-  unit?: LiquidityUnit;
+  liquidityUnit?: LiquidityUnit;
 
   /**
    * The {@link Address} of the {@link Position} to deposit the liquidity into.
@@ -56,6 +34,33 @@ export interface IncreaseLiquidityTxArgs {
    * The tick index range for the {@link Position}.
    */
   tickRange: [number, number];
+
+  /**
+   * The {@link Whirlpool} containing the {@link Position} to increase the liquidity of.
+   */
+  whirlpool: Whirlpool;
+
+}
+
+/**
+ * Instruction data for increasing liquidity in a {@link Position}.
+ */
+export interface IncreaseLiquidityIxData extends InstructionData {
+
+  /**
+   * The arguments used to generate the instruction data.
+   */
+  ixArgs: IncreaseLiquidityIxArgs;
+
+  /**
+   * The {@link Address} of the {@link Position} to increase the liquidity of.
+   */
+  positionAddress: Address;
+
+  /**
+   * The {@link IncreaseLiquidityQuote} used to generate the transaction.
+   */
+  quote: IncreaseLiquidityQuote;
 
   /**
    * The {@link Whirlpool} containing the {@link Position} to increase the liquidity of.

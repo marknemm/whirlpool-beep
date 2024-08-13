@@ -42,6 +42,8 @@ export default class LiquidityTxDAO {
         .values({
           fee: toBigInt(txSummary.fee),
           position: positionId,
+          liquidity: toBigInt(txSummary.liquidity),
+          liquidityUnit: txSummary.liquidityUnit,
           quote: JSON.stringify(txSummary.quote),
           signature: txSummary.signature,
           tokenAmountA: toBigInt(txSummary.tokenAmountA),

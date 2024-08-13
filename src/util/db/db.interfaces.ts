@@ -37,6 +37,8 @@ export interface LiquidityTx {
   createdAt: Generated<Timestamp>;
   fee: Int8;
   id: Generated<number>;
+  liquidity: Int8;
+  liquidityUnit: string;
   position: number;
   quote: Json | null;
   signature: string;

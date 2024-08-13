@@ -1,7 +1,7 @@
 import { type Kysely, sql } from 'kysely';
 
 /**
- * Migration up function for applying a DB patch.
+ * Initialize all tables.
  *
  * @param db The {@link Kysely} DB instance.
  * @returns A {@link Promise} that resolves when the migration is complete.
@@ -90,7 +90,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 }
 
 /**
- * Migration down function for reverting a DB patch.
+ * Drop all tables.
  *
  * @param db The {@link Kysely} DB instance.
  * @returns A {@link Promise} that resolves when the migration is complete.

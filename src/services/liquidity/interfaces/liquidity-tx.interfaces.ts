@@ -1,5 +1,6 @@
+import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
-import type { Position, DecreaseLiquidityQuote, IncreaseLiquidityQuote } from '@orca-so/whirlpools-sdk';
+import type { DecreaseLiquidityQuote, IncreaseLiquidityQuote, Position } from '@orca-so/whirlpools-sdk';
 import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
@@ -12,6 +13,16 @@ export interface LiquidityTxSummary {
    * The fee paid for the transaction in lamports.
    */
   fee: number;
+
+  /**
+   * The amount of liquidity that was increased or decreased in terms of {@link liquidityUnit}.
+   */
+  liquidity: BN;
+
+  /**
+   * The {@link LiquidityUnit} of the {@link liquidity} amount.
+   */
+  liquidityUnit: LiquidityUnit;
 
   /**
    * The {@link Position} that the liquidity is associated with.

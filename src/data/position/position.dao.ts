@@ -4,13 +4,13 @@ import WhirlpoolDAO from '@/data/whirlpool/whirlpool.dao';
 import type { DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
-import { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
-import { OpenPositionTxSummary } from '@/services/position/open/open-position.interfaces';
+import type { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
+import type { OpenPositionTxSummary } from '@/services/position/open/open-position.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug, error, warn } from '@/util/log/log';
 import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
-import { type Address, AddressUtil } from '@orca-so/common-sdk';
+import { type Address, AddressUtil, Percentage } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
@@ -46,8 +46,41 @@ export default class PositionDAO {
         .orderBy('id', 'desc')
         .executeTakeFirst();
 
-      debug(`Got Position ID from database ( ID: ${result?.id} ):`, address);
+      result?.id
+        ? debug(`Got Position ID from database ( ID: ${result?.id} ):`, address)
+        : debug('Position ID not found in database:', address);
       return result?.id;
+    } catch (err) {
+      handleSelectError(err as ErrorWithCode, 'Position', opts);
+    }
+  }
+
+  /**
+   * Gets the price margin of a {@link Position} from the database.
+   *
+   * @param address The {@link Address} of the {@link Position} to get the price margin for.
+   * @param opts The {@link DAOOptions} to use for the operation.
+   * @returns A {@link Promise} that resolves to the price margin of the {@link Position} when the operation is complete.
+   */
+  static async getPriceMargin(address: Address | Null, opts?: DAOOptions): Promise<Percentage | undefined> {
+    if (!address) return;
+    address = AddressUtil.toString(address);
+
+    debug('Getting Position price margin from database:', address);
+
+    try {
+      const result = await db().selectFrom('position')
+        .select('priceMargin')
+        .where('address', '=', address)
+        .orderBy('id', 'desc')
+        .executeTakeFirst();
+
+      result?.priceMargin
+        ? debug(`Got Position price margin from database ( priceMargin: ${result?.priceMargin} ):`, address)
+        : debug('Position price margin not found in database:', address);
+      return result?.priceMargin
+        ? Percentage.fromFraction(result.priceMargin, 100)
+        : undefined;
     } catch (err) {
       handleSelectError(err as ErrorWithCode, 'Position', opts);
     }
@@ -71,7 +104,15 @@ export default class PositionDAO {
    */
   static async insert(txSummary: OpenPositionTxSummary, opts?: DAOOptions): Promise<number | undefined> {
     if (!txSummary?.bundledPosition) return;
-    const { bundledPosition, fee, liquidityTxSummary, priceMargin, priceRange, signature, tickRange } = txSummary;
+    const {
+      bundledPosition,
+      fee,
+      increaseLiquidityTxSummary,
+      priceMargin,
+      priceRange,
+      signature,
+      tickRange
+    } = txSummary;
     const { position } = bundledPosition;
 
     await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
@@ -111,8 +152,8 @@ export default class PositionDAO {
       debug(`Inserted Position into database ( ID: ${result?.id} ):`, address);
 
       // If the Position was opened with liquidity, insert the LiquidityTxSummary.
-      if (liquidityTxSummary) {
-        await LiquidityTxDAO.insert(liquidityTxSummary, opts);
+      if (increaseLiquidityTxSummary) {
+        await LiquidityTxDAO.insert(increaseLiquidityTxSummary, opts);
       }
 
       return result?.id;

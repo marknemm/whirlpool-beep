@@ -101,7 +101,7 @@ export interface OpenPositionTxSummary {
    *
    * `undefined` if the transaction was excluded.
    */
-  liquidityTxSummary?: LiquidityTxSummary;
+  increaseLiquidityTxSummary?: LiquidityTxSummary;
 
   /**
    * The price margin {@link Percentage} for the new {@link Position}.

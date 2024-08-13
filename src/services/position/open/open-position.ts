@@ -1,8 +1,7 @@
 import PositionDAO from '@/data/position/position.dao';
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import { genIncreaseLiquidityIxData, type IncreaseLiquidityIxData } from '@/services/liquidity/increase/increase-liquidity';
-import { genLiquidityTxSummary } from '@/services/liquidity/util/liquidity';
+import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@/services/liquidity/increase/increase-liquidity';
 import { getPositionBundle } from '@/services/position-bundle/query/query-position-bundle';
 import { expBackoff } from '@/util/async/async';
 import { debug, error, info } from '@/util/log/log';
@@ -62,7 +61,7 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
       const { signature } = await transactionCtx.resetInstructionData(
         openPositionIxData,
         openPositionIxData.increaseLiquidityIxData
-      ).send({ confirmCommitment: 'finalized' });
+      ).send();
 
       // Get, store, and return the open position transaction summary
       const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
@@ -109,7 +108,6 @@ export async function genOpenPositionIxData(options: OpenPositionOptions): Promi
   const positionInitData = await _genPositionInitData(options);
   const openPositionIx = await _genOpenPositionIx(positionInitData);
   const { address, bundleIndex, positionBundle, priceRange, tickRange } = positionInitData;
-
 
   info('Created instruction to open position:', {
     whirlpool: await formatWhirlpool(whirlpool),
@@ -278,12 +276,12 @@ async function _genIncreaseLiquidityIxData(
   const { address, positionBundle, tickRange, whirlpool } = positionInitData;
 
   return genIncreaseLiquidityIxData({
-    amount: liquidity,
+    liquidity,
+    liquidityUnit,
     positionAddress: address,
     positionMint: positionBundle.positionBundleMint,
     tickRange,
     whirlpool,
-    unit: liquidityUnit,
   });
 }
 
@@ -310,12 +308,13 @@ export async function genOpenPositionTxSummary({
     signature,
     tickRange,
   };
+  const { position } = bundledPosition;
 
   const increaseLiquidityQuote = increaseLiquidityIxData?.quote;
   if (increaseLiquidityQuote) {
-    const liquidityTxSummary = await genLiquidityTxSummary(bundledPosition.position, signature, increaseLiquidityQuote);
+    const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, signature);
     liquidityTxSummary.fee = 0; // Fee is included in open position tx fee
-    openPositionTxSummary.liquidityTxSummary = liquidityTxSummary;
+    openPositionTxSummary.increaseLiquidityTxSummary = liquidityTxSummary;
   }
 
   return openPositionTxSummary;

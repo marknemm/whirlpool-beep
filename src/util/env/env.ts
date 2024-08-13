@@ -265,6 +265,6 @@ export default env;
  */
 export function getSecretEnvVars(): (keyof typeof env)[] {
   return Object.keys(env).filter(
-    (key) => /API_KEY|PASSWORD|PRIVATE|RPC_ENDPOINT|SECRET/i.test(key)
+    (key) => /API_KEY|PASSWORD|PRIVATE|^RPC_ENDPOINT|SECRET/i.test(key)
   ) as (keyof typeof env)[];
 }
