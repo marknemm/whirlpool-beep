@@ -1,5 +1,6 @@
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
+import type { TransactionSummary } from '@/util/transaction-query/transaction-query';
 import type { Address, Percentage } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';

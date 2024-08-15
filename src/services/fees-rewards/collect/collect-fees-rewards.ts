@@ -248,22 +248,21 @@ export async function genCollectFeesRewardsTxSummary(
   const { tokenTotals, usd } = await getTransactionTransferTotals([feesRewardsIx]);
 
   const feesRewardsTxSummary: CollectFeesRewardsTxSummary = {
-    fee: txSummary.fee,
     position,
-    signature,
     tokenAmountA: tokenTotals.get(tokenA.mint.publicKey) ?? new BN(0),
     tokenAmountB: tokenTotals.get(tokenB.mint.publicKey) ?? new BN(0),
+    ...txSummary,
     usd,
   };
 
   info('Fees and rewards tx summary:', {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
-    signature: txSummary.signature,
+    signature: feesRewardsTxSummary.signature,
     [tokenA.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountA, tokenA.mint.decimals),
     [tokenB.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountB, tokenB.mint.decimals),
-    usd: `$${txSummary.usd}`,
-    fee: toStr(txSummary.fee),
+    usd: `$${feesRewardsTxSummary.usd}`,
+    fee: toStr(feesRewardsTxSummary.fee),
   });
 
   return feesRewardsTxSummary;

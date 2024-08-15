@@ -461,14 +461,13 @@ export async function genIncreaseLiquidityTxSummary(
   const liquidity = toBN(instructionData.ixArgs.liquidity, liquidityDecimals);
 
   const liquidityTxSummary: LiquidityTxSummary = {
-    fee: txSummary.fee,
     liquidity,
     liquidityUnit,
     position,
     quote: instructionData.quote,
-    signature,
     tokenAmountA: tokenTotals.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
     tokenAmountB: tokenTotals.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
+    ...txSummary,
     usd: usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
   };
 

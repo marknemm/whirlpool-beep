@@ -5,6 +5,7 @@ import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type Increas
 import { getPositionBundle } from '@/services/position-bundle/query/query-position-bundle';
 import { expBackoff } from '@/util/async/async';
 import { debug, error, info } from '@/util/log/log';
+import { toNum } from '@/util/number-conversion/number-conversion';
 import { getProgramErrorInfo } from '@/util/program/program';
 import { toPriceRange, toTickRange } from '@/util/tick-range/tick-range';
 import TransactionContext from '@/util/transaction-context/transaction-context';
@@ -17,7 +18,6 @@ import { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
 import type { OpenPositionIxData, OpenPositionOptions, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces';
-import { toNum } from '@/util/number-conversion/number-conversion';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
@@ -303,12 +303,11 @@ export async function genOpenPositionTxSummary({
   const txSummary = await getTransactionSummary(signature);
 
   const openPositionTxSummary: OpenPositionTxSummary = {
-    fee: txSummary.fee,
     bundledPosition,
     priceMargin,
     priceRange,
-    signature,
     tickRange,
+    ...txSummary,
   };
   const { position } = bundledPosition;
 

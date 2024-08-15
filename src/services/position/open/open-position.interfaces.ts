@@ -1,11 +1,11 @@
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
-import type { Null } from '@/interfaces/nullable.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import { IncreaseLiquidityIxData } from '@/services/liquidity/increase/increase-liquidity.interfaces';
+import type { IncreaseLiquidityIxData } from '@/services/liquidity/increase/increase-liquidity';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { InstructionData } from '@/util/transaction-context/transaction-context.interfaces';
-import type { Instruction, PDA, Percentage } from '@orca-so/common-sdk';
-import type { IncreaseLiquidityQuote, Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
+import type { InstructionData } from '@/util/transaction-context/transaction-context';
+import type { TransactionSummary } from '@/util/transaction-query/transaction-query';
+import type { PDA, Percentage } from '@orca-so/common-sdk';
+import type { Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey, TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
@@ -84,17 +84,12 @@ export interface OpenPositionOptions {
 /**
  * The summary of an open position transaction.
  */
-export interface OpenPositionTxSummary {
+export interface OpenPositionTxSummary extends TransactionSummary {
 
   /**
    * The {@link BundledPosition} that was opened.
    */
   bundledPosition: BundledPosition;
-
-  /**
-   * The fee (base + priority) for the open position transaction.
-   */
-  fee: number;
 
   /**
    * The {@link LiquidityTxSummary} for the increase liquidity transaction.
@@ -112,11 +107,6 @@ export interface OpenPositionTxSummary {
    * The price range for the new {@link Position}.
    */
   priceRange: [Decimal, Decimal];
-
-  /**
-   * The signature of the open position transaction.
-   */
-  signature: TransactionSignature;
 
   /**
    * The tick index range for the new {@link Position}.
