@@ -53,7 +53,7 @@ functions:
     events:
       - schedule: rate(15 minutes)
     environment:
-      INCREASE_LIQUIDITY: 25
+      INCREASE_LIQUIDITY: 10
       INCREASE_LIQUIDITY_UNIT: usd
       PRIORITY_FEE_MIN_LAMPORTS: 10000   # 0.00001 SOL
       PRIORITY_FEE_MAX_LAMPORTS: 1000000 # 0.001 SOL
@@ -62,4 +62,4 @@ functions:
       RETRY_MAX_DELAY: 5000 # ms
       RETRY_MAX_RETRIES: 10
       RPC_MAX_RETRIES: 3
-      SLIPPAGE_DEFAULT: 10 # 10%
+      SLIPPAGE_DEFAULT: 30 # 30%

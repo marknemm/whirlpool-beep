@@ -25,12 +25,12 @@ export interface DecodedTransactionIx extends Instruction {
 export interface TransactionSummary {
 
   /**
-   * The fee paid for the transaction in lamports.
+   * The total fee paid for the transaction in lamports.
    */
   fee: number;
 
   /**
-   * The signature of the transaction.
+   * The signature of the transaction in base-58 format.
    */
   signature: TransactionSignature;
 

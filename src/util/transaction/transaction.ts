@@ -1,10 +1,12 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
+import { timeout } from '@/util/async/async';
 import env from '@/util/env/env';
 import rpc from '@/util/rpc/rpc';
 import wallet from '@/util/wallet/wallet';
 import { type Wallet } from '@coral-xyz/anchor';
 import { TransactionMessage, VersionedTransaction, type BlockhashWithExpiryBlockHeight, type Commitment, type SendOptions, type Signer, type SimulatedTransactionResponse, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature } from '@solana/web3.js';
 import type { TransactionAction, TransactionError } from './transaction.interfaces';
+import { info } from '@/util/log/log';
 
 /**
  * Confirms a transaction.
@@ -23,13 +25,26 @@ export async function confirmTx(
   commitment: Commitment = env.COMMITMENT_DEFAULT,
   blockhashWithExpiry?: BlockhashWithExpiryBlockHeight
 ): Promise<TransactionSignature> {
-  // Wait for the transaction to be confirmed or rejected.
+  // Wait for the transaction to be confirmed as included in a block with commitment 'processed'.
   blockhashWithExpiry ??= await rpc().getLatestBlockhash();
-  const confirmResponse = await rpc().confirmTransaction({ signature, ...blockhashWithExpiry }, commitment);
+  let confirmResponse = await rpc().confirmTransaction({ signature, ...blockhashWithExpiry }, 'processed');
 
   // Throw error if transaction was rejected.
   if (confirmResponse.value.err) {
     throw formatTxError(confirmResponse.value.err, 'confirm');
+  }
+
+  info('Transaction has been processed:', signature);
+  await timeout(3000);
+
+  // If a higher commitment level is requested, confirm the transaction with that level using retries.
+  if (['confirmed', 'finalized'].indexOf(commitment)) {
+    blockhashWithExpiry = await rpc().getLatestBlockhash();
+    confirmResponse = await rpc().confirmTransaction({ signature, ...blockhashWithExpiry }, commitment);
+    if (confirmResponse.value.err) {
+      throw formatTxError(confirmResponse.value.err, 'confirm');
+    }
+    info(`Transaction has been ${commitment}:`, signature);
   }
 
   return signature;

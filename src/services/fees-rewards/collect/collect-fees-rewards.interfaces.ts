@@ -1,28 +1,17 @@
 import type { InstructionData } from '@/util/transaction-context/transaction-context.interfaces';
-import type { Instruction } from '@orca-so/common-sdk';
 import type { CollectFeesQuote, CollectRewardsQuote, Position } from '@orca-so/whirlpools-sdk';
 import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
 /**
- * The result of generating an {@link Instruction} to collect fees and rewards from a {@link Position}.
+ * {@link InstructionData} for collecting fees and rewards from a {@link Position}.
  */
 export interface CollectFeesRewardsIxData extends InstructionData {
-
-  /**
-   * The collect fees {@link Instruction}.
-   */
-  collectFeesIx?: Instruction;
 
   /**
    * The {@link CollectFeesQuote} used to generate the transaction.
    */
   collectFeesQuote: CollectFeesQuote;
-
-  /**
-   * The collect rewards {@link Instruction}s.
-   */
-  collectRewardsIxs: Instruction[];
 
   /**
    * The {@link CollectRewardsQuote} used to generate the transaction.

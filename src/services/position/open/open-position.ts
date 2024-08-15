@@ -76,12 +76,14 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
     }, {
       retryFilter: (result, err) => {
         const errInfo = getProgramErrorInfo(err);
-        return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '')
-            || errInfo?.code === 0x0; // New position address clash
+        return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '');
       }
     });
   } catch (err) {
-    error('Failed to open position:', opMetadata);
+    const errInfo = getProgramErrorInfo(err);
+    (errInfo?.code === 0x0) // New position address clash
+      ? error('Failed to open position due to address clash:', opMetadata)
+      : error('Failed to open position:', opMetadata);
     throw err;
   }
 }

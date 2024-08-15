@@ -5,6 +5,7 @@ import type { DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { ClosePositionTxSummary } from '@/services/position/close/close-position.interfaces';
+import type { EmptyPositionTxSummary } from '@/services/position/empty/empty-position.interfaces';
 import type { OpenPositionTxSummary } from '@/services/position/open/open-position.interfaces';
 import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug, error, warn } from '@/util/log/log';
@@ -12,6 +13,7 @@ import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type Address, AddressUtil, Percentage } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
+import { UpdateEmptiedResults } from './position.dao.interfaces';
 
 /**
  * Pure static data access object for {@link Position} DB operations.
@@ -177,18 +179,13 @@ export default class PositionDAO {
     txSummary: ClosePositionTxSummary,
     opts?: DAOOptions
   ): Promise<number | undefined> {
-    const { bundledPosition, collectFeesRewardsTxSummary, decreaseLiquidityTxSummary, signature } = txSummary;
+    const { bundledPosition, signature } = txSummary;
     if (!bundledPosition || !signature) return;
 
     const { position } = bundledPosition;
     const address = position.getAddress().toBase58();
 
-    if (collectFeesRewardsTxSummary) {
-      await FeeRewardTxDAO.insert(collectFeesRewardsTxSummary, opts);
-    }
-    if (decreaseLiquidityTxSummary) {
-      await LiquidityTxDAO.insert(decreaseLiquidityTxSummary, opts);
-    }
+    await PositionDAO.updateEmptied(txSummary, opts);
 
     debug('Closing Position in database:', address);
 
@@ -217,4 +214,29 @@ export default class PositionDAO {
     }
   }
 
+  /**
+   * Updates the liquidity and fee / reward data associated with a position to reflect emptied state.
+   *
+   * @param txSummary The {@link EmptyPositionTxSummary} or {@link ClosePositionTxSummary} to use for the update.
+   * @param opts The {@link DAOOptions} to use for the operation.
+   * @returns A {@link Promise} that resolves to the {@link UpdateEmptiedResults} when the operation is complete.
+   */
+  static async updateEmptied(
+    txSummary: EmptyPositionTxSummary | ClosePositionTxSummary,
+    opts?: DAOOptions
+  ): Promise<UpdateEmptiedResults> {
+    const { collectFeesRewardsTxSummary, decreaseLiquidityTxSummary } = txSummary;
+
+    return {
+      feeRewardTxId: collectFeesRewardsTxSummary
+        ? await FeeRewardTxDAO.insert(collectFeesRewardsTxSummary, opts)
+        : undefined,
+      liquidityTxId: decreaseLiquidityTxSummary
+        ? await LiquidityTxDAO.insert(decreaseLiquidityTxSummary, opts)
+        : undefined,
+    };
+  }
+
 }
+
+export type * from './position.dao.interfaces';

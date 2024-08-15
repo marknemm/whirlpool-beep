@@ -38,6 +38,13 @@ const cli = {
       group: 'Rebalance',
       type: 'number' as const,
       default: 20,
+    },
+    'force': {
+      alias: 'f',
+      describe: 'Force rebalance even if the position does not meet the criteria for rebalancing',
+      group: 'Rebalance',
+      type: 'boolean' as const,
+      default: false,
     }
   },
   builder: (yargs: Argv) => yargs.options(cli.options),
@@ -45,12 +52,19 @@ const cli = {
 };
 
 async function handler(argv: CliArgs<typeof cli.options>) {
+  const priceRangeFilter = genPriceRangeRebalanceFilter(
+    Percentage.fromFraction(argv.priceRangeMargin, 100)
+  );
+  const filter = argv.force
+    ? async () => true
+    : priceRangeFilter;
+
   try {
     const rebalanceOptions: RebalanceAllPositionsOptions = {
       whirlpoolAddress: await getWhirlpoolAddressFromCliArgs(argv),
       liquidity: argv.liquidity,
       liquidityUnit: argv.liquidityUnit,
-      filter: async () => true,
+      filter,
     };
 
     if (argv.bundleIndex || argv.position) {

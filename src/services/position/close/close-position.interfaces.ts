@@ -1,9 +1,10 @@
 import type { Null } from '@/interfaces/nullable.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
-import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards.interfaces';
-import type { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity.interfaces';
+import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
+import type { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
 import type { InstructionData } from '@/util/transaction-context/transaction-context';
+import type { TransactionSummary } from '@/util/transaction-query/transaction-query';
 import type { TransactionSignature } from '@solana/web3.js';
 
 /**
@@ -71,17 +72,12 @@ export interface ClosePositionIxData extends InstructionData {
 /**
  * Summary of a close {@link Position} transaction.
  */
-export interface ClosePositionTxSummary {
+export interface ClosePositionTxSummary extends TransactionSummary {
 
   /**
    * The {@link BundledPosition} that was closed.
    */
   bundledPosition: BundledPosition;
-
-  /**
-   * The fee (base + priority) for the close {@link Position} transaction.
-   */
-  fee: number;
 
   /**
    * The {@link CollectFeesRewardsTxSummary} for the collect fees and rewards transaction / instruction.
@@ -96,11 +92,6 @@ export interface ClosePositionTxSummary {
    * `undefined` if the transaction was excluded via {@link ClosePositionOptions.excludeDecreaseLiquidity}.
    */
   decreaseLiquidityTxSummary: LiquidityTxSummary | Null;
-
-  /**
-   * The signature of the close {@link Position} transaction.
-   */
-  signature: TransactionSignature;
 
 }
 

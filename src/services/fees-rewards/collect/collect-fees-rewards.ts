@@ -73,9 +73,9 @@ export async function collectFeesRewards(position: Position): Promise<CollectFee
       }
 
       const collectFeesRewardsIxData = await genCollectFeesRewardsIxData(position);
-      const { collectFeesIx, collectRewardsIxs } = collectFeesRewardsIxData;
+      const { instructions } = collectFeesRewardsIxData;
 
-      if (!collectFeesIx && !collectRewardsIxs.length) {
+      if (!instructions.length) {
         info('No fees or rewards to collect:', {
           whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
           position: position.getAddress().toBase58(),
@@ -150,9 +150,7 @@ export async function genCollectFeesRewardsIxData(
 
   return {
     ...tx.compressIx(false),
-    collectFeesIx,
     collectFeesQuote,
-    collectRewardsIxs,
     collectRewardsQuote,
     debugData: {
       name: 'Collect Fees and Rewards',

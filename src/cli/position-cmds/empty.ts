@@ -1,36 +1,44 @@
 import { genGetPositionCliOpts } from '@/cli/common/position-opts';
 import { genTransactionCliOpts } from '@/cli/common/transaction-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@/cli/common/whirlpool-opts';
-import type { CliArgs } from '@/util/cli/cli.interfaces';
-import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsIxData } from '@/services/fees-rewards/collect/collect-fees-rewards';
+import { emptyAllPositions, emptyPosition, genEmptyPositionIxData } from '@/services/position/empty/empty-position';
 import { getPosition, getPositionAtIdx } from '@/services/position/query/query-position';
+import type { CliArgs } from '@/util/cli/cli.interfaces';
 import { error, info } from '@/util/log/log';
 import { genComputeBudget } from '@/util/transaction-budget/transaction-budget';
 import { type Position } from '@orca-so/whirlpools-sdk';
 import { type Argv } from 'yargs';
 
 const cli = {
-  command: 'collect',
-  description: 'Collect rewards from one or more positions.\n\n'
-    + 'If whirlpool args are provided, all positions in the whirlpool will have their rewards collected.\n'
-    + 'Otherwise, the position at the specified bundle index or position address will have its rewards collected.\n',
+  command: 'empty',
+  description:
+      'Empty one or more positions. This involves decreasing liquidity to zero and collecting all fees and rewards\n\n'
+    + 'If whirlpool args are provided, all positions in the whirlpool will be emptied.\n'
+    + 'Otherwise, the position at the specified bundle index or position address will be emptied.\n',
   options: {
     ...genGetWhirlpoolCliOpts({
       'whirlpool': {
-        description: 'The address of the whirlpool to collect all position fees & rewards from',
+        description: 'The address of the whirlpool to empty all positions in',
       },
     }),
     ...genGetPositionCliOpts({
       'position': {
-        description: 'The address of the position to collect fees & rewards from',
+        description: 'The address of the position to empty',
       },
       'bundle-index': {
-        description: 'The bundle index of the position to collect fees & rewards from',
+        description: 'The bundle index of the position to empty',
       }
     }),
     ...genTransactionCliOpts()
   },
-  builder: (yargs: Argv) => yargs.options(cli.options),
+  builder(yargs: Argv) {
+    return yargs.options(cli.options).check((argv) => {
+      if (argv.whirlpool || argv.position || argv.bundleIndex) return true;
+      if (argv.tokenA && argv.tokenB && argv.tickSpacing) return true;
+
+      throw new Error('Must provide Position, Whirlpool, or Whirlpool PDA options');
+    });
+  },
   handler,
 };
 
@@ -40,8 +48,8 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
     if (whirlpoolAddress) {
-      if (argv.dryRun) throw new Error('Dry run not supported for collecting from multiple positions');
-      return await collectAllFeesRewards(whirlpoolAddress);
+      if (argv.dryRun) throw new Error('Dry run not supported for emptying multiple positions');
+      return await emptyAllPositions(whirlpoolAddress);
     }
 
     if (argv.position) {
@@ -53,11 +61,11 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     if (position) {
       if (argv.dryRun) {
-        const { instructions } = await genCollectFeesRewardsIxData(position);
+        const { instructions } = await genEmptyPositionIxData(position);
         const computeBudget = await genComputeBudget(instructions);
         info('Transaction budget:', computeBudget);
       } else {
-        await collectFeesRewards(position);
+        await emptyPosition(position);
       }
     }
   } catch (err) {
