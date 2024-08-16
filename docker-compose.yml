@@ -7,10 +7,37 @@ services:
       POSTGRES_DB: wpnpc
       POSTGRES_PASSWORD: password;)
       POSTGRES_USER: postgres
+    expose:
+      - 5432
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - pgnetwork
+
+  db_client:
+    build:
+      context: .
+      dockerfile: PgClient.Dockerfile
+    environment:
+      PGDATABASE: ${PGDATABASE:-$DB_NAME}
+      PGENV: ${PGENV:-$NODE_ENV}
+      PGHOST: ${PGHOST:-$DB_HOST}
+      PGPASSWORD: ${PGPASSWORD:-$DB_PASSWORD}
+      PGPORT: ${PGPORT:-$DB_PORT}
+      PGSSLMODE: ${PGSSLMODE:-${DB_SSL_MODE:-disable}}
+      PGSSLROOTCERT: ${PGSSLROOTCERT:-/var/lib/postgresql/data/certs/us-east-1-bundle.pem}
+      PGUSER: ${PGUSER:-$DB_USER}
+    volumes:
+      - ./.dump:/var/lib/postgresql/data/dump
+      - ./certs:/var/lib/postgresql/data/certs
+      - ./tools:/var/lib/postgresql/data/tools
+    networks:
+      - pgnetwork
+
+networks:
+  pgnetwork:
 
 volumes:
   pgdata:
