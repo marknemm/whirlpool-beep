@@ -1,4 +1,4 @@
-import PositionDAO from '@/data/position/position.dao';
+import OrcaPositionDAO from '@/data/orca-position/orca-position.dao';
 import type { DAOInsertOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
@@ -8,9 +8,9 @@ import { debug } from '@/util/log/log';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
- * Pure static data access object for {@link RebalanceTxSummary} DB operations.
+ * Pure static data access object for Orca Rebalance DB operations.
  */
-export default class RebalanceTxDAO {
+export default class OrcaRebalanceDAO {
 
   /**
    * Private constructor for pure static class.
@@ -27,23 +27,23 @@ export default class RebalanceTxDAO {
    */
   static async insert(txSummary: RebalanceTxSummary | Null, opts?: DAOInsertOptions): Promise<number | undefined> {
     if (!txSummary) return;
-    debug('Inserting Rebalance Tx Summary into database...');
+    debug('Inserting Orca Rebalance into database...');
 
     const positionOldAddress = txSummary.bundledPositionOld.position.getAddress().toBase58();
     const positionNewAddress = txSummary.bundledPositionNew.position.getAddress().toBase58();
 
     try {
-      const positionOldId = await PositionDAO.getId(positionOldAddress);
+      const positionOldId = await OrcaPositionDAO.getId(positionOldAddress);
       if (positionOldId == null) {
-        throw new Error(`Position does not exist in database: ${positionOldAddress}`);
+        throw new Error(`Orca Position does not exist in database: ${positionOldAddress}`);
       }
 
-      const positionNewId = await PositionDAO.getId(positionNewAddress);
+      const positionNewId = await OrcaPositionDAO.getId(positionNewAddress);
       if (positionNewId == null) {
-        throw new Error(`Position does not exist in database: ${positionNewAddress}`);
+        throw new Error(`Orca Position does not exist in database: ${positionNewAddress}`);
       }
 
-      const result = await db().insertInto('rebalanceTx')
+      const result = await db().insertInto('orcaRebalance')
         .values({
           positionOld: positionOldId,
           positionNew: positionNewId,
@@ -51,10 +51,15 @@ export default class RebalanceTxDAO {
         .returning('id')
         .executeTakeFirst();
 
-      debug(`Inserted Rebalance Tx Summary into database ( ID: ${result?.id} )`);
+      debug(`Inserted Orca Rebalance into database ( ID: ${result?.id} )`);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'RebalanceTx', `${positionOldAddress} --> ${positionNewAddress}`, opts);
+      handleInsertError(
+        err as ErrorWithCode,
+        'Orca Rebalance',
+        `${positionOldAddress} --> ${positionNewAddress}`,
+        opts
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-import FeeRewardTxDAO from '@/data/fee-reward-tx/fee-reward-tx.dao';
+import OrcaFeeDAO from '@/data/orca-fee/orca-fee.dao';
 import { getPositions } from '@/services/position/query/query-position';
 import { expBackoff } from '@/util/async/async';
 import { debug, error, info } from '@/util/log/log';
@@ -7,13 +7,12 @@ import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { toTickRangeKeys } from '@/util/tick-range/tick-range';
 import { getToken } from '@/util/token/token';
-import TransactionContext from '@/util/transaction-context/transaction-context';
-import { getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction-query/transaction-query';
+import TransactionContext, { SendTransactionResult } from '@/util/transaction-context/transaction-context';
+import { getTransferTotalsFromIxs, getTxSummary } from '@/util/transaction-query/transaction-query';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { TransactionBuilder, type Address, type Instruction } from '@orca-so/common-sdk';
 import { collectFeesQuote, collectRewardsQuote, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
-import { type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
 import { green } from 'colors';
 import type { CollectFeesRewardsIxData, CollectFeesRewardsQuotes, CollectFeesRewardsTxSummary } from './collect-fees-rewards.interfaces';
@@ -83,13 +82,13 @@ export async function collectFeesRewards(position: Position): Promise<CollectFee
         return undefined;
       }
 
-      const { signature } = await transactionCtx
+      const sendResult = await transactionCtx
         .resetInstructionData(collectFeesRewardsIxData)
         .send();
       await position.refreshData();
 
-      const txSummary = await genCollectFeesRewardsTxSummary(position, signature);
-      await FeeRewardTxDAO.insert(txSummary, { catchErrors: true });
+      const txSummary = await genCollectFeesRewardsTxSummary(position, sendResult);
+      await OrcaFeeDAO.insert(txSummary, { catchErrors: true });
 
       return txSummary;
     }, {
@@ -230,22 +229,21 @@ async function _genCollectFeesRewardsQuotes(
  * Generates a {@link CollectFeesRewardsTxSummary} for a collect fees / rewards transaction.
  *
  * @param position The {@link Position} to get the {@link CollectFeesRewardsTxSummary} for.
- * @param signature The signature of the collection transaction.
+ * @param sendResult The {@link SendTransactionResult} of the collection transaction.
  * @returns A {@link Promise} that resolves to the {@link CollectFeesRewardsTxSummary}.
  */
 export async function genCollectFeesRewardsTxSummary(
   position: Position,
-  signature: TransactionSignature,
+  sendResult: SendTransactionResult,
 ): Promise<CollectFeesRewardsTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-
-  const txSummary = await getTransactionSummary(signature);
+  const txSummary = await getTxSummary(sendResult);
 
   const feesRewardsIx = txSummary.decodedIxs.find(
     (ix) => ix.name.toLowerCase().includes('fee')
   );
   if (!feesRewardsIx) throw new Error('No collect fees / rewards instruction found in transaction');
-  const { tokenTotals, usd } = await getTransactionTransferTotals([feesRewardsIx]);
+  const { tokenTotals, usd } = await getTransferTotalsFromIxs([feesRewardsIx]);
 
   const feesRewardsTxSummary: CollectFeesRewardsTxSummary = {
     position,
@@ -258,11 +256,11 @@ export async function genCollectFeesRewardsTxSummary(
   info('Fees and rewards tx summary:', {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
-    signature: feesRewardsTxSummary.signature,
     [tokenA.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountA, tokenA.mint.decimals),
     [tokenB.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountB, tokenB.mint.decimals),
     usd: `$${feesRewardsTxSummary.usd}`,
     fee: toStr(feesRewardsTxSummary.fee),
+    signature: feesRewardsTxSummary.signature,
   });
 
   return feesRewardsTxSummary;

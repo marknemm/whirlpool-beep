@@ -1,4 +1,4 @@
-import PositionDAO from '@/data/position/position.dao';
+import OrcaPositionDAO from '@/data/orca-position/orca-position.dao';
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@/services/liquidity/increase/increase-liquidity';
@@ -9,7 +9,7 @@ import { toNum } from '@/util/number-conversion/number-conversion';
 import { getProgramErrorInfo } from '@/util/program/program';
 import { toPriceRange, toTickRange } from '@/util/tick-range/tick-range';
 import TransactionContext from '@/util/transaction-context/transaction-context';
-import { getTransactionSummary } from '@/util/transaction-query/transaction-query';
+import { getTxSummary } from '@/util/transaction-query/transaction-query';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@/util/whirlpool/whirlpool';
 import { Percentage, TransactionBuilder, type Instruction } from '@orca-so/common-sdk';
@@ -58,7 +58,7 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
       } = openPositionIxData.positionInitData;
 
       // Prepare and send transaction to open position
-      const { signature } = await transactionCtx.resetInstructionData(
+      const sendResult = await transactionCtx.resetInstructionData(
         openPositionIxData,
         openPositionIxData.increaseLiquidityIxData
       ).send();
@@ -69,9 +69,9 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
       const txSummary = await genOpenPositionTxSummary({
         bundledPosition,
         openPositionIxData,
-        signature,
+        sendResult,
       });
-      await PositionDAO.insert(txSummary, { catchErrors: true });
+      await OrcaPositionDAO.insert(txSummary, { catchErrors: true });
       return txSummary;
     }, {
       retryFilter: (result, err) => {
@@ -296,11 +296,12 @@ async function _genIncreaseLiquidityIxData(
 export async function genOpenPositionTxSummary({
   bundledPosition,
   openPositionIxData,
-  signature
+  sendResult
 }: OpenPositionTxSummaryArgs): Promise<OpenPositionTxSummary> {
   const { increaseLiquidityIxData, positionInitData } = openPositionIxData;
   const { priceMargin, priceRange, tickRange } = positionInitData;
-  const txSummary = await getTransactionSummary(signature);
+
+  const txSummary = await getTxSummary(sendResult);
 
   const openPositionTxSummary: OpenPositionTxSummary = {
     bundledPosition,
@@ -313,7 +314,7 @@ export async function genOpenPositionTxSummary({
 
   const increaseLiquidityQuote = increaseLiquidityIxData?.quote;
   if (increaseLiquidityQuote) {
-    const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, signature);
+    const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, sendResult);
     liquidityTxSummary.fee = 0; // Fee is included in open position tx fee
     openPositionTxSummary.increaseLiquidityTxSummary = liquidityTxSummary;
   }

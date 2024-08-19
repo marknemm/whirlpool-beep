@@ -3,9 +3,8 @@ import type { BundledPosition } from '@/interfaces/position.interfaces';
 import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
 import type { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { InstructionData } from '@/util/transaction-context/transaction-context';
-import type { TransactionSummary } from '@/util/transaction-query/transaction-query';
-import type { TransactionSignature } from '@solana/web3.js';
+import type { InstructionData, SendTransactionResult } from '@/util/transaction-context/transaction-context';
+import type { TxSummary } from '@/util/transaction-query/transaction-query';
 
 /**
  * Close all {@link Position}s summary.
@@ -72,7 +71,7 @@ export interface ClosePositionIxData extends InstructionData {
 /**
  * Summary of a close {@link Position} transaction.
  */
-export interface ClosePositionTxSummary extends TransactionSummary {
+export interface ClosePositionTxSummary extends TxSummary {
 
   /**
    * The {@link BundledPosition} that was closed.
@@ -111,8 +110,8 @@ export interface ClosePositionTxSummaryArgs {
   closePositionIxData: ClosePositionIxData;
 
   /**
-   * The signature of the close {@link Position} transaction.
+   * The {@link SendTransactionResult} of the close {@link Position} transaction.
    */
-  signature: TransactionSignature;
+  sendResult: SendTransactionResult;
 
 }

@@ -163,10 +163,12 @@ export function toStr(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
  * @returns The converted token amount.
  */
 export function toTokenAmount(
-  usd: BN | Decimal.Value,
-  tokenPrice: Decimal.Value
+  usd: BN | Decimal.Value | Null,
+  tokenPrice: Decimal.Value | Null
 ): Decimal {
-  return toDecimal(usd).div(tokenPrice);
+  return (usd && tokenPrice)
+    ? toDecimal(usd).div(tokenPrice)
+    : new Decimal(0);
 }
 
 /**

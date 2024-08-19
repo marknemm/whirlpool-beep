@@ -1,4 +1,4 @@
-import PositionDAO from '@/data/position/position.dao';
+import OrcaPositionDAO from '@/data/orca-position/orca-position.dao';
 import { genCollectFeesRewardsIxData, genCollectFeesRewardsTxSummary, type CollectFeesRewardsIxData } from '@/services/fees-rewards/collect/collect-fees-rewards';
 import { genDecreaseLiquidityIxData, genDecreaseLiquidityTxSummary } from '@/services/liquidity/decrease/decrease-liquidity';
 import { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity.interfaces';
@@ -7,7 +7,7 @@ import { expBackoff, timeout } from '@/util/async/async';
 import { error, info } from '@/util/log/log';
 import { getProgramErrorInfo } from '@/util/program/program';
 import TransactionContext from '@/util/transaction-context/transaction-context';
-import { getTransactionSummary } from '@/util/transaction-query/transaction-query';
+import { getTxSummary } from '@/util/transaction-query/transaction-query';
 import { formatWhirlpool } from '@/util/whirlpool/whirlpool';
 import { type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
@@ -106,7 +106,7 @@ export async function emptyPosition(position: Position): Promise<EmptyPositionTx
         return undefined;
       }
 
-      const { signature } = await transactionCtx.resetInstructionData(
+      const sendResult = await transactionCtx.resetInstructionData(
         ixData.decreaseLiquidityIxData,
         ixData.collectFeesRewardsIxData,
       ).send();
@@ -114,10 +114,10 @@ export async function emptyPosition(position: Position): Promise<EmptyPositionTx
       const txSummary = await genEmptyPositionTxSummary({
         position,
         emptyPositionIxData: ixData,
-        signature,
+        sendResult,
       });
 
-      await PositionDAO.updateEmptied(txSummary, { catchErrors: true });
+      await OrcaPositionDAO.updateEmptied(txSummary, { catchErrors: true });
       return txSummary;
     }, {
       retryFilter: (result, err) => {
@@ -206,19 +206,19 @@ export async function genEmptyFeesRewardsIxData(position: Position): Promise<Col
 export async function genEmptyPositionTxSummary({
   position,
   emptyPositionIxData,
-  signature
+  sendResult
 }: EmptyPositionTxSummaryArgs): Promise<EmptyPositionTxSummary> {
   const { collectFeesRewardsIxData, decreaseLiquidityIxData } = emptyPositionIxData;
 
-  const txSummary = await getTransactionSummary(signature);
+  const txSummary = await getTxSummary(sendResult);
 
   const emptyPositionTxSummary: EmptyPositionTxSummary = {
     position,
     collectFeesRewardsTxSummary: collectFeesRewardsIxData
-      ? await genCollectFeesRewardsTxSummary(position, signature)
+      ? await genCollectFeesRewardsTxSummary(position, sendResult)
       : undefined,
     decreaseLiquidityTxSummary: decreaseLiquidityIxData
-      ? await genDecreaseLiquidityTxSummary(position, decreaseLiquidityIxData, signature)
+      ? await genDecreaseLiquidityTxSummary(position, decreaseLiquidityIxData, sendResult)
       : undefined,
     ...txSummary,
   };
@@ -227,7 +227,7 @@ export async function genEmptyPositionTxSummary({
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
     fee: emptyPositionTxSummary.fee,
-    signature,
+    signature: emptyPositionTxSummary.signature,
   });
 
   return emptyPositionTxSummary;

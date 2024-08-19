@@ -5,7 +5,7 @@ import { toLamports, toMicroLamports } from '@/util/number-conversion/number-con
 import rpc from '@/util/rpc/rpc';
 import wallet from '@/util/wallet/wallet';
 import { getSimulationComputeUnits } from '@solana-developers/helpers';
-import { ComputeBudgetProgram, Transaction, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
+import { ComputeBudgetProgram, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import axios from 'axios';
 import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces';
 
@@ -24,24 +24,38 @@ export async function genComputeBudget(
   retry = 0
 ): Promise<ComputeBudget> {
   const computeBudget: ComputeBudget = {
+
+    // Use tx simulation to estimate the compute unit limit
     computeUnitLimit: (opts as ComputeBudget)?.computeUnitLimit
       ?? await getComputeLimitEstimate(ixs),
+
+    // Instructions to set the compute unit limit and priority fee added after estimation
     instructions: [],
+
+    // Get priority level used to estimate the priority fee
+    priority: (typeof opts === 'string')
+      ? (opts as TransactionPriority)
+      : (opts as { priority: TransactionPriority })?.priority
+        ?? env.PRIORITY_LEVEL_DEFAULT,
+
+    // Use the provided priority fee if set
     priorityFeeLamports: (opts as ComputeBudget)?.priorityFeeLamports,
+
   };
 
+  // Estimate the priority fee if not provided
   if (!computeBudget.priorityFeeLamports && computeBudget.computeUnitLimit) {
-    let priority = (opts as TransactionPriority)
-      ?? (opts as { priority: TransactionPriority })?.priority
-      ?? env.PRIORITY_LEVEL_DEFAULT;
-    if (retry) { // Every 2 retries, increase the priority level - caps at 'veryHigh'
-      priority = getNextPriorityLevel(priority, Math.floor(retry / 2));
+    // Every 2 retries, increase the priority level - caps at 'veryHigh'
+    if (retry) {
+      computeBudget.priority = getNextPriorityLevel(computeBudget.priority, Math.floor(retry / 2));
     }
 
+    // Estimate the priority fee
     const priorityFeeEstimate = await getPriorityFeeEstimate(ixs);
-    const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[priority], 'Micro Lamports');
+    const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[computeBudget.priority], 'Micro Lamports');
     const priorityFeeEstimateTotal = Math.ceil(priorityFeeEstimateLamports * computeBudget.computeUnitLimit);
 
+    // Adjust the priority fee based on the current estimate, env configs, and retry count
     computeBudget.priorityFeeLamports = Math.min(
       Math.ceil(
         Math.max(
@@ -53,6 +67,7 @@ export async function genComputeBudget(
     );
   }
 
+  // Add compute unit limit instruction
   if (computeBudget.computeUnitLimit) {
     computeBudget.instructions.push(
       ComputeBudgetProgram.setComputeUnitLimit({
@@ -61,6 +76,7 @@ export async function genComputeBudget(
     );
   }
 
+  // Add compute unit price (priority fee) instruction
   if (computeBudget.priorityFeeLamports && computeBudget.computeUnitLimit) {
     const microLamportsTotal = toMicroLamports(computeBudget.priorityFeeLamports, 'Lamports');
 

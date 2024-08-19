@@ -232,7 +232,14 @@ export interface SendTransactionRecord {
 /**
  * The result of sending a transaction.
  */
-export type SendTransactionResult = Omit<Required<SendTransactionRecord>, 'err'>;
+export interface SendTransactionResult extends Omit<Required<SendTransactionRecord>, 'err'> {
+
+  /**
+   * The {@link SendTransactionRecord} history including the final successful send result record.
+   */
+  sendHistory: readonly SendTransactionRecord[];
+
+}
 
 /**
  * Options for signing a transaction.

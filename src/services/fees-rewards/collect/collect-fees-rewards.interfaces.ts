@@ -1,5 +1,5 @@
 import type { InstructionData } from '@/util/transaction-context/transaction-context.interfaces';
-import { TransactionSummary } from '@/util/transaction-query/transaction-query.interfaces';
+import { TxSummary } from '@/util/transaction-query/transaction-query.interfaces';
 import type { CollectFeesQuote, CollectRewardsQuote, Position } from '@orca-so/whirlpools-sdk';
 import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
@@ -42,7 +42,7 @@ export interface CollectFeesRewardsQuotes {
 /**
  * Summary of a collect fees and rewards transaction for a {@link Position}.
  */
-export interface CollectFeesRewardsTxSummary extends TransactionSummary {
+export interface CollectFeesRewardsTxSummary extends TxSummary {
 
   // TODO: Add rewards field(s).
 

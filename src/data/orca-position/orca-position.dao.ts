@@ -1,6 +1,7 @@
-import FeeRewardTxDAO from '@/data/fee-reward-tx/fee-reward-tx.dao';
-import LiquidityTxDAO from '@/data/liquidity-tx/liquidity-tx.dao';
-import WhirlpoolDAO from '@/data/whirlpool/whirlpool.dao';
+import OrcaFeeDAO from '@/data/orca-fee/orca-fee.dao';
+import OrcaLiquidityDAO from '@/data/orca-liquidity/orca-liquidity.dao';
+import SolanaTxDAO from '@/data/solana-tx.dao.ts/solana-tx.dao';
+import OrcaWhirlpoolDAO from '@/data/orca-whirlpool/orca-whirlpool.dao';
 import type { DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
@@ -13,12 +14,12 @@ import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { type Address, AddressUtil, Percentage } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
-import { UpdateEmptiedResults } from './position.dao.interfaces';
+import { UpdateEmptiedResults } from './orca-position.dao.interfaces';
 
 /**
- * Pure static data access object for {@link Position} DB operations.
+ * Pure static data access object for Orca {@link Position} DB operations.
  */
-export default class PositionDAO {
+export default class OrcaPositionDAO {
 
   /**
    * Private constructor for pure static class.
@@ -39,21 +40,21 @@ export default class PositionDAO {
     if (!address) return;
     address = AddressUtil.toString(address);
 
-    debug('Getting Position ID from database:', address);
+    debug('Getting Orca Position ID from database:', address);
 
     try {
-      const result = await db().selectFrom('position')
+      const result = await db().selectFrom('orcaPosition')
         .select('id')
         .where('address', '=', address)
         .orderBy('id', 'desc')
         .executeTakeFirst();
 
       result?.id
-        ? debug(`Got Position ID from database ( ID: ${result?.id} ):`, address)
-        : debug('Position ID not found in database:', address);
+        ? debug(`Got Orca Position ID from database ( ID: ${result?.id} ):`, address)
+        : debug('Orca Position ID not found in database:', address);
       return result?.id;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'Position', opts);
+      handleSelectError(err as ErrorWithCode, 'orcaPosition', opts);
     }
   }
 
@@ -68,23 +69,23 @@ export default class PositionDAO {
     if (!address) return;
     address = AddressUtil.toString(address);
 
-    debug('Getting Position price margin from database:', address);
+    debug('Getting Orca Position price margin from database:', address);
 
     try {
-      const result = await db().selectFrom('position')
+      const result = await db().selectFrom('orcaPosition')
         .select('priceMargin')
         .where('address', '=', address)
         .orderBy('id', 'desc')
         .executeTakeFirst();
 
       result?.priceMargin
-        ? debug(`Got Position price margin from database ( priceMargin: ${result?.priceMargin} ):`, address)
-        : debug('Position price margin not found in database:', address);
+        ? debug(`Got Orca Position price margin from database ( priceMargin: ${result?.priceMargin} ):`, address)
+        : debug('Orca Position price margin not found in database:', address);
       return result?.priceMargin
         ? Percentage.fromFraction(result.priceMargin, 100)
         : undefined;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'Position', opts);
+      handleSelectError(err as ErrorWithCode, 'orcaPosition', opts);
     }
   }
 
@@ -92,10 +93,10 @@ export default class PositionDAO {
    * Inserts a {@link Position} into the database.
    * If the {@link Position} already exists, the operation is a no-op.
    *
-   * Also inserts the {@link Whirlpool} associated with the {@link Position} via {@link WhirlpoolDAO},
+   * Also inserts the {@link Whirlpool} associated with the {@link Position} via {@link OrcaWhirlpoolDAO},
    *
    * If the {@link Position} was opened with liquidity, then the associated {@link LiquidityTxSummary}
-   * is also inserted via {@link LiquidityTxDAO}.
+   * is also inserted via {@link OrcaLiquidityDAO}.
    *
    * @param txSummary The {@link OpenPositionTxSummary} to use for the insert.
    * @param opts The {@link DAOOptions} to use for the operation.
@@ -108,23 +109,24 @@ export default class PositionDAO {
     if (!txSummary?.bundledPosition) return;
     const {
       bundledPosition,
-      fee,
       increaseLiquidityTxSummary,
       priceMargin,
       priceRange,
-      signature,
       tickRange
     } = txSummary;
     const { position } = bundledPosition;
 
-    await WhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
+    await OrcaWhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
     const whirlpoolData = position.getWhirlpoolData();
+
+    const solanaTxId = await SolanaTxDAO.insert(txSummary, { ...opts, ignoreDuplicates: true });
+    if (solanaTxId == null) return; // No throw error - SolanaTxDAO handles errors
 
     const address = position.getAddress().toBase58();
     debug('Inserting Position into database:', address);
 
     try {
-      const whirlpoolId = await WhirlpoolDAO.getId(position.getData().whirlpool);
+      const whirlpoolId = await OrcaWhirlpoolDAO.getId(position.getData().whirlpool);
       if (whirlpoolId == null) { // Cannot continue without Whirlpool DB ID.
         throw new Error(`Failed to get Whirlpool for Position Insert: ${position.getData().whirlpool}`);
       }
@@ -135,11 +137,10 @@ export default class PositionDAO {
       const priceOrigin = await getWhirlpoolPrice(whirlpoolData);
       const [priceLower, priceUpper] = priceRange;
 
-      const result = await db().insertInto('position')
+      const result = await db().insertInto('orcaPosition')
         .values({
           address,
-          openFee: fee,
-          openTx: signature,
+          openSolanaTx: solanaTxId,
           priceLower: toBigInt(priceLower, tokenB.mint.decimals),
           priceMargin: priceMargin.toDecimal().mul(100).round().toNumber(),
           priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
@@ -151,16 +152,16 @@ export default class PositionDAO {
         .returning('id')
         .executeTakeFirst();
 
-      debug(`Inserted Position into database ( ID: ${result?.id} ):`, address);
+      debug(`Inserted Orca Position into database ( ID: ${result?.id} ):`, address);
 
       // If the Position was opened with liquidity, insert the LiquidityTxSummary.
       if (increaseLiquidityTxSummary) {
-        await LiquidityTxDAO.insert(increaseLiquidityTxSummary, opts);
+        await OrcaLiquidityDAO.insert(increaseLiquidityTxSummary, opts);
       }
 
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Position', address, opts);
+      handleInsertError(err as ErrorWithCode, 'Orca Position', address, opts);
     }
   }
 
@@ -185,18 +186,20 @@ export default class PositionDAO {
     const { position } = bundledPosition;
     const address = position.getAddress().toBase58();
 
-    await PositionDAO.updateEmptied(txSummary, opts);
+    // Update orcaLiquidity and orcaFee tables
+    await OrcaPositionDAO.updateEmptied(txSummary, opts);
+
+    // Insert SolanaTx
+    const solanaTxId = await SolanaTxDAO.insert(txSummary, { ...opts, ignoreDuplicates: true });
+    if (solanaTxId == null) return; // No throw error - SolanaTxDAO handles errors
 
     debug('Closing Position in database:', address);
 
     try {
-      const result = await db().updateTable('position')
-        .set({
-          closeFee: toBigInt(txSummary.fee),
-          closeTx: signature,
-        })
+      const result = await db().updateTable('orcaPosition')
+        .set({ closeSolanaTx: solanaTxId })
         .where('address', '=', address)
-        .where('closeTx', 'is', null)
+        .where('closeSolanaTx', 'is', null)
         .returning('id')
         .executeTakeFirst();
 
@@ -229,14 +232,14 @@ export default class PositionDAO {
 
     return {
       feeRewardTxId: collectFeesRewardsTxSummary
-        ? await FeeRewardTxDAO.insert(collectFeesRewardsTxSummary, opts)
+        ? await OrcaFeeDAO.insert(collectFeesRewardsTxSummary, opts)
         : undefined,
       liquidityTxId: decreaseLiquidityTxSummary
-        ? await LiquidityTxDAO.insert(decreaseLiquidityTxSummary, opts)
+        ? await OrcaLiquidityDAO.insert(decreaseLiquidityTxSummary, opts)
         : undefined,
     };
   }
 
 }
 
-export type * from './position.dao.interfaces';
+export type * from './orca-position.dao.interfaces';

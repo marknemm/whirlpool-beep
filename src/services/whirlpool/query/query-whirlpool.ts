@@ -1,5 +1,5 @@
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@/constants/whirlpool';
-import WhirlpoolDAO from '@/data/whirlpool/whirlpool.dao';
+import OrcaWhirlpoolDAO from '@/data/orca-whirlpool/orca-whirlpool.dao';
 import { getTokenPair } from '@/util/token/token';
 import whirlpoolClient from '@/util/whirlpool/whirlpool';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type Whirlpool } from '@orca-so/whirlpools-sdk';
@@ -20,7 +20,7 @@ export async function getWhirlpool(opts: GetWhirlpoolOpts): Promise<Whirlpool> {
   const whirlpoolKey = opts.whirlpoolAddress ?? await getWhirlpoolKey(opts as GetWhirlpoolKeyOpts);
 
   const whirlpool = await whirlpoolClient().getPool(whirlpoolKey, opts);
-  await WhirlpoolDAO.insert(whirlpool, { catchErrors: true });
+  await OrcaWhirlpoolDAO.insert(whirlpool, { catchErrors: true });
 
   return whirlpool;
 }

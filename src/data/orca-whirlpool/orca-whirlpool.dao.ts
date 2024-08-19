@@ -1,4 +1,4 @@
-import TokenDAO from '@/data/token/token.dao';
+import SolanaTokenDAO from '@/data/solana-token/solana-token.dao';
 import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
@@ -10,9 +10,9 @@ import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 
 /**
- * Pure static data access object for {@link Whirlpool} DB operations.
+ * Pure static data access object for Orca {@link Whirlpool} DB operations.
  */
-export default class WhirlpoolDAO {
+export default class OrcaWhirlpoolDAO {
 
     /**
      * Private constructor for pure static class.
@@ -33,18 +33,18 @@ export default class WhirlpoolDAO {
       if (!address) return;
       address = AddressUtil.toString(address);
 
-      debug('Getting Whirlpool ID from database:', address);
+      debug('Getting Orca Whirlpool ID from database:', address);
 
       try {
-        const result = await db().selectFrom('whirlpool')
+        const result = await db().selectFrom('orcaWhirlpool')
           .select('id')
           .where('address', '=', address)
           .executeTakeFirst();
 
-        debug(`Got Whirlpool ID from database ( ID: ${result?.id} ):`, address);
+        debug(`Got Orca Whirlpool ID from database ( ID: ${result?.id} ):`, address);
         return result?.id;
       } catch (err) {
-        handleSelectError(err as ErrorWithCode, 'Whirlpool', opts);
+        handleSelectError(err as ErrorWithCode, 'orcaWhirlpool', opts);
       }
     }
 
@@ -113,17 +113,17 @@ export default class WhirlpoolDAO {
       const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
       const whirlpoolData = toWhirlpoolData(whirlpool);
 
-      debug('Inserting Whirlpool into database:', address);
+      debug('Inserting Orca Whirlpool into database:', address);
 
       try {
-        const tokenIdA = await TokenDAO.getId(tokenA.mint.publicKey);
-        const tokenIdB = await TokenDAO.getId(tokenB.mint.publicKey);
+        const tokenIdA = await SolanaTokenDAO.getId(tokenA.mint.publicKey);
+        const tokenIdB = await SolanaTokenDAO.getId(tokenB.mint.publicKey);
 
         // Cannot continue without token DB IDs.
         if (!tokenIdA) throw new Error(`Failed to get Token A for Whirlpool insert: ${tokenA.mint.publicKey}`);
         if (!tokenIdB) throw new Error(`Failed to get Token B for Whirlpool insert: ${tokenB.mint.publicKey}`);
 
-        const result = await db().insertInto('whirlpool')
+        const result = await db().insertInto('orcaWhirlpool')
           .values({
             address,
             feeRate: whirlpoolData.feeRate,
@@ -136,13 +136,13 @@ export default class WhirlpoolDAO {
           .returning('id')
           .executeTakeFirst();
 
-        debug(`Inserted Whirlpool into database ( ID: ${result?.id} ):`, address);
+        debug(`Inserted Orca Whirlpool into database ( ID: ${result?.id} ):`, address);
         return result?.id;
       } catch (err) {
-        handleInsertError(err as ErrorWithCode, 'Whirlpool', address, opts);
+        handleInsertError(err as ErrorWithCode, 'Orca Whirlpool', address, opts);
       }
     }
 
 }
 
-export type * from './whirlpool.dao.interfaces';
+export type * from './orca-whirlpool.dao.interfaces';

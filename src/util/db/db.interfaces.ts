@@ -22,39 +22,33 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface FeeRewardTx {
-  createdAt: Generated<Timestamp>;
-  fee: Int8;
+export interface OrcaFee {
   id: Generated<number>;
   position: number;
-  signature: string;
+  solanaTx: number;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
   usd: Numeric;
 }
 
-export interface LiquidityTx {
-  createdAt: Generated<Timestamp>;
-  fee: Int8;
+export interface OrcaLiquidity {
   id: Generated<number>;
   liquidity: Int8;
   liquidityUnit: string;
   position: number;
-  quote: Json | null;
-  signature: string;
+  slippage: Numeric;
+  solanaTx: number;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
   usd: Numeric;
 }
 
-export interface Position {
+export interface OrcaPosition {
   address: string;
-  closeFee: Generated<Int8>;
-  closeTx: string | null;
+  closeSolanaTx: number | null;
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
-  openFee: Int8;
-  openTx: string;
+  openSolanaTx: number;
   priceLower: Int8;
   priceMargin: number;
   priceOrigin: Int8;
@@ -64,24 +58,16 @@ export interface Position {
   whirlpool: number;
 }
 
-export interface RebalanceTx {
+export interface OrcaRebalance {
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
   positionNew: number;
   positionOld: number;
 }
 
-export interface Token {
+export interface OrcaWhirlpool {
   address: string;
-  decimals: number;
-  id: Generated<number>;
-  name: string;
-  symbol: string;
-}
-
-export interface Whirlpool {
-  address: string;
-  feeRate: Numeric;
+  feeRate: number;
   id: Generated<number>;
   tickSpacing: number;
   tokenA: number;
@@ -90,11 +76,78 @@ export interface Whirlpool {
   tokenVaultB: string;
 }
 
+export interface SolanaComputeBudget {
+  computeUnitLimit: number | null;
+  id: Generated<number>;
+  priority: string | null;
+  priorityFee: number | null;
+  solanaTx: number | null;
+}
+
+export interface SolanaInnerIx {
+  data: Json | null;
+  id: Generated<number>;
+  name: string;
+  programId: string;
+  programName: string;
+  solanaIx: number | null;
+}
+
+export interface SolanaIx {
+  data: Json | null;
+  id: Generated<number>;
+  programId: string;
+  programName: string;
+  solanaTx: number | null;
+}
+
+export interface SolanaToken {
+  address: string;
+  decimals: number;
+  id: Generated<number>;
+  name: string | null;
+  symbol: string | null;
+}
+
+export interface SolanaTx {
+  computeUnitsConsumed: number | null;
+  createdAt: Generated<Timestamp>;
+  fee: number;
+  id: Generated<number>;
+  signature: string | null;
+  size: number;
+}
+
+export interface SolanaTxError {
+  code: number | null;
+  error: Json;
+  id: Generated<number>;
+  message: string;
+  solanaTx: number | null;
+}
+
+export interface SolanaTxTransfer {
+  amount: Int8 | null;
+  destination: string | null;
+  destinationOwner: string | null;
+  id: Generated<number>;
+  solanaToken: number | null;
+  solanaTx: number | null;
+  source: string | null;
+  sourceOwner: string | null;
+}
+
 export interface DB {
-  feeRewardTx: FeeRewardTx;
-  liquidityTx: LiquidityTx;
-  position: Position;
-  rebalanceTx: RebalanceTx;
-  token: Token;
-  whirlpool: Whirlpool;
+  orcaFee: OrcaFee;
+  orcaLiquidity: OrcaLiquidity;
+  orcaPosition: OrcaPosition;
+  orcaRebalance: OrcaRebalance;
+  orcaWhirlpool: OrcaWhirlpool;
+  solanaComputeBudget: SolanaComputeBudget;
+  solanaInnerIx: SolanaInnerIx;
+  solanaIx: SolanaIx;
+  solanaToken: SolanaToken;
+  solanaTx: SolanaTx;
+  solanaTxError: SolanaTxError;
+  solanaTxTransfer: SolanaTxTransfer;
 }

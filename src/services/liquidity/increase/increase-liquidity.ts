@@ -1,5 +1,5 @@
 import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
-import LiquidityTxDAO from '@/data/liquidity-tx/liquidity-tx.dao';
+import OrcaLiquidityDAO from '@/data/orca-liquidity/orca-liquidity.dao';
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { getPositions } from '@/services/position/query/query-position';
@@ -12,8 +12,8 @@ import { getProgramErrorInfo } from '@/util/program/program';
 import rpc from '@/util/rpc/rpc';
 import { toTickRangeKeys } from '@/util/tick-range/tick-range';
 import { getTokenPrice } from '@/util/token/token';
-import TransactionContext from '@/util/transaction-context/transaction-context';
-import { getTransactionSummary, getTransactionTransferTotals } from '@/util/transaction-query/transaction-query';
+import TransactionContext, { SendTransactionResult } from '@/util/transaction-context/transaction-context';
+import { getTransferTotalsFromIxs, getTxSummary } from '@/util/transaction-query/transaction-query';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@/util/whirlpool/whirlpool';
 import { BN } from '@coral-xyz/anchor';
@@ -22,7 +22,7 @@ import { AddressUtil, Percentage, resolveOrCreateATAs, TransactionBuilder, type 
 import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { increaseLiquidityIx, IncreaseLiquidityParams, increaseLiquidityV2Ix } from '@orca-so/whirlpools-sdk/dist/instructions';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
-import { PublicKey, TransactionSignature } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
 import type { IncreaseLiquidityIxArgs, IncreaseLiquidityIxData } from './increase-liquidity.interfaces';
 
@@ -119,13 +119,13 @@ export async function increaseLiquidity(
       });
 
       // Send transaction
-      const { signature } = await transactionCtx
+      const sendResult = await transactionCtx
         .resetInstructionData(ixData)
         .send();
 
       // Get Liquidity tx summary and insert into DB
-      const txSummary = await genIncreaseLiquidityTxSummary(position, ixData, signature);
-      await LiquidityTxDAO.insert(txSummary, { catchErrors: true });
+      const txSummary = await genIncreaseLiquidityTxSummary(position, ixData, sendResult);
+      await OrcaLiquidityDAO.insert(txSummary, { catchErrors: true });
 
       return txSummary;
     }, {
@@ -437,34 +437,36 @@ async function _genQuoteViaInputToken(
  * Generates a {@link LiquidityTxSummary}.
  *
  * @param position The {@link Position} to get the {@link LiquidityTxSummary} for.
- * @param instructionData The {@link IncreaseLiquidityIxData} for the transaction that changed the liquidity.
- * @param signature The signature of the transaction that changed the liquidity.
+ * @param ixData The {@link IncreaseLiquidityIxData} for the transaction that changed the liquidity.
+ * @param sendResult The {@link SendTransactionResult} of the transaction that changed the liquidity.
  * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
  */
 export async function genIncreaseLiquidityTxSummary(
   position: Position,
-  instructionData: IncreaseLiquidityIxData,
-  signature: TransactionSignature,
+  ixData: IncreaseLiquidityIxData,
+  sendResult: SendTransactionResult,
 ): Promise<LiquidityTxSummary> {
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-
-  const txSummary = await getTransactionSummary(signature);
+  const txSummary = await getTxSummary(sendResult);
 
   const liquidityIx = txSummary.decodedIxs.find(
     (ix) => /increase\s*liquidity/i.test(ix.name)
   );
   if (!liquidityIx) throw new Error('No increase liquidity instruction found in transaction');
-  const { tokenTotals, usd } = await getTransactionTransferTotals([liquidityIx]);
+  const { tokenTotals, usd } = await getTransferTotalsFromIxs([liquidityIx]);
 
-  const liquidityUnit = instructionData.ixArgs.liquidityUnit ?? 'usd';
+  const liquidityUnit = ixData.ixArgs.liquidityUnit ?? 'usd';
   const liquidityDecimals = _getLiquidityDecimals(liquidityUnit, [tokenA, tokenB]);
-  const liquidity = toBN(instructionData.ixArgs.liquidity, liquidityDecimals);
+  const liquidity = toBN(ixData.ixArgs.liquidity, liquidityDecimals);
 
   const liquidityTxSummary: LiquidityTxSummary = {
     liquidity,
     liquidityUnit,
     position,
-    quote: instructionData.quote,
+    slippage: Percentage.fromFraction(
+      ixData.quote.tokenMaxA,
+      ixData.quote.tokenEstA
+    ).toDecimal().toNumber() - 1,
     tokenAmountA: tokenTotals.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
     tokenAmountB: tokenTotals.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
     ...txSummary,
@@ -474,12 +476,12 @@ export async function genIncreaseLiquidityTxSummary(
   info('Increase liquidity tx summary:', {
     whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
     position: liquidityTxSummary.position.getAddress().toBase58(),
-    signature: liquidityTxSummary.signature,
     liquidity: `${toStr(liquidityTxSummary.liquidity, liquidityDecimals)} ${liquidityUnit}`,
     [tokenA.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
     [tokenB.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
     usd: `$${liquidityTxSummary.usd}`,
     fee: toStr(liquidityTxSummary.fee),
+    signature: liquidityTxSummary.signature,
   });
 
   return liquidityTxSummary;

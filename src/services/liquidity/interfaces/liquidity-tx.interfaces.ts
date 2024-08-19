@@ -1,13 +1,12 @@
 import type { LiquidityUnit } from '@/interfaces/liquidity.interfaces';
-import type { Null } from '@/interfaces/nullable.interfaces';
-import type { TransactionSummary } from '@/util/transaction-query/transaction-query';
-import type { DecreaseLiquidityQuote, IncreaseLiquidityQuote, Position } from '@orca-so/whirlpools-sdk';
+import type { TxSummary } from '@/util/transaction-query/transaction-query';
+import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 
 /**
  * Summary of a liquidity transaction for a {@link Position}.
  */
-export interface LiquidityTxSummary extends TransactionSummary {
+export interface LiquidityTxSummary extends TxSummary {
 
   /**
    * The amount of liquidity that was increased or decreased in terms of {@link liquidityUnit}.
@@ -25,9 +24,9 @@ export interface LiquidityTxSummary extends TransactionSummary {
   position: Position;
 
   /**
-   * The quote for the liquidity change.
+   * The slippage decimal/percentage value of the transaction.
    */
-  quote: DecreaseLiquidityQuote | IncreaseLiquidityQuote | Null;
+  slippage: number;
 
   /**
    * The amount of token A that was increased or decreased.

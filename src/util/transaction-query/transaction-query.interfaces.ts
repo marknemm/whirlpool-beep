@@ -1,6 +1,31 @@
-import type { Instruction } from '@coral-xyz/anchor';
-import type { TransactionSignature } from '@solana/web3.js';
+import type { Null } from '@/interfaces/nullable.interfaces';
+import type { TokenTransfer } from '@/util/program/program';
+import type { ComputeBudget, SendTransactionResult } from '@/util/transaction-context/transaction-context';
+import type { Address, Instruction } from '@coral-xyz/anchor';
+import type { ConfirmedTransactionMeta, TransactionSignature, VersionedMessage } from '@solana/web3.js';
 import type BN from 'bn.js';
+
+/**
+ * Arguments for decoding a transaction.
+ */
+export interface DecodeTransactionArgs {
+
+  /**
+   * The read data of a {@link VersionedTransaction}.
+   */
+  transaction: { message: VersionedMessage, signatures: string[] };
+
+  /**
+   * The {@link ConfirmedTransactionMeta} of the transaction to decode.
+   */
+  meta?: ConfirmedTransactionMeta | Null;
+
+  /**
+   * The {@link TransactionSignature} of the transaction to decode.
+   */
+  signature: TransactionSignature;
+
+}
 
 /**
  * A fully decoded transaction instruction.
@@ -8,12 +33,17 @@ import type BN from 'bn.js';
 export interface DecodedTransactionIx extends Instruction {
 
   /**
-   * The inner instructions of the transaction.
+   * The inner {@link Instruction}s of the transaction.
    */
-  innerInstructions: Instruction[];
+  innerInstructions: Omit<DecodedTransactionIx, 'innerInstructions'>[];
 
   /**
-   * The name of the program that the instruction belongs to.
+   * The {@link Address} of the program that handles the instruction.
+   */
+  programId: Address;
+
+  /**
+   * The name of the program that handles the instruction.
    */
   programName: string;
 
@@ -22,17 +52,52 @@ export interface DecodedTransactionIx extends Instruction {
 /**
  * Summary of a generic transaction.
  */
-export interface TransactionSummary {
+export interface TxSummary {
 
   /**
-   * The total fee paid for the transaction in lamports.
+   * The time when the transaction was processed.
+   */
+  blockTime: Date;
+
+  /**
+   * The {@link ComputeBudget} for the transaction.
+   */
+  computeBudget: Partial<ComputeBudget>;
+
+  /**
+   * The number of compute units consumed by the transaction.
+   */
+  computeUnitsConsumed: number;
+
+  /**
+   * The {@link DecodedTransactionIx}s of the transaction.
+   */
+  decodedIxs: DecodedTransactionIx[];
+
+  /**
+   * The total fee paid for the transaction in SOL.
    */
   fee: number;
 
   /**
-   * The signature of the transaction in base-58 format.
+   * The total priority fee paid for the transaction in SOL.
+   */
+  priorityFee: number;
+
+  /**
+   * The {@link SendTransactionResult} for the transaction.
+   */
+  sendResult?: SendTransactionResult;
+
+  /**
+   * The {@link TransactionSignature} in base-58 format.
    */
   signature: TransactionSignature;
+
+  /**
+   * The size of the serialized transaction in bytes.
+   */
+  size: number;
 
   /**
    * The deltas for each token in the transaction.
@@ -40,9 +105,9 @@ export interface TransactionSummary {
   tokens: Map<string, BN>;
 
   /**
-   * The decoded instructions of the transaction.
+   * The {@link TokenTransfer}s of the transaction.
    */
-  decodedIxs: DecodedTransactionIx[];
+  transfers: TokenTransfer[];
 
   /**
    * The total delta of the transaction in USD.

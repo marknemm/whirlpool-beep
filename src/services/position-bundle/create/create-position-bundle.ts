@@ -1,6 +1,7 @@
 import { expBackoff } from '@/util/async/async';
 import { debug, info } from '@/util/log/log';
 import rpc from '@/util/rpc/rpc';
+import TransactionContext from '@/util/transaction-context/transaction-context';
 import wallet from '@/util/wallet/wallet';
 import whirlpoolClient from '@/util/whirlpool/whirlpool';
 import { TransactionBuilder } from '@orca-so/common-sdk';
@@ -8,7 +9,6 @@ import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type PositionBundleData, WhirlpoolI
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, type PublicKey } from '@solana/web3.js';
 import { CreatePositionBundleIxData } from './create-position-bundle.interfaces';
-import TransactionContext from '@/util/transaction-context/transaction-context';
 
 /**
  * Creates a position bundle.

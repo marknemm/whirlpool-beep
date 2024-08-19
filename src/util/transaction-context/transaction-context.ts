@@ -456,10 +456,11 @@ export default class TransactionContext {
           }
 
           return {
-            sendOpts,
-            signature,
             buildRecord,
             confirmed: sendRecord.confirmed,
+            sendOpts,
+            sendHistory: this.sendHistory,
+            signature,
           };
         },
         {

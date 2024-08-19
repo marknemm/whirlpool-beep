@@ -22,7 +22,7 @@
     "dev:env": "npm run dev:db && dotenv -e .env.development.local -e .env.development -e .env --",
     "dev:kysely": "npm run dev:env -- kysely",
     "dev:kysely:codegen": "npm run dev:env -- kysely-codegen --camel-case --dialect=postgres --out-file=src/util/db/db.interfaces.ts",
-    "dev:kysely:migrate": "npm run dev:kysely migrate:latest && npm run dev:kysely:codegen",
+    "dev:kysely:migrate": "npm run dev:kysely migrate:latest -- --debug && npm run dev:kysely:codegen",
     "dev:package": "serverless package --stage development",
     "dev:sls": "npm run dev:env -- serverless invoke local --stage development --function",
     "lint": "eslint .",

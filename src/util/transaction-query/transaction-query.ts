@@ -1,17 +1,18 @@
 import { expBackoff } from '@/util/async/async';
 import { debug, warn } from '@/util/log/log';
-import { toNum, toUSD } from '@/util/number-conversion/number-conversion';
-import { decodeIx } from '@/util/program/program';
-import type { SplTokenTransferIxData, TempTokenAccount } from '@/util/program/program.interfaces';
+import { toLamports, toNum, toUSD } from '@/util/number-conversion/number-conversion';
+import { decodeTransaction } from '@/util/program/program';
+import type { TokenTransfer } from '@/util/program/program.interfaces';
 import rpc from '@/util/rpc/rpc';
 import { getToken, getTokenPrice } from '@/util/token/token';
+import { ComputeBudget, type SendTransactionResult } from '@/util/transaction-context/transaction-context';
 import wallet from '@/util/wallet/wallet';
-import { type ParsedTransactionWithMeta, type TransactionSignature } from '@solana/web3.js';
+import { ComputeBudgetProgram, SetComputeUnitLimitParams, SetComputeUnitPriceParams, VersionedTransactionResponse, type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
-import type { DecodedTransactionIx, TransactionSummary, TransferTotals } from './transaction-query.interfaces';
+import type { DecodedTransactionIx, TransferTotals, TxSummary } from './transaction-query.interfaces';
 
-const _txCache = new Map<string, ParsedTransactionWithMeta>();
-const _txSummaryCache = new Map<string, TransactionSummary>();
+const _txCache = new Map<string, VersionedTransactionResponse>();
+const _txSummaryCache = new Map<string, TxSummary>();
 
 /**
  * Gets a transaction by its {@link signature}.
@@ -22,13 +23,13 @@ const _txSummaryCache = new Map<string, TransactionSummary>();
  */
 export async function getTransaction(
   signature: TransactionSignature,
-): Promise<ParsedTransactionWithMeta | undefined> {
+): Promise<VersionedTransactionResponse | undefined> {
   debug('Getting Tx:', signature);
 
   return expBackoff(
     async () => {
       if (!_txCache.has(signature)) {
-        const tx = await rpc().getParsedTransaction(signature, { maxSupportedTransactionVersion: 0 });
+        const tx = await rpc().getTransaction(signature, { maxSupportedTransactionVersion: 0 });
         if (tx) {
           _txCache.set(signature, tx);
         }
@@ -42,111 +43,223 @@ export async function getTransaction(
 /**
  * Gets the summary of a transaction.
  *
- * @param signature The signature of the transaction.
+ * @param sendResult The {@link SendTransactionResult} for the transaction.
  * @returns A {@link Promise} that resolves to the summary of the transaction.
  */
-export async function getTransactionSummary(
-  signature: TransactionSignature,
-): Promise<TransactionSummary> {
+export async function getTxSummary(sendResult: SendTransactionResult): Promise<TxSummary>;
+
+/**
+ * Gets the summary of a transaction.
+ *
+ * @param signature The {@link TransactionSignature} for the transaction.
+ * @returns A {@link Promise} that resolves to the summary of the transaction.
+ */
+export async function getTxSummary(signature: TransactionSignature): Promise<TxSummary>;
+
+/**
+ * Gets the summary of a transaction.
+ *
+ * @param sendResultOrSignature The {@link SendTransactionResult} or {@link TransactionSignature} for the transaction.
+ * @returns A {@link Promise} that resolves to the summary of the transaction.
+ */
+export async function getTxSummary(
+  sendResultOrSignature: TransactionSignature | SendTransactionResult,
+): Promise<TxSummary> {
+  // Extract individual arguments
+  const sendResult = (typeof sendResultOrSignature !== 'string')
+    ? sendResultOrSignature
+    : undefined;
+  const signature = sendResult?.signature ?? sendResultOrSignature as string;
+
   if (!_txSummaryCache.has(signature)) {
     debug('Generating Tx Summary...');
 
-    const txSummary: TransactionSummary = {
-      fee: 0,
-      signature,
-      tokens: new Map<string, BN>(),
+    const txSummary: TxSummary = {
+      blockTime: new Date(),
+      computeBudget: {},
+      computeUnitsConsumed: 0,
       decodedIxs: [],
+      fee: 0,
+      priorityFee: 0,
+      signature,
+      sendResult,
+      size: 0,
+      tokens: new Map<string, BN>(),
+      transfers: [],
       usd: 0,
     };
 
-    const transaction = await getTransaction(signature);
+    const txResponse = await getTransaction(signature);
 
-    if (transaction?.meta?.innerInstructions?.length) {
-      txSummary.fee = transaction.meta.fee;
-      txSummary.decodedIxs = await getDecodedTransactionIxs(transaction);
+    if (txResponse) {
+      // Assign transaction metadata
+      const { blockTime, meta, transaction } = txResponse;
 
-      const { tokenTotals, usd } = await getTransactionTransferTotals(txSummary.decodedIxs);
-      txSummary.tokens = tokenTotals;
-      txSummary.usd = usd;
+      // Assign transaction metadata
+      txSummary.blockTime = new Date((blockTime ?? 0) * 1000 || Date.now());
+      txSummary.computeUnitsConsumed = meta?.computeUnitsConsumed ?? 0;
+      txSummary.size = transaction.message.serialize().length;
+
+      // Assign transaction fee data
+      const baseFee = transaction.signatures.length * 5000;
+      txSummary.fee = meta?.fee ?? baseFee;
+      txSummary.priorityFee = txSummary.fee - baseFee;
+
+      // Decode instructions with best attempt - do not throw errors if decode fails
+      try {
+        // Assign decoded instructions
+        txSummary.decodedIxs = await decodeTransaction({ transaction, meta, signature });
+
+        // Assign transaction compute budget data
+        txSummary.computeBudget = sendResult?.buildRecord.computeBudget
+          ?? await getComputeBudget(signature);
+
+        // Assign token transfer data
+        txSummary.transfers = await getTransfers(signature);
+        const { tokenTotals, usd } = await getTransferTotals(signature);
+        txSummary.tokens = tokenTotals;
+        txSummary.usd = usd;
+      } catch (err) {
+        warn('Error decoding transaction instructions:', err);
+      }
     } else {
-      warn('Transaction inner instructions not found:', signature);
+      warn('Transaction not found:', signature);
     }
 
     _txSummaryCache.set(signature, txSummary);
   }
 
-  return _txSummaryCache.get(signature)!;
+  const txSummary = _txSummaryCache.get(signature)!;
+  txSummary.sendResult ??= sendResult;
+  return txSummary;
 }
 
 /**
- * Gets the decoded instructions of a transaction.
+ * Gets the compute budget of a transaction.
  *
- * @param tx The transaction to get the decoded instructions of.
- * @returns A {@link Promise} that resolves to the decoded instructions of the transaction.
+ * @param signature The {@link TransactionSignature}.
+ * @returns A {@link Promise} that resolves to the partial {@link ComputeBudget} of the transaction.
+ * If the transaction cannot be retrieved, returns `{}`.
  */
-export async function getDecodedTransactionIxs(tx: ParsedTransactionWithMeta): Promise<DecodedTransactionIx[]> {
-  const innerIxs = tx?.meta?.innerInstructions ?? [];
-  const rawIxs = tx?.transaction.message.instructions ?? [];
-  const ixs: DecodedTransactionIx[] = [];
-  const tempTokenAccounts = new Map<string, TempTokenAccount>();
+export async function getComputeBudget(
+  signature: TransactionSignature
+): Promise<Partial<ComputeBudget>> {
+  const txResponse = await getTransaction(signature);
+  if (!txResponse) return {};
+  const decodedIxs = await decodeTransaction({ ...txResponse, signature });
 
-  for (let i = 0; i < rawIxs.length; i++) {
-    const rawIx = rawIxs[i];
-    const decodedIx = await decodeIx(rawIx, tempTokenAccounts);
-    if (decodedIx) {
-      // Record any potential temp token accounts created during the transaction
-      if (decodedIx.programName === 'spl-token' && decodedIx.name === 'initializeAccount') {
-        const initAccountData = decodedIx.data as TempTokenAccount;
-        tempTokenAccounts.set(initAccountData.account, initAccountData);
-      }
+  const computeUnitLimitParams = decodedIxs.find((ix) =>
+       ix.programId === ComputeBudgetProgram.programId
+    && ix.name === 'SetComputeUnitLimit'
+  )?.data as SetComputeUnitLimitParams;
 
-      const rawInnerIxs = innerIxs.find((innerIx) => innerIx.index === i)?.instructions ?? [];
-      decodedIx.innerInstructions ??= [];
+  const computeUnitPriceParams = decodedIxs.find((ix) =>
+       ix.programId === ComputeBudgetProgram.programId
+    && ix.name === 'SetComputeUnitPrice'
+  )?.data as SetComputeUnitPriceParams;
 
-      for (const rawInnerIx of rawInnerIxs) {
-        const decodedInnerIx = await decodeIx(rawInnerIx, tempTokenAccounts);
-        if (decodedInnerIx) {
-          decodedIx.innerInstructions.push(decodedInnerIx);
-        }
-      }
+  const computeBudget: Partial<ComputeBudget> = {};
+  const computeUnitLimit = computeUnitLimitParams?.units;
+
+  if (computeUnitLimit) {
+    computeBudget.computeUnitLimit = computeUnitLimit;
+
+    const computeUnitPriceMicroLamports = computeUnitPriceParams?.microLamports;
+    if (computeUnitPriceMicroLamports) {
+      computeBudget.priorityFeeLamports = Math.round(
+        toLamports(
+          toNum(computeUnitPriceMicroLamports) * computeUnitLimit,
+          'Micro Lamports'
+        )
+      );
     }
-    ixs.push(decodedIx);
   }
 
-  return ixs;
+  return computeBudget;
+}
+
+/**
+ * Gets the token transfers of a transaction.
+ *
+ * @param signature The {@link TransactionSignature} for the transaction.
+ * @returns A {@link Promise} that resolves to the token transfers of the transaction.
+ */
+export async function getTransfers(
+  signature: TransactionSignature,
+): Promise<TokenTransfer[]> {
+  // Get transaction (with cache)
+  const txResponse = await getTransaction(signature);
+  if (!txResponse) return [];
+
+  // Decode instructions (with cache)
+  const decodedIxs = await decodeTransaction({ ...txResponse, signature });
+
+  // Extract transfer data
+  return getTransfersFromIxs(decodedIxs);
+}
+
+/**
+ * Gets the token transfers from decoded instructions.
+ *
+ * @param decodedIxs The {@link DecodedTransactionIx} to get transfers from.
+ * @returns The {@link TokenTransfer}s from the decoded instructions.
+ */
+export function getTransfersFromIxs(decodedIxs: DecodedTransactionIx[]): TokenTransfer[] {
+  return decodedIxs
+    .flatMap((ix) => [ix, ...ix.innerInstructions]) // Flatten ixs and inner ixs
+    .filter((ix) => ix.name === 'Transfer')         // Filter for transfer instructions
+    .map((ix) => ix.data as TokenTransfer);         // Map to transfer data
 }
 
 /**
  * Gets the total token transfer amounts and USD delta of a transaction.
  *
- * @param decodedIxs The {@link DecodedTransactionIx Decoded Instructions} of the transaction.
+ * @param signature The {@link TransactionSignature} for the transaction.
  * @returns A {@link Promise} that resolves to the {@link TransferTotals} of the transaction.
  */
-export async function getTransactionTransferTotals(
-  decodedIxs: DecodedTransactionIx[],
+export async function getTransferTotals(
+  signature: TransactionSignature,
 ): Promise<TransferTotals> {
+  const txTransfers = await getTransfers(signature);
+  return calcTransferTotals(txTransfers);
+}
+
+/**
+ * Gets the total token transfer amounts and USD delta from decoded instructions.
+ *
+ * @param decodedIxs The {@link DecodedTransactionIx} to get transfer totals from.
+ * @returns A {@link Promise} that resolves to the {@link TransferTotals}.
+ */
+export async function getTransferTotalsFromIxs(
+  decodedIxs: DecodedTransactionIx[]
+): Promise<TransferTotals> {
+  const txTransfers = getTransfersFromIxs(decodedIxs);
+  return calcTransferTotals(txTransfers);
+}
+
+/**
+ * Calculates the total token transfer amounts and USD delta.
+ *
+ * @param transfers The {@link TokenTransfer}s to calculate totals for.
+ * @returns A {@link Promise} that resolves to the {@link TransferTotals}.
+ */
+export async function calcTransferTotals(transfers: TokenTransfer[]): Promise<TransferTotals> {
   const tokenTotals = new Map<string, BN>();
   let usd = 0;
 
   // Calculate total token transfer amount deltas and USD delta
-  for (const ix of decodedIxs) {
-    for (const innerIx of ix.innerInstructions) {
-      if (innerIx.name === 'transfer') {
-        const transferData = innerIx.data as SplTokenTransferIxData;
+  for (const transfer of transfers) {
+    // Add token delta to total token delta
+    const baseAmount = tokenTotals.get(transfer.keys.mint) ?? new BN(0);
+    const deltaAmount = (transfer.keys.destinationOwner === wallet().publicKey.toBase58())
+      ? transfer.amount
+      : transfer.amount.neg();
+    tokenTotals.set(transfer.keys.mint, baseAmount.add(deltaAmount));
 
-        // Add token delta to total token delta
-        const baseAmount = tokenTotals.get(transferData.mint) ?? new BN(0);
-        const deltaAmount = (transferData.destinationOwner === wallet().publicKey.toBase58())
-          ? transferData.amount
-          : transferData.amount.neg();
-        tokenTotals.set(transferData.mint, baseAmount.add(deltaAmount));
-
-        // Add token delta to total USD delta
-        const token = await getToken(transferData.mint);
-        const tokenPrice = await getTokenPrice(token);
-        usd += toNum(toUSD(deltaAmount, tokenPrice, token?.mint.decimals));
-      }
-    }
+    // Add token delta to total USD delta
+    const token = await getToken(transfer.keys.mint);
+    const tokenPrice = await getTokenPrice(token);
+    usd += toNum(toUSD(deltaAmount, tokenPrice, token?.mint.decimals));
   }
 
   return { tokenTotals, usd };

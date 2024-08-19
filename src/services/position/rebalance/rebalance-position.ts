@@ -1,5 +1,5 @@
-import PositionDAO from '@/data/position/position.dao';
-import RebalanceTxDAO from '@/data/rebalance-tx/rebalance-tx.dao';
+import OrcaPositionDAO from '@/data/orca-position/orca-position.dao';
+import OrcaRebalanceDAO from '@/data/orca-rebalance/orca-rebalance.dao';
 import type { BundledPosition } from '@/interfaces/position.interfaces';
 import { closePosition } from '@/services/position/close/close-position';
 import { openPosition } from '@/services/position/open/open-position';
@@ -107,7 +107,7 @@ export async function rebalancePosition(
       // Derive necessary data for opening new position
       const whirlpool = await whirlpoolClient().getPool(positionOld.getData().whirlpool);
       const priceMargin = options.priceMargin
-        ?? await PositionDAO.getPriceMargin(positionOld.getAddress(), { catchErrors: true })
+        ?? await OrcaPositionDAO.getPriceMargin(positionOld.getAddress(), { catchErrors: true })
         ?? await calcPriceMargin(positionOld);
       const liquidity = options.liquidity
         ?? env.INCREASE_LIQUIDITY;
@@ -125,7 +125,7 @@ export async function rebalancePosition(
 
       // Record rebalance transaction summary
       const txSummary: RebalanceTxSummary = { bundledPositionOld, bundledPositionNew };
-      await RebalanceTxDAO.insert(txSummary, { catchErrors: true });
+      await OrcaRebalanceDAO.insert(txSummary, { catchErrors: true });
 
       info('Rebalance Position Succeeded:', {
         ...opMetadata,

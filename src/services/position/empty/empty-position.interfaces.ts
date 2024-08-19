@@ -1,8 +1,8 @@
 import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@/services/fees-rewards/collect/collect-fees-rewards';
 import type { DecreaseLiquidityIxData } from '@/services/liquidity/decrease/decrease-liquidity';
 import type { LiquidityTxSummary } from '@/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { InstructionData } from '@/util/transaction-context/transaction-context';
-import type { TransactionSummary } from '@/util/transaction-query/transaction-query.interfaces';
+import type { InstructionData, SendTransactionResult } from '@/util/transaction-context/transaction-context';
+import type { TxSummary } from '@/util/transaction-query/transaction-query.interfaces';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type { TransactionSignature } from '@solana/web3.js';
 
@@ -48,7 +48,7 @@ export interface EmptyPositionIxData extends InstructionData {
 /**
  * Summary of an empty {@link Position} transaction.
  */
-export interface EmptyPositionTxSummary extends TransactionSummary {
+export interface EmptyPositionTxSummary extends TxSummary {
 
   /**
    * The {@link BundledPosition} that was emptied.
@@ -87,8 +87,8 @@ export interface EmptyPositionTxSummaryArgs {
   position: Position;
 
   /**
-   * The signature of the empty {@link Position} transaction.
+   * The {@link SendTransactionResult} of the empty {@link Position} transaction.
    */
-  signature: TransactionSignature;
+  sendResult: SendTransactionResult;
 
 }

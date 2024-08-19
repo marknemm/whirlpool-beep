@@ -5,12 +5,12 @@ import db, { handleInsertError, handleSelectError } from '@/util/db/db';
 import { debug } from '@/util/log/log';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';
-import type { TokenRow } from './token.doa.interfaces';
+import type { SolanaTokenRow } from './solana-token.doa.interfaces';
 
 /**
- * Pure static data access object for token DB operations.
+ * Pure static data access object for Solana Token DB operations.
  */
-export default class TokenDAO {
+export default class SolanaTokenDAO {
 
   /**
    * Private constructor for pure static class.
@@ -18,65 +18,65 @@ export default class TokenDAO {
   private constructor() {}
 
   /**
-   * Gets a {@link TokenRow} from the database.
+   * Gets a {@link SolanaTokenRow} from the database.
    *
    * @param id The DB `id` of the token to get.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves to the {@link TokenRow} when the operation is complete.
+   * @returns A {@link Promise} that resolves to the {@link SolanaTokenRow} when the operation is complete.
    * If the select fails or the row does not exist, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the select fails with an error
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async get(id: number | Null, opts?: DAOOptions): Promise<TokenRow | undefined>;
+  static async get(id: number | Null, opts?: DAOOptions): Promise<SolanaTokenRow | undefined>;
 
   /**
-   * Gets a {@link TokenRow} from the database.
+   * Gets a {@link SolanaTokenRow} from the database.
    *
    * @param address The {@link Address} of the token to get.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves to the {@link TokenRow} when the operation is complete.
+   * @returns A {@link Promise} that resolves to the {@link SolanaTokenRow} when the operation is complete.
    * If the select fails or the row does not exist, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the select fails with an error
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async get(address: Address | Null, opts?: DAOOptions): Promise<TokenRow | undefined>;
+  static async get(address: Address | Null, opts?: DAOOptions): Promise<SolanaTokenRow | undefined>;
 
   /**
-   * Gets a {@link TokenRow} from the database.
+   * Gets a {@link SolanaTokenRow} from the database.
    *
    * @param idAddress The DB `id` or {@link Address} of the token to get.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves to the {@link TokenRow} when the operation is complete.
+   * @returns A {@link Promise} that resolves to the {@link SolanaTokenRow} when the operation is complete.
    * If the select fails or the row does not exist, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the select fails with an error and
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async get(idAddress: number | Address | Null, opts?: DAOOptions): Promise<TokenRow | undefined> {
+  static async get(idAddress: number | Address | Null, opts?: DAOOptions): Promise<SolanaTokenRow | undefined> {
     if (idAddress == null) return;
 
-    debug('Getting Token from database:', idAddress);
+    debug('Getting Solana Token from database:', idAddress);
 
     try {
-      const query = db().selectFrom('token')
+      const query = db().selectFrom('solanaToken')
         .selectAll();
 
       (typeof idAddress === 'number')
         ? query.where('id', '=', idAddress)
         : query.where('address', '=', AddressUtil.toString(idAddress));
 
-      debug('Got Token from database:', idAddress);
-      return query.executeTakeFirst() as Promise<TokenRow>;
+      debug('Got Solana Token from database:', idAddress);
+      return query.executeTakeFirst() as Promise<SolanaTokenRow>;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'Token', opts);
+      handleSelectError(err as ErrorWithCode, 'solanaToken', opts);
     }
   }
 
   /**
-   * Gets the DB `id` of a {@link TokenRow} from the database.
+   * Gets the DB `id` of a {@link SolanaTokenRow} from the database.
    *
    * @param address The {@link Address} of the token to get.
    * @param opts The {@link DAOOptions} to use for the operation.
-   * @returns A {@link Promise} that resolves to the DB `id` of the {@link TokenRow} when the operation is complete.
+   * @returns A {@link Promise} that resolves to the DB `id` of the {@link SolanaTokenRow} when the operation is complete.
    * If the select fails or the row does not exist, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the select fails with an error and
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
@@ -85,18 +85,18 @@ export default class TokenDAO {
     if (!address) return;
     address = AddressUtil.toString(address);
 
-    debug('Getting Token ID from database:', address);
+    debug('Getting Solana Token ID from database:', address);
 
     try {
-      const result = await db().selectFrom('token')
+      const result = await db().selectFrom('solanaToken')
         .select('id')
         .where('address', '=', address)
         .executeTakeFirst();
 
-      debug(`Got Token ID from database ( ID: ${result?.id} ):`, address);
+      debug(`Got Solana Token ID from database ( ID: ${result?.id} ):`, address);
       return result?.id;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'Token', opts);
+      handleSelectError(err as ErrorWithCode, 'solanaToken', opts);
     }
   }
 
@@ -117,10 +117,10 @@ export default class TokenDAO {
     opts ??= {};
     opts.ignoreDuplicates ??= true;
 
-    debug('Inserting Token into database:', token.mint.publicKey);
+    debug('Inserting Solana Token into database:', token.mint.publicKey);
 
     try {
-      const result = await db().insertInto('token')
+      const result = await db().insertInto('solanaToken')
         .values({
           address: token.mint.publicKey,
           decimals: token.mint.decimals,
@@ -130,13 +130,13 @@ export default class TokenDAO {
         .returning('id')
         .executeTakeFirst();
 
-      debug(`Inserted Token into database ( ID: ${result?.id} ):`, token.mint.publicKey);
+      debug(`Inserted Solana Token into database ( ID: ${result?.id} ):`, token.mint.publicKey);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Token', token.mint.publicKey, opts);
+      handleInsertError(err as ErrorWithCode, 'Solana Token', token.mint.publicKey, opts);
     }
   }
 
 }
 
-export type * from './token.doa.interfaces';
+export type * from './solana-token.doa.interfaces';

@@ -16,6 +16,11 @@ export interface ComputeBudget {
   instructions: TransactionInstruction[];
 
   /**
+   * The {@link TransactionPriority} used to generate the priority fee.
+   */
+  priority: TransactionPriority;
+
+  /**
    * The total priority fee to pay for the transaction in lamports.
    */
   priorityFeeLamports: number;

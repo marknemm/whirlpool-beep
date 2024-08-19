@@ -1,4 +1,5 @@
-import PositionDAO from '@/data/position/position.dao';
+import OrcaPositionDAO from '@/data/orca-position/orca-position.dao';
+import SolanaTxDAO from '@/data/solana-tx.dao.ts/solana-tx.dao';
 import type { DAOInsertOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
@@ -9,9 +10,9 @@ import { toBigInt } from '@/util/number-conversion/number-conversion';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**
- * Pure static data access object for {@link CollectFeesRewardsTxSummary} DB operations.
+ * Pure static data access object for Orca Fee DB operations.
  */
-export default class FeeRewardTxDAO {
+export default class OrcaFeeDAO {
 
   /**
    * Private constructor for pure static class.
@@ -31,32 +32,34 @@ export default class FeeRewardTxDAO {
     opts?: DAOInsertOptions
   ): Promise<number | undefined> {
     if (!txSummary) return;
-    const positionAddress = txSummary.position.getAddress().toBase58();
 
-    debug('Inserting Fees / Rewards Tx Summary into database:', txSummary.signature);
+    const solanaTxId = await SolanaTxDAO.insert(txSummary, { ...opts, ignoreDuplicates: true });
+    if (solanaTxId == null) return; // No throw error - SolanaTxDAO handles errors
+
+    const positionAddress = txSummary.position.getAddress().toBase58();
+    debug('Inserting Orca Fee into database for Orca Position:', positionAddress);
 
     try {
-      const positionId = await PositionDAO.getId(txSummary.position.getAddress());
+      const positionId = await OrcaPositionDAO.getId(txSummary.position.getAddress());
       if (positionId == null) {
         throw new Error(`Position does not exist in database: ${positionAddress}`);
       }
 
-      const result = await db().insertInto('feeRewardTx')
+      const result = await db().insertInto('orcaFee')
         .values({
-          fee: toBigInt(txSummary.fee),
           position: positionId,
-          signature: txSummary.signature,
           tokenAmountA: toBigInt(txSummary.tokenAmountA),
           tokenAmountB: toBigInt(txSummary.tokenAmountB),
+          solanaTx: solanaTxId,
           usd: txSummary.usd,
         })
         .returning('id')
         .executeTakeFirst();
 
-      debug(`Inserted Fees / Rewards Tx Summary into database ( ID: ${result?.id} ):`, txSummary.signature);
+      debug(`Inserted Orca Fee into database ( ID: ${result?.id} ):`, txSummary.signature);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'FeeRewardTx', positionAddress, opts);
+      handleInsertError(err as ErrorWithCode, 'Orca Fee', positionAddress, opts);
     }
   }
 

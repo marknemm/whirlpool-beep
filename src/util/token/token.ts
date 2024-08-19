@@ -1,6 +1,6 @@
 import { STABLECOIN_SYMBOL_REGEX } from '@/constants/regex';
 import { DEV_SAMO_USDC_ADDRESS, DEV_SOL_USDC_ADDRESS, DEV_TMAC_USDC_ADDRESS } from '@/constants/whirlpool';
-import TokenDAO from '@/data/token/token.dao';
+import SolanaTokenDAO from '@/data/solana-token/solana-token.dao';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import { expBackoff } from '@/util/async/async';
 import env from '@/util/env/env';
@@ -126,7 +126,7 @@ export async function getToken(
     _tokenCache.set(tokenAsset.publicKey, tokenAsset);
 
     info('Fetched token:', formatToken(tokenAsset));
-    await TokenDAO.insert(tokenAsset, { catchErrors: true });
+    await SolanaTokenDAO.insert(tokenAsset, { catchErrors: true });
   } else {
     warn('Failed to fetch token using query:', query);
   }
