@@ -1,10 +1,10 @@
 import { type Wallet } from '@coral-xyz/anchor';
 import type { Null } from '@npc/core';
 import { env, info, timeout } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import wallet from '@npc/solana/util/wallet/wallet';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 import { TransactionMessage, VersionedTransaction, type BlockhashWithExpiryBlockHeight, type Commitment, type SendOptions, type Signer, type SimulatedTransactionResponse, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature } from '@solana/web3.js';
-import type { TransactionAction, TransactionError } from './transaction.interfaces';
+import type { TransactionAction, TransactionError } from './transaction.interfaces.js';
 
 /**
  * Confirms a transaction.
@@ -186,4 +186,4 @@ export function toVersionedTx(tx: Transaction | VersionedTransaction | string): 
   );
 }
 
-export type * from './transaction.interfaces';
+export type * from './transaction.interfaces.js';

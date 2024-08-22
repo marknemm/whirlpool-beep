@@ -1,4 +1,12 @@
-import type { Arguments, Argv, CamelCaseKey, InferredOptionTypes, Options } from 'yargs';
+import type { Arguments, Argv, InferredOptionTypes, Options } from 'yargs';
+
+type CamelCaseKey<K extends PropertyKey> = K extends string ? Exclude<CamelCase<K>, ""> : K;
+type CamelCase<S extends string> = string extends S ? string
+  : S extends `${infer T}-${infer U}` ? `${T}${PascalCase<U>}`
+  : S;
+type PascalCase<S extends string> = string extends S ? string
+  : S extends `${infer T}-${infer U}` ? `${Capitalize<T>}${PascalCase<U>}`
+  : Capitalize<S>;
 
 /**
  * Command line interface (CLI) type.

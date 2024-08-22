@@ -2,13 +2,13 @@ import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-t
 import { publicKey } from '@metaplex-foundation/umi';
 import type { Null } from '@npc/core';
 import { env, expBackoff, info, warn } from '@npc/core';
-import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
-import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
-import umi from '@npc/solana/util/umi/umi';
+import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex.js';
+import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao.js';
+import umi from '@npc/solana/util/umi/umi.js';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
 import { PublicKey } from '@solana/web3.js';
 import axios, { AxiosError } from 'axios';
-import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token.interfaces';
+import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token.interfaces.js';
 
 /**
  * Cache for previously queried token {@link DigitalAsset}s.
@@ -233,4 +233,4 @@ function _queryToString(query: DigitalAsset | TokenQuery | Null): string {
     : AddressUtil.toString(query as TokenQuery);
 }
 
-export type * from './token.interfaces';
+export type * from './token.interfaces.js';

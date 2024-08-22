@@ -1,8 +1,8 @@
-import { DECIMAL_REGEX, SECRETS_REGEX } from '@npc/core/constants/regex';
-import env from '@npc/core/util/env/env';
+import { DECIMAL_REGEX, SECRETS_REGEX } from '@npc/core/constants/regex.js';
+import env from '@npc/core/util/env/env.js';
 import { PublicKey } from '@solana/web3.js';
-import { path as appRootPath } from 'app-root-path';
-import { red, yellow } from 'colors';
+import appRootPath from 'app-root-path';
+import colors from 'colors';
 import { join } from 'node:path';
 import { inspect, type InspectOptions } from 'node:util';
 import { createLogger, format, transports, type Logger, type transport } from 'winston'; // eslint-disable-line no-restricted-imports
@@ -47,8 +47,8 @@ const logger = createLogger({
       stack = stack?.replace(/^Error: /, '');
       if (stack && env.LOG_COLOR) {
         stack = /warn/.test(level)
-          ? yellow(stack)
-          : red(stack);
+          ? colors.yellow(stack)
+          : colors.red(stack);
       }
 
       // Append parts of log message to output.
@@ -65,7 +65,7 @@ const logger = createLogger({
       ? [
         new transports.File({
           dirname: env.LOG_FILE_OUT.charAt(0) !== '/'
-            ? join(appRootPath, env.LOG_FILE_OUT)
+            ? join(appRootPath.path, env.LOG_FILE_OUT)
             : env.LOG_FILE_OUT,
           filename: `${new Date().toISOString()}.log.ansi`,
         })
@@ -85,7 +85,7 @@ function _formatMessage(message: object | string): string {
 
   return (typeof message === 'string')
     ? env.LOG_COLOR
-      ? message.replaceAll(DECIMAL_REGEX, `${yellow('$1')}`)
+      ? message.replaceAll(DECIMAL_REGEX, `${colors.yellow('$1')}`)
       : message
     : inspect(message, _inspectOpts);
 }
@@ -150,6 +150,6 @@ function _getLeadingNewlines(message: string): string {
 export const { debug, error, info, warn } = logger;
 
 export type { LeveledLogMethod, LogCallback, Logger } from 'winston'; // eslint-disable-line no-restricted-imports
-export type * from './log.interfaces';
+export type * from './log.interfaces.js';
 
 export default logger;

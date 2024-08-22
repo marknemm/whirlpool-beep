@@ -1,6 +1,6 @@
-import { WHIRLPOOL_POSITION_BUNDLE_SYMBOL } from '@npc/orca/constants/whirlpool';
-import { createPositionBundle } from '@npc/orca/services/position-bundle/create/create-position-bundle';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import { WHIRLPOOL_POSITION_BUNDLE_SYMBOL } from '@npc/orca/constants/whirlpool.js';
+import { createPositionBundle } from '@npc/orca/services/position-bundle/create/create-position-bundle.js';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { wallet } from '@npc/solana';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type PositionBundleData, type WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';

@@ -1,7 +1,7 @@
 import type { Address, Instruction } from '@coral-xyz/anchor';
 import type { Null } from '@npc/core';
-import type { TokenTransfer } from '@npc/solana/util/program/program';
-import type { ComputeBudget, SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
+import type { TokenTransfer } from '@npc/solana/util/program/program.js';
+import type { ComputeBudget, SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context.js';
 import type { ConfirmedTransactionMeta, TransactionSignature, VersionedMessage } from '@solana/web3.js';
 import type BN from 'bn.js';
 

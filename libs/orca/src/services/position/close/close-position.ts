@@ -1,15 +1,15 @@
 import { debug, error, expBackoff, info, timeout } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { genCollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards';
-import { genDecreaseLiquidityTxSummary } from '@npc/orca/services/liquidity/decrease/decrease-liquidity';
-import { genEmptyFeesRewardsIxData, genEmptyLiquidityIxData } from '@npc/orca/services/position/empty/empty-position';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import whirlpoolClient, { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
+import { genCollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.js';
+import { genDecreaseLiquidityTxSummary } from '@npc/orca/services/liquidity/decrease/decrease-liquidity.js';
+import { genEmptyFeesRewardsIxData, genEmptyLiquidityIxData } from '@npc/orca/services/position/empty/empty-position.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import whirlpoolClient, { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getTxSummary, TransactionContext, wallet } from '@npc/solana';
 import { type Address, type Instruction } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { CloseAllPositionsSummary, ClosePositionIxData, ClosePositionOptions, ClosePositionTxSummary, ClosePositionTxSummaryArgs } from './close-position.interfaces';
+import type { CloseAllPositionsSummary, ClosePositionIxData, ClosePositionOptions, ClosePositionTxSummary, ClosePositionTxSummaryArgs } from './close-position.interfaces.js';
 
 /**
  * Closes all {@link Position}s in a {@link Whirlpool}.
@@ -240,4 +240,4 @@ export async function genClosePositionTxSummary({
   return closePositionTxSummary;
 }
 
-export type * from './close-position.interfaces';
+export type * from './close-position.interfaces.js';

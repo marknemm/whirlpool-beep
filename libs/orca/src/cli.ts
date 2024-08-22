@@ -1,4 +1,4 @@
-import { debug, env, error, execCli, migrateDb } from '@npc/core';
+import { debug, env, error, execCli } from '@npc/core';
 import { join } from 'node:path';
 import yargs from 'yargs';
 
@@ -8,10 +8,10 @@ import yargs from 'yargs';
 async function main() {
   debug('Environment variables loaded and validated:', { ...env }, '\n');
 
-  // Migrate the database
-  if (env.DB_MIGRATE) {
-    await migrateDb();
-  }
+  // // Migrate the database
+  // if (env.DB_MIGRATE) {
+  //   await migrateDb();
+  // }
 
   // Execute the CLI
   await execCli({

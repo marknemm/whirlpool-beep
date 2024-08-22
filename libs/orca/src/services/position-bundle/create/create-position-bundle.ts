@@ -1,11 +1,11 @@
 import { debug, expBackoff, info } from '@npc/core';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { rpc, TransactionContext, wallet } from '@npc/solana';
 import { TransactionBuilder } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type PositionBundleData, WhirlpoolIx } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { Keypair, type PublicKey } from '@solana/web3.js';
-import { CreatePositionBundleIxData } from './create-position-bundle.interfaces';
+import { CreatePositionBundleIxData } from './create-position-bundle.interfaces.js';
 
 /**
  * Creates a position bundle.
@@ -106,4 +106,4 @@ export async function genCreatePositionBundleIxData(): Promise<CreatePositionBun
   };
 }
 
-export type * from './create-position-bundle.interfaces';
+export type * from './create-position-bundle.interfaces.js';

@@ -1,12 +1,12 @@
 import { type Wallet } from '@coral-xyz/anchor';
 import { info } from '@npc/core';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
+import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle.js';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { type Address } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolAccountFetchOptions, type Position } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type { GetPositionsOptions } from './query-position.interfaces';
+import type { GetPositionsOptions } from './query-position.interfaces.js';
 
 /**
  * Gets a {@link BundledPosition}.
@@ -119,4 +119,4 @@ export async function getPositions({
   return positions;
 }
 
-export type * from './query-position.interfaces';
+export type * from './query-position.interfaces.js';

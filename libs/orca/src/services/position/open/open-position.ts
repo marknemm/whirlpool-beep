@@ -1,18 +1,18 @@
 import { debug, error, expBackoff, info, toNum } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle';
-import { toPriceRange, toTickRange } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces.js';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
+import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity.js';
+import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle.js';
+import { toPriceRange, toTickRange } from '@npc/orca/util/tick-range/tick-range.js';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getTxSummary, TransactionContext, wallet } from '@npc/solana';
 import { Percentage, TransactionBuilder, type Instruction } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
-import type Decimal from 'decimal.js';
-import type { OpenPositionIxData, OpenPositionOptions, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces';
+import type { Decimal } from 'decimal.js';
+import type { OpenPositionIxData, OpenPositionOptions, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces.js';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
@@ -317,4 +317,4 @@ export async function genOpenPositionTxSummary({
   return openPositionTxSummary;
 }
 
-export type * from './open-position.interfaces';
+export type * from './open-position.interfaces.js';

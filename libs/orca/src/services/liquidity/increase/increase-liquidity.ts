@@ -1,21 +1,21 @@
 import { BN } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { debug, env, error, expBackoff, info, toBN, toDecimal, toStr, toTokenAmount } from '@npc/core';
-import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import { getWhirlpool } from '@npc/orca/services/whirlpool/query/query-whirlpool';
-import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao.js';
+import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces.js';
+import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import { getWhirlpool } from '@npc/orca/services/whirlpool/query/query-whirlpool.js';
+import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range.js';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getTokenPrice, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, STABLECOIN_SYMBOL_REGEX, TransactionContext, wallet } from '@npc/solana';
 import { AddressUtil, Percentage, resolveOrCreateATAs, TransactionBuilder, type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { increaseLiquidityIx, IncreaseLiquidityParams, increaseLiquidityV2Ix } from '@orca-so/whirlpools-sdk/dist/instructions';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
-import type Decimal from 'decimal.js';
-import type { IncreaseLiquidityIxArgs, IncreaseLiquidityIxData } from './increase-liquidity.interfaces';
+import type { Decimal } from 'decimal.js';
+import type { IncreaseLiquidityIxArgs, IncreaseLiquidityIxData } from './increase-liquidity.interfaces.js';
 
 /**
  * Increases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -489,4 +489,4 @@ function _getLiquidityDecimals(
       : undefined;
 }
 
-export type * from './increase-liquidity.interfaces';
+export type * from './increase-liquidity.interfaces.js';

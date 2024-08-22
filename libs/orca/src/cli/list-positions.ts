@@ -1,7 +1,7 @@
 import type { CliArgs } from '@npc/core';
 import { error, info } from '@npc/core';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
 import { type Argv } from 'yargs';
 
 const cli = {

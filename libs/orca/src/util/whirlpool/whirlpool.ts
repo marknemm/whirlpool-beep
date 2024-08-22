@@ -3,7 +3,7 @@ import type { Null } from '@npc/core';
 import { info } from '@npc/core';
 import { anchor, getTokenPair } from '@npc/solana';
 import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PriceMath, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 let _whirlpoolClient: WhirlpoolClient;
 

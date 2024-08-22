@@ -1,13 +1,13 @@
 import { BN, type Address } from '@coral-xyz/anchor';
 import { env, error, expBackoff, info, toBN, toStr } from '@npc/core';
-import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao.js';
+import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getTransferTotalsFromIxs, getTxSummary, SendTransactionResult, TransactionContext } from '@npc/solana';
 import { Percentage } from '@orca-so/common-sdk';
 import { decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, TokenExtensionUtil, type Position } from '@orca-so/whirlpools-sdk';
-import { DecreaseLiquidityIxArgs, DecreaseLiquidityIxData } from './decrease-liquidity.interfaces';
+import { DecreaseLiquidityIxArgs, DecreaseLiquidityIxData } from './decrease-liquidity.interfaces.js';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -217,4 +217,4 @@ export async function genDecreaseLiquidityTxSummary(
   return liquidityTxSummary;
 }
 
-export type * from './decrease-liquidity.interfaces';
+export type * from './decrease-liquidity.interfaces.js';

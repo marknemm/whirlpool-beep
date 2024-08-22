@@ -1,11 +1,11 @@
 import { expBackoff, info } from '@npc/core';
-import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@npc/orca/constants/whirlpool';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@npc/orca/constants/whirlpool.js';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { TransactionContext, getTokenPair } from '@npc/solana';
 import { AddressUtil, type Address } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
-import type Decimal from 'decimal.js';
-import type { CreateWhirlpoolIxData } from './create-whirlpool.interfaces';
+import type { Decimal } from 'decimal.js';
+import type { CreateWhirlpoolIxData } from './create-whirlpool.interfaces.js';
 
 /**
  * Creates a {@link Whirlpool}.
@@ -93,4 +93,4 @@ export async function genCreateWhirlpoolIxData(
   };
 }
 
-export type * from './create-whirlpool.interfaces';
+export type * from './create-whirlpool.interfaces.js';

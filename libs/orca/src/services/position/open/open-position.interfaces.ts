@@ -1,13 +1,13 @@
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import type { IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
+import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces.js';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
+import type { IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity.js';
+import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces.js';
 import type { InstructionData, SendTransactionResult, TxSummary } from '@npc/solana';
 import type { PDA, Percentage } from '@orca-so/common-sdk';
 import type { Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 /**
  * Instruction data and associate metadata for opening a {@link Position}.

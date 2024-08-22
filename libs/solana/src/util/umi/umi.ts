@@ -2,7 +2,7 @@ import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { type Umi } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { info } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
+import rpc from '@npc/solana/util/rpc/rpc.js';
 
 let _umi: Umi;
 

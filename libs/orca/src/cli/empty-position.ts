@@ -1,10 +1,10 @@
 import type { CliArgs } from '@npc/core';
 import { error, info } from '@npc/core';
-import { genGetPositionCliOpts } from '@npc/orca/cli/common/position-opts';
-import { genTransactionCliOpts } from '@npc/orca/cli/common/transaction-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { emptyAllPositions, emptyPosition, genEmptyPositionIxData } from '@npc/orca/services/position/empty/empty-position';
-import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position';
+import { genGetPositionCliOpts } from '@npc/orca/cli/common/position-opts.js';
+import { genTransactionCliOpts } from '@npc/orca/cli/common/transaction-opts.js';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts.js';
+import { emptyAllPositions, emptyPosition, genEmptyPositionIxData } from '@npc/orca/services/position/empty/empty-position.js';
+import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position.js';
 import { genComputeBudget } from '@npc/solana';
 import { type Position } from '@orca-so/whirlpools-sdk';
 import { type Argv } from 'yargs';

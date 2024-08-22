@@ -1,9 +1,9 @@
 import type { Address } from '@coral-xyz/anchor';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces.js';
 import type { InstructionData } from '@npc/solana';
 import type { IncreaseLiquidityQuote, Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 /**
  * The arguments for generating a transaction instruction to increase liquidity in a {@link Position}.

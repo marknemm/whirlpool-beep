@@ -1,7 +1,7 @@
 import type { CliArgs } from '@npc/core';
 import { error, info } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion.js';
 import { type Argv } from 'yargs';
 
 const cli = {

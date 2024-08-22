@@ -1,14 +1,14 @@
 import { error, expBackoff, info, timeout } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import { genCollectFeesRewardsIxData, genCollectFeesRewardsTxSummary, type CollectFeesRewardsIxData } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards';
-import { genDecreaseLiquidityIxData, genDecreaseLiquidityTxSummary } from '@npc/orca/services/liquidity/decrease/decrease-liquidity';
-import { DecreaseLiquidityIxData } from '@npc/orca/services/liquidity/decrease/decrease-liquidity.interfaces';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import { genCollectFeesRewardsIxData, genCollectFeesRewardsTxSummary, type CollectFeesRewardsIxData } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.js';
+import { DecreaseLiquidityIxData } from '@npc/orca/services/liquidity/decrease/decrease-liquidity.interfaces.js';
+import { genDecreaseLiquidityIxData, genDecreaseLiquidityTxSummary } from '@npc/orca/services/liquidity/decrease/decrease-liquidity.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { TransactionContext, getProgramErrorInfo, getTxSummary } from '@npc/solana';
 import { type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { EmptyAllPositionsSummary, EmptyPositionIxData, EmptyPositionTxSummary, EmptyPositionTxSummaryArgs } from './empty-position.interfaces';
+import type { EmptyAllPositionsSummary, EmptyPositionIxData, EmptyPositionTxSummary, EmptyPositionTxSummaryArgs } from './empty-position.interfaces.js';
 
 /**
  * Empties all {@link Position}s in a {@link Whirlpool}.
@@ -230,4 +230,4 @@ export async function genEmptyPositionTxSummary({
   return emptyPositionTxSummary;
 }
 
-export type * from './empty-position.interfaces';
+export type * from './empty-position.interfaces.js';

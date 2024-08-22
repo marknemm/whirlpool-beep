@@ -1,8 +1,8 @@
-import { getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import { getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { AddressUtil, Percentage, type Address } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type PublicKey } from '@solana/web3.js';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 /**
  * Calculates the price margin for a given {@link Position}.

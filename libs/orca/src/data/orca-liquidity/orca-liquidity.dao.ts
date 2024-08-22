@@ -1,7 +1,7 @@
 import type { DAOInsertOptions, ErrorWithCode, Null } from '@npc/core';
 import { db, debug, handleInsertError, toBigInt } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces.js';
 import { SolanaTxDAO } from '@npc/solana';
 
 /**

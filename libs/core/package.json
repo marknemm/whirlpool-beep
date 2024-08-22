@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/prompts": "^2.4.9"
   },
+  "type": "module",
   "author": "",
   "license": "ISC"
 }

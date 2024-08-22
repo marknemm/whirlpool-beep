@@ -1,7 +1,7 @@
 import { debug, info } from '@npc/core';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type TickArray, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 /**
  * Get a tick array using the PDA derived from the given {@link price} and {@link whirlpool}.

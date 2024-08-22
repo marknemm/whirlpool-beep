@@ -1,7 +1,7 @@
 import type { DAOInsertOptions, ErrorWithCode, Null } from '@npc/core';
 import { db, debug, handleInsertError, toBigInt } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.interfaces';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import type { CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.interfaces.js';
 import { SolanaTxDAO } from '@npc/solana';
 import { type Position } from '@orca-so/whirlpools-sdk';
 

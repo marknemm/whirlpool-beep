@@ -1,12 +1,12 @@
 import type { Null } from '@npc/core';
 import { env, expBackoff, info, warn } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { genComputeBudget } from '@npc/solana/util/transaction-budget/transaction-budget';
-import { confirmTx, getTxInstructions, sendTx, signTx, simulateTx } from '@npc/solana/util/transaction/transaction';
-import wallet from '@npc/solana/util/wallet/wallet';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { genComputeBudget } from '@npc/solana/util/transaction-budget/transaction-budget.js';
+import { confirmTx, getTxInstructions, sendTx, signTx, simulateTx } from '@npc/solana/util/transaction/transaction.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 import { SimulatedTransactionResponse, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type SendTransactionError, type Signer, type TransactionSignature } from '@solana/web3.js';
-import { green } from 'colors';
-import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionData, InstructionMetadata, SendTransactionOptions, SendTransactionRecord, SendTransactionResult, SignTransactionOptions, SimulateTransactionOptions, TransactionCtxOptions } from './transaction-context.interfaces';
+import colors from 'colors';
+import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionData, InstructionMetadata, SendTransactionOptions, SendTransactionRecord, SendTransactionResult, SignTransactionOptions, SimulateTransactionOptions, TransactionCtxOptions } from './transaction-context.interfaces.js';
 
 /**
  * A context for building, sending, confirming, and retrying {@link Transaction}s or {@link VersionedTransaction}s.
@@ -374,7 +374,7 @@ export default class TransactionContext {
       throw new Error('No transaction signature to confirm');
     }
 
-    info(`Confirming Tx ( Commitment: ${green(commitment)} ):`, signature);
+    info(`Confirming Tx ( Commitment: ${colors.green(commitment)} ):`, signature);
 
     // Wait for the transaction to be confirmed or rejected.
     await confirmTx(signature, commitment, opts.blockhashWithExpiry);
@@ -551,4 +551,4 @@ export default class TransactionContext {
 
 }
 
-export type * from './transaction-context.interfaces';
+export type * from './transaction-context.interfaces.js';

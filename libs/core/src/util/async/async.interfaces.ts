@@ -1,4 +1,4 @@
-import type { expBackoff } from '@npc/core/util/async/async'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import type { expBackoff } from '@npc/core/util/async/async.js'; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 /**
  * Options for the {@link expBackoff} function.

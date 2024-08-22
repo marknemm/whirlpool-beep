@@ -1,4 +1,4 @@
-import env, { getSecretEnvVars } from '@npc/core/util/env/env';
+import env, { getSecretEnvVars } from '@npc/core/util/env/env.js';
 
 /**
  * {@link RegExp} to detect standalone decimal numbers.

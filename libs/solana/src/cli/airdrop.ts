@@ -1,9 +1,9 @@
 import type { CliArgs } from '@npc/core';
 import { env, error, info } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { confirmTx } from '@npc/solana/util/transaction/transaction';
-import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
-import wallet from '@npc/solana/util/wallet/wallet';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { confirmTx } from '@npc/solana/util/transaction/transaction.js';
+import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 import { type Argv } from 'yargs';
 
 const cli = {

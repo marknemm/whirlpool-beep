@@ -1,7 +1,7 @@
 import type { DAOInsertOptions, ErrorWithCode, Null } from '@npc/core';
 import { db, debug, handleInsertError } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { RebalanceTxSummary } from '@npc/orca/services/position/rebalance/rebalance-position.interfaces';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import type { RebalanceTxSummary } from '@npc/orca/services/position/rebalance/rebalance-position.interfaces.js';
 import { type Position } from '@orca-so/whirlpools-sdk';
 
 /**

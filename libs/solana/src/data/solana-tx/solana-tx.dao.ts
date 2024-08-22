@@ -1,6 +1,6 @@
 import type { DAOInsertOptions, DAOOptions, ErrorWithCode, Null } from '@npc/core';
 import { db, debug, handleInsertError, handleSelectError } from '@npc/core';
-import { type TxSummary } from '@npc/solana/util/transaction-query/transaction-query';
+import { type TxSummary } from '@npc/solana/util/transaction-query/transaction-query.js';
 
 /**
  * Pure static data access object for Solana Tx DB operations.

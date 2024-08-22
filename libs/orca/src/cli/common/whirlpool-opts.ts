@@ -1,6 +1,6 @@
 import type { CliArgs, CliOpts } from '@npc/core';
-import { getWhirlpoolKey } from '@npc/orca/services/whirlpool/query/query-whirlpool';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import { getWhirlpoolKey } from '@npc/orca/services/whirlpool/query/query-whirlpool.js';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
 import deepmerge from 'deepmerge';

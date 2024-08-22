@@ -1,14 +1,14 @@
 import { debug, error, expBackoff, info, toStr } from '@npc/core';
-import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range.js';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getToken, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, TransactionContext, wallet } from '@npc/solana';
 import { TransactionBuilder, type Address, type Instruction } from '@orca-so/common-sdk';
 import { collectFeesQuote, collectRewardsQuote, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
-import { green } from 'colors';
-import type { CollectFeesRewardsIxData, CollectFeesRewardsQuotes, CollectFeesRewardsTxSummary } from './collect-fees-rewards.interfaces';
+import colors from 'colors';
+import type { CollectFeesRewardsIxData, CollectFeesRewardsQuotes, CollectFeesRewardsTxSummary } from './collect-fees-rewards.interfaces.js';
 
 /**
  * Collects all fee rewards for all positions.
@@ -211,7 +211,7 @@ async function _genCollectFeesRewardsQuotes(
       const token = await getToken(rewardInfo.mint.toBase58());
       if (!token) continue;
 
-      debug(`Reward ${green(token.metadata.symbol)} ( idx: ${i} ):`, toStr(rewardOwed, token.mint.decimals));
+      debug(`Reward ${colors.green(token.metadata.symbol)} ( idx: ${i} ):`, toStr(rewardOwed, token.mint.decimals));
     }
   }
 
@@ -259,4 +259,4 @@ export async function genCollectFeesRewardsTxSummary(
   return feesRewardsTxSummary;
 }
 
-export type * from './collect-fees-rewards.interfaces';
+export type * from './collect-fees-rewards.interfaces.js';

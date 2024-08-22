@@ -1,14 +1,14 @@
-import type { DAOInsertOptions, DAOOptions } from '@npc/core/interfaces/dao.interfaces';
-import type { ErrorWithCode } from '@npc/core/interfaces/error.interfaces';
-import type { Null } from '@npc/core/interfaces/nullable.interfaces';
-import env from '@npc/core/util/env/env';
-import { debug, error, info } from '@npc/core/util/log/log';
-import { path as appRootPath } from 'app-root-path';
+import type { DAOInsertOptions, DAOOptions } from '@npc/core/interfaces/dao.interfaces.js';
+import type { ErrorWithCode } from '@npc/core/interfaces/error.interfaces.js';
+import type { Null } from '@npc/core/interfaces/nullable.interfaces.js';
+import env from '@npc/core/util/env/env.js';
+import { debug, error, info } from '@npc/core/util/log/log.js';
+import appRootPath from 'app-root-path';
 import { promises as fs } from 'fs';
 import { CamelCasePlugin, FileMigrationProvider, Kysely, Migrator, PostgresDialect, type MigrationResult } from 'kysely';
 import path from 'path';
-import { Pool } from 'pg';
-import type { DB } from './db.interfaces';
+import pg from 'pg';
+import type { DB } from './db.interfaces.js';
 
 let _db: Kysely<DB>;
 
@@ -21,7 +21,7 @@ export default function db(): Kysely<DB> {
   if (!_db) {
     _db = new Kysely<DB>({
       dialect: new PostgresDialect({
-        pool: new Pool({
+        pool: new pg.Pool({
           database: env.DB_NAME,
           host: env.DB_HOST,
           password: env.DB_PASSWORD,
@@ -109,7 +109,7 @@ export async function migrateDb(): Promise<MigrationResult[]> {
     provider: new FileMigrationProvider({
       fs,
       path,
-      migrationFolder: path.join(appRootPath, 'migrations'),
+      migrationFolder: path.join(appRootPath.path, 'migrations'),
     }),
   });
 
@@ -140,4 +140,4 @@ export async function migrateDb(): Promise<MigrationResult[]> {
  */
 export const UNIQUE_VIOLATION_CODE = '23505';
 
-export type * from './db.interfaces';
+export type * from './db.interfaces.js';

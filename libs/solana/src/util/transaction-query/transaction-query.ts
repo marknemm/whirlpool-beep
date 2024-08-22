@@ -1,14 +1,14 @@
 import { debug, expBackoff, toNum, toUSD, warn } from '@npc/core';
-import { decodeTransaction } from '@npc/solana/util/program/program';
-import type { TokenTransfer } from '@npc/solana/util/program/program.interfaces';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { getToken, getTokenPrice } from '@npc/solana/util/token/token';
-import { ComputeBudget, type SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
-import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
-import wallet from '@npc/solana/util/wallet/wallet';
+import type { TokenTransfer } from '@npc/solana/util/program/program.interfaces.js';
+import { decodeTransaction } from '@npc/solana/util/program/program.js';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { getToken, getTokenPrice } from '@npc/solana/util/token/token.js';
+import { ComputeBudget, type SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context.js';
+import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 import { ComputeBudgetProgram, SetComputeUnitLimitParams, SetComputeUnitPriceParams, VersionedTransactionResponse, type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
-import type { DecodedTransactionIx, TransferTotals, TxSummary } from './transaction-query.interfaces';
+import type { DecodedTransactionIx, TransferTotals, TxSummary } from './transaction-query.interfaces.js';
 
 const _txCache = new Map<string, VersionedTransactionResponse>();
 const _txSummaryCache = new Map<string, TxSummary>();
@@ -264,4 +264,4 @@ export async function calcTransferTotals(transfers: TokenTransfer[]): Promise<Tr
   return { tokenTotals, usd };
 }
 
-export type * from './transaction-query.interfaces';
+export type * from './transaction-query.interfaces.js';

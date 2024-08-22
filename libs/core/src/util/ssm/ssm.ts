@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { SSMParamResponse } from './ssm.interfaces';
+import type { SSMParamResponse } from './ssm.interfaces.js';
 
 /**
  * Securely loads and caches SSM parameters and secrets using the `AWS Parameters and Secrets Lambda Extension`.
@@ -45,4 +45,4 @@ export async function loadSSMParams(): Promise<void> {
   await Promise.all(promises);
 }
 
-export type * from './ssm.interfaces';
+export type * from './ssm.interfaces.js';

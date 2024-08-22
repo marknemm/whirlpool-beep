@@ -1,7 +1,7 @@
 import type { OrcaWhirlpool } from '@npc/core';
-import type { SimplifySingleResult } from 'kysely/dist/cjs/util/type-utils';
+import type { Selectable } from 'kysely';
 
 /**
  * Represents a single row in the {@link OrcaWhirlpool} table.
  */
-export type OrcaWhirlpoolRow = SimplifySingleResult<OrcaWhirlpool>;
+export type OrcaWhirlpoolRow = Selectable<OrcaWhirlpool>;

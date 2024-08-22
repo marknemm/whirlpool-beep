@@ -1,10 +1,10 @@
 import type { CliArgs } from '@npc/core';
 import { error } from '@npc/core';
-import { genGetPositionCliOpts, genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position';
-import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@npc/orca/services/position/rebalance/rebalance-position';
-import type { RebalanceAllPositionsOptions } from '@npc/orca/services/position/rebalance/rebalance-position.interfaces';
+import { genGetPositionCliOpts, genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts.js';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts.js';
+import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position.js';
+import type { RebalanceAllPositionsOptions } from '@npc/orca/services/position/rebalance/rebalance-position.interfaces.js';
+import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@npc/orca/services/position/rebalance/rebalance-position.js';
 import { Percentage } from '@orca-so/common-sdk';
 import { type Argv } from 'yargs';
 

@@ -1,7 +1,7 @@
 import type { CliArgs } from '@npc/core';
 import { error, warn } from '@npc/core';
-import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@npc/solana/util/transaction-budget/transaction-budget';
-import { getTxInstructions } from '@npc/solana/util/transaction/transaction';
+import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@npc/solana/util/transaction-budget/transaction-budget.js';
+import { getTxInstructions } from '@npc/solana/util/transaction/transaction.js';
 import { type Argv } from 'yargs';
 
 const cli = {

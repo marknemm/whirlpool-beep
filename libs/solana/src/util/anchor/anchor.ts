@@ -1,7 +1,7 @@
 import { AnchorProvider } from '@coral-xyz/anchor';
 import { info } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import wallet from '@npc/solana/util/wallet/wallet';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 
 let _anchor: AnchorProvider;
 

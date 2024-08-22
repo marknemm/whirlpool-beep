@@ -1,6 +1,6 @@
-import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards';
-import type { DecreaseLiquidityIxData } from '@npc/orca/services/liquidity/decrease/decrease-liquidity';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
+import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.js';
+import type { DecreaseLiquidityIxData } from '@npc/orca/services/liquidity/decrease/decrease-liquidity.js';
+import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces.js';
 import type { InstructionData, SendTransactionResult, TxSummary } from '@npc/solana';
 import type { Position } from '@orca-so/whirlpools-sdk';
 

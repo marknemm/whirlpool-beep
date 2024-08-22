@@ -1,12 +1,12 @@
 import type { Null } from '@npc/core';
 import { debug, env, error } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { toLamports, toMicroLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
-import wallet from '@npc/solana/util/wallet/wallet';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { toLamports, toMicroLamports } from '@npc/solana/util/unit-conversion/unit-conversion.js';
+import wallet from '@npc/solana/util/wallet/wallet.js';
 import { getSimulationComputeUnits } from '@solana-developers/helpers';
 import { ComputeBudgetProgram, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import axios from 'axios';
-import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces';
+import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces.js';
 
 /**
  * Generates a {@link ComputeBudget} for a transaction.
@@ -238,5 +238,5 @@ function _getWriteableAccounts(
     .map((key) => key.pubkey);
 }
 
-export type * from './transaction-budget.interfaces';
+export type * from './transaction-budget.interfaces.js';
 

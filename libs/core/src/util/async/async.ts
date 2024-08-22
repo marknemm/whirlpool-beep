@@ -1,6 +1,6 @@
-import env from '@npc/core/util/env/env';
-import { debug, warn } from '@npc/core/util/log/log';
-import type { ExpBackoffOpts } from './async.interfaces';
+import env from '@npc/core/util/env/env.js';
+import { debug, warn } from '@npc/core/util/log/log.js';
+import type { ExpBackoffOpts } from './async.interfaces.js';
 
 /**
  * Executes a given async {@link fn} with exponential backoff.
@@ -63,4 +63,4 @@ export async function timeout(ms: number): Promise<void> {
   });
 }
 
-export type * from './async.interfaces';
+export type * from './async.interfaces.js';

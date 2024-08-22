@@ -1,15 +1,15 @@
 import { env, error, info, timeout, toStr } from '@npc/core';
-import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import OrcaRebalanceDAO from '@npc/orca/data/orca-rebalance/orca-rebalance.dao';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { closePosition } from '@npc/orca/services/position/close/close-position';
-import { openPosition } from '@npc/orca/services/position/open/open-position';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import { calcPriceMargin, toPriceRange } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao.js';
+import OrcaRebalanceDAO from '@npc/orca/data/orca-rebalance/orca-rebalance.dao.js';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
+import { closePosition } from '@npc/orca/services/position/close/close-position.js';
+import { openPosition } from '@npc/orca/services/position/open/open-position.js';
+import { getPositions } from '@npc/orca/services/position/query/query-position.js';
+import { calcPriceMargin, toPriceRange } from '@npc/orca/util/tick-range/tick-range.js';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { RebalanceAllPositionsOptions, RebalanceAllPositionsResult, RebalancePositionOptions, RebalancePositionResult, RebalanceTxSummary } from './rebalance-position.interfaces';
+import type { RebalanceAllPositionsOptions, RebalanceAllPositionsResult, RebalancePositionOptions, RebalancePositionResult, RebalanceTxSummary } from './rebalance-position.interfaces.js';
 
 /**
  * Rebalances all {@link Position}s based on given {@link options}.
@@ -190,4 +190,4 @@ export function genPriceRangeRebalanceFilter(
   };
 }
 
-export type * from './rebalance-position.interfaces';
+export type * from './rebalance-position.interfaces.js';

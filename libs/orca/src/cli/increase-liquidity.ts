@@ -1,9 +1,9 @@
 import type { CliArgs } from '@npc/core';
 import { error } from '@npc/core';
-import { genGetPositionCliOpts, genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts';
-import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { increaseAllLiquidity, increaseLiquidity } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position';
+import { genGetPositionCliOpts, genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts.js';
+import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts.js';
+import { increaseAllLiquidity, increaseLiquidity } from '@npc/orca/services/liquidity/increase/increase-liquidity.js';
+import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position.js';
 import { type Argv } from 'yargs';
 
 const cli = {

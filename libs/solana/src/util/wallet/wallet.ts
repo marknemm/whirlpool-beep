@@ -1,9 +1,9 @@
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { decodeBase58, env, info, toBN } from '@npc/core';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token';
-import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion';
+import rpc from '@npc/solana/util/rpc/rpc.js';
+import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token.js';
+import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion.js';
 import { TOKEN_PROGRAM_ID, unpackAccount, type Account } from '@solana/spl-token';
 import { Keypair, PublicKey, type TokenAccountsFilter } from '@solana/web3.js';
 

@@ -1,9 +1,9 @@
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
+import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces.js';
+import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces.js';
 import type { Address, Percentage } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
-import type Decimal from 'decimal.js';
+import type { Decimal } from 'decimal.js';
 
 /**
  * Options for rebalancing all {@link Position}s.

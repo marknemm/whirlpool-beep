@@ -1,6 +1,6 @@
 import type { DAOInsertOptions, DAOOptions, ErrorWithCode, Null } from '@npc/core';
 import { db, debug, handleInsertError, handleSelectError, isAddress } from '@npc/core';
-import { getWhirlpoolTokenPair, toWhirlpoolData } from '@npc/orca/util/whirlpool/whirlpool';
+import { getWhirlpoolTokenPair, toWhirlpoolData } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { SolanaTokenDAO } from '@npc/solana';
 import { type Address, AddressUtil } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
@@ -141,4 +141,4 @@ export default class OrcaWhirlpoolDAO {
 
 }
 
-export type * from './orca-whirlpool.dao.interfaces';
+export type * from './orca-whirlpool.dao.interfaces.js';

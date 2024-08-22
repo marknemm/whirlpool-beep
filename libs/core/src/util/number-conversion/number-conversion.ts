@@ -1,7 +1,7 @@
-import { BN } from '@coral-xyz/anchor';
-import type { Null } from '@npc/core/interfaces/nullable.interfaces';
+import type { Null } from '@npc/core/interfaces/nullable.interfaces.js';
 import { DecimalUtil } from '@orca-so/common-sdk';
-import Decimal from 'decimal.js';
+import BN from 'bn.js';
+import { Decimal } from 'decimal.js';
 
 /**
  * Converts a given currency `value` to a {@link bigint}.

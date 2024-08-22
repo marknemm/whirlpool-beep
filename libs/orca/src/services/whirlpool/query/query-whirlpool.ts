@@ -1,10 +1,10 @@
-import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@npc/orca/constants/whirlpool';
-import OrcaWhirlpoolDAO from '@npc/orca/data/orca-whirlpool/orca-whirlpool.dao';
-import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
+import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@npc/orca/constants/whirlpool.js';
+import OrcaWhirlpoolDAO from '@npc/orca/data/orca-whirlpool/orca-whirlpool.dao.js';
+import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getTokenPair } from '@npc/solana';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type { GetWhirlpoolKeyOpts, GetWhirlpoolOpts } from './query-whirlpool.interfaces';
+import type { GetWhirlpoolKeyOpts, GetWhirlpoolOpts } from './query-whirlpool.interfaces.js';
 
 /**
  * Gets a {@link Whirlpool} via a Program Derived Address (PDA).
@@ -44,4 +44,4 @@ export async function getWhirlpoolKey(opts: GetWhirlpoolKeyOpts): Promise<Public
   ).publicKey;
 }
 
-export type * from './query-whirlpool.interfaces';
+export type * from './query-whirlpool.interfaces.js';
