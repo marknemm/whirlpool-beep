@@ -49,7 +49,7 @@ export async function execCli(cli: Cli): Promise<void> {
  */
 export async function promptCliCommand(cmdDir: string): Promise<string> {
   const cliCommands = (await glob(`${cmdDir}/*.ts`, { withFileTypes: false }))
-    .map((path) => path.split(sep).pop()!.replace('.ts', ''))
+    .map((path) => path.split(sep).pop()!.replace(/(\.d)?\.ts/, ''))
     .filter((cmd) => env.NODE_ENV === 'development' || cmd !== 'airdrop')
     .sort();
 
@@ -58,11 +58,11 @@ export async function promptCliCommand(cmdDir: string): Promise<string> {
       type: 'select',
       name: 'command',
       message: 'Choose a CLI command to run',
-      choices: cliCommands.map((command) => ({
+      choices: await Promise.all(cliCommands.map(async (command) => ({
         title: command,
-        description: require(`${cmdDir}/${command}`).default.description, // eslint-disable-line @typescript-eslint/no-var-requires
+        description: (await import(`${cmdDir}/${command}.js`)).default.description,
         value: command,
-      })),
+      }))),
     });
     return answer.command;
   }

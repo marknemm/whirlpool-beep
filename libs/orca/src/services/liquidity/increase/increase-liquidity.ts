@@ -10,8 +10,7 @@ import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range.js';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool.js';
 import { getProgramErrorInfo, getTokenPrice, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, STABLECOIN_SYMBOL_REGEX, TransactionContext, wallet } from '@npc/solana';
 import { AddressUtil, Percentage, resolveOrCreateATAs, TransactionBuilder, type Address } from '@orca-so/common-sdk';
-import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
-import { increaseLiquidityIx, IncreaseLiquidityParams, increaseLiquidityV2Ix } from '@orca-so/whirlpools-sdk/dist/instructions';
+import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, WhirlpoolIx, type IncreaseLiquidityParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import type { Decimal } from 'decimal.js';
@@ -216,8 +215,8 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
   };
   // V2 can handle TokenProgram/TokenProgram pool, but it increases the size of transaction, so V1 is prefer if possible.
   const increaseIx = !TokenExtensionUtil.isV2IxRequiredPool(tokenExtensionCtx)
-    ? increaseLiquidityIx(whirlpoolClient().getContext().program, baseParams)
-    : increaseLiquidityV2Ix(whirlpoolClient().getContext().program, {
+    ? WhirlpoolIx.increaseLiquidityIx(whirlpoolClient().getContext().program, baseParams)
+    : WhirlpoolIx.increaseLiquidityV2Ix(whirlpoolClient().getContext().program, {
       ...baseParams,
       tokenMintA: new PublicKey(tokenA.mint.publicKey),
       tokenMintB: new PublicKey(tokenB.mint.publicKey),

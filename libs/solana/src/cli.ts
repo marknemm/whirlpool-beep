@@ -1,8 +1,11 @@
 import { env } from '@npc/core'; // Load and validate env variables ASAP
 
 import { debug, error, execCli, migrateDb } from '@npc/core';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import yargs from 'yargs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Main entry point.

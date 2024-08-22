@@ -1,5 +1,4 @@
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import type { Null } from '@npc/core';
 import { toBN } from '@npc/core';
 import anchor from '@npc/solana/util/anchor/anchor.js';
@@ -9,6 +8,7 @@ import { AddressUtil } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, WHIRLPOOL_IDL } from '@orca-so/whirlpools-sdk';
 import { DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
 import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, TransactionInstruction, TransactionMessage, type CompiledInstruction, type ParsedAccountData, type VersionedMessage } from '@solana/web3.js';
+import bs58 from 'bs58';
 import type { ProgramErrorInfo, TempTokenAccount, TokenTransfer } from './program.interfaces.js';
 
 const _idlCache = new Map<string, Idl>([
@@ -191,7 +191,7 @@ function _toTransactionInstruction(message: VersionedMessage, compiledIx: Compil
         pubkey: message.getAccountKeys().get(accountIndex)!,
       })
     ),
-    data: bs58.decode(compiledIx.data),
+    data: Buffer.from(bs58.decode(compiledIx.data)),
   });
 }
 
