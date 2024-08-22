@@ -1,0 +1,22 @@
+import { env, info } from '@npc/core';
+import { Connection, type ConnectionConfig } from '@solana/web3.js';
+
+let _rpc: Connection;
+
+/**
+ * Gets the singleton `RPC` {@link Connection}, and initializes it if it has not already been initialized.
+ *
+ * @returns The {@link Connection} singleton.
+ */
+export default function rpc(): Connection {
+  if (!_rpc) {
+    const config: ConnectionConfig = {
+      commitment: env.COMMITMENT_DEFAULT,
+    };
+    _rpc = new Connection(env.RPC_ENDPOINT, config);
+
+    info('-- Initialized RPC Connection --\n', config);
+  }
+
+  return _rpc;
+}

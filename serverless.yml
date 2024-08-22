@@ -49,7 +49,7 @@ package:                    # Config for packaging service for upload to AWS S3 
 
 functions:
   rebalance:
-    handler: src/functions/position.rebalance
+    handler: lambda/position.rebalance
     events:
       - schedule: rate(15 minutes)
     environment:

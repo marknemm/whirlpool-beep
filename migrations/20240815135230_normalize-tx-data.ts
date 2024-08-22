@@ -298,8 +298,8 @@ async function insertSolanaTxIfNotExists(
 	await new Promise((resolve) => setTimeout(resolve, 100));
 
 	const txResponse = await rpc.getTransaction(signature, { maxSupportedTransactionVersion: 0 });
-	const { blockTime, meta, transaction } = txResponse;
-	const size = transaction.message.serialize().length;
+	const { blockTime, meta, transaction } = txResponse ?? {};
+	const size = transaction?.message.serialize().length;
 
 	console.log(`Inserting Solana tx into DB: ${signature}`);
 
@@ -312,7 +312,7 @@ async function insertSolanaTxIfNotExists(
 			size,
 		})
 		.returning('id')
-		.executeTakeFirst();
+		.executeTakeFirst() ?? {};
 
 	return id;
 }

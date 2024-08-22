@@ -1,0 +1,30 @@
+{
+  "name": "@npc/solana",
+  "version": "0.0.1",
+  "description": "NPC Solana library & CLI",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "npm run dev:env -- npm run start:ts --",
+    "dev:db": "docker-compose up -d db",
+    "dev:env": "npm run dev:db && dotenv -e .env.development.local -e .env.development -e .env --",
+    "lint": "eslint .",
+    "prod": "npm run prod:env -- npm run start:ts --",
+    "prod:env": "dotenv -e .env.production.local -e .env.production -e .env --",
+    "start:ts": "node -r ts-node/register -r tsconfig-paths/register --inspect src/cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@metaplex-foundation/umi": "^0.9.2",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.2",
+    "@npc/core": "0.0.1",
+    "@solana-developers/helpers": "^2.3.0",
+    "@solana/spl-token": "^0.4.6",
+    "@solana/web3.js": "^1.93.2"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC"
+}

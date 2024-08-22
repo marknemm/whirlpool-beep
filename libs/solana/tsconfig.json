@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "baseUrl": "./",
+    "paths": {
+      "@npc/solana/*": ["src/*"]
+    }
+  },
+  "references": [{ "path": "../core" }],
+  "include": ["src/**/*.ts"],
+  "exclude": ["*.spec.ts"]
+}

@@ -80,7 +80,7 @@ export default tseslint.config({
     }],
     'multiline-ternary': ['warn', 'always-multiline'],          // Enable the warning about multiline ternary expressions
     'no-await-in-loop': 'off',                                  // Disable the rule that disallows using await inside of loops
-    'no-console': 'error',                                      // Disallow the use of console.log - IMPORTANT to prevent leaking secrets!
+    'no-console': 'error',                                      // Disallow the use of console.log - importANT to prevent leaking secrets!
     'no-else-return': 'warn',                                   // Enable the warning about using else return
     'no-empty': 'warn',                                         // Enable the warning about empty blocks
     'no-empty-function': ['warn', {                             // Enable the warning about empty functions
@@ -103,7 +103,7 @@ export default tseslint.config({
     'no-param-reassign': 'off',                                 // Disable the rule that disallows reassigning function parameters
     'no-plusplus': 'off',                                       // Disable the rule that disallows unary operators
     'no-promise-executor-return': 'warn',                       // Enable the warning about returning values from promise executors
-    'no-restricted-imports': ['error', 'console', 'winston'],   // Disallow importing certain modules - IMPORTANT to prevent vulnerabilities!
+    'no-restricted-imports': ['error', 'console', 'winston'],   // Disallow importing certain modules - importANT to prevent vulnerabilities!
     'no-restricted-syntax': 'off',                              // Disable the rule that disallows specific syntax
     'no-trailing-spaces': 'warn',                               // Enable the warning about trailing spaces
     'no-underscore-dangle': 'off',                              // Disable the rule that disallows dangling underscores
