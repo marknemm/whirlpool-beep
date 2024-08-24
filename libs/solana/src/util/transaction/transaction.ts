@@ -1,6 +1,7 @@
 import { type Wallet } from '@coral-xyz/anchor';
 import type { Null } from '@npc/core';
-import { env, info, timeout } from '@npc/core';
+import { info, timeout } from '@npc/core';
+import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { TransactionMessage, VersionedTransaction, type BlockhashWithExpiryBlockHeight, type Commitment, type SendOptions, type Signer, type SimulatedTransactionResponse, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature } from '@solana/web3.js';

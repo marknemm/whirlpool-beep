@@ -1,10 +1,11 @@
-import { env, error, info, timeout, toStr } from '@npc/core';
+import { error, info, timeout, toStr } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import OrcaRebalanceDAO from '@npc/orca/data/orca-rebalance/orca-rebalance.dao';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import { closePosition } from '@npc/orca/services/position/close/close-position';
 import { openPosition } from '@npc/orca/services/position/open/open-position';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
+import env from '@npc/orca/util/env/env';
 import { calcPriceMargin, toPriceRange } from '@npc/orca/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';

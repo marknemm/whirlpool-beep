@@ -3,21 +3,19 @@
   "version": "0.0.1",
   "description": "NPC Beep-Boop-Bop 🤖",
   "scripts": {
-    "clean": "rimraf dist .serverless wallet.json",
+    "build": "npm run build --workspaces",
+    "clean": "rimraf dist libs/*/dist tsconfig.tsbuildinfo libs/*/tsconfig.tsbuildinfo .serverless libs/*/.serverless",
     "clean:all": "npm run clean && npm run clean:deps && npm run clean:dump && npm run clean:logs",
-    "clean:deps": "rimraf node_modules",
-    "clean:dump": "rimraf .dump",
-    "clean:logs": "rimraf logs",
-    "dev:package": "sls package --stage development",
-    "dev:deploy": "sls deploy --stage development"
+    "clean:deps": "rimraf node_modules libs/*/node_modules",
+    "clean:dump": "rimraf .dump libs/*/dump",
+    "clean:logs": "rimraf logs libs/*/logs",
+    "prepare": "ts-patch install -s"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
     "@types/bn.js": "^5.1.5",
-    "@types/deasync": "^0.1.5",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^20.14.8",
-    "@types/pg": "^8.11.6",
     "@types/yargs": "^17.0.32",
     "dotenv-cli": "^7.4.2",
     "esbuild": "^0.20.2",
@@ -26,19 +24,16 @@
     "eslint-plugin-jsdoc": "^48.5.0",
     "eslint-plugin-no-floating-promise": "^2.0.0",
     "globals": "^15.6.0",
-    "kysely-codegen": "^0.15.0",
-    "kysely-ctl": "^0.9.0",
     "rimraf": "^5.0.7",
     "serverless": "^4.1.21",
     "serverless-plugin-common-excludes": "^4.0.0",
     "ts-node": "^10.9.2",
-    "tsc-alias": "^1.8.10",
+    "ts-patch": "^3.2.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.5.2",
     "typescript-eslint": "^8.0.0",
-    "utility-types": "^3.11.0",
-    "nx": "19.6.1",
-    "@nx/eslint": "19.6.1"
+    "typescript-transform-paths": "^3.5.0",
+    "utility-types": "^3.11.0"
   },
   "author": "Mark Nemmer",
   "private": true,
@@ -51,7 +46,6 @@
   "workspaces": [
     "libs/core",
     "libs/solana",
-    "libs/*",
-    "apps/*"
+    "libs/*"
   ]
 }

@@ -1,7 +1,7 @@
 import type { SolanaToken } from '@npc/core';
-import type { SimplifySingleResult } from 'kysely/dist/cjs/util/type-utils';
+import type { Selectable } from 'kysely';
 
 /**
  * Represents a single row in the {@link SolanaToken} table.
  */
-export type SolanaTokenRow = SimplifySingleResult<SolanaToken>;
+export type SolanaTokenRow = Selectable<SolanaToken>;

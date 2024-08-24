@@ -1,4 +1,4 @@
-import { env } from '@npc/core';
+import env from '@npc/orca/util/env/env';
 import { PublicKey } from '@solana/web3.js';
 
 /**

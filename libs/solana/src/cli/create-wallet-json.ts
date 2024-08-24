@@ -1,7 +1,5 @@
 import { decodeBase58, encodeBase58, error, info, prompt, type CliArgs } from '@npc/core';
-import { path as appRootPath } from 'app-root-path';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -36,14 +34,13 @@ export async function handler(argv: CliArgs<typeof cli.options>) {
     const privateKeyBytes = decodeBase58(privateKey.trim());
 
     // write file
-    const outPathname = join(appRootPath, argv.out);
-    await writeFile(outPathname, `[${privateKeyBytes.toString()}]`);
+    await writeFile(argv.out, `[${privateKeyBytes.toString()}]`);
 
     // verify file
-    const privateKeyBytesLoaded = await readFile(outPathname, { encoding: 'utf-8' });
+    const privateKeyBytesLoaded = await readFile(argv.out, { encoding: 'utf-8' });
     const privateKeyLoaded = encodeBase58(privateKeyBytesLoaded);
     if (privateKey === privateKeyLoaded) {
-      info(`${outPathname} created successfully!`);
+      info(`${argv.out} created successfully!`);
     }
   } catch (err) {
     error(err);

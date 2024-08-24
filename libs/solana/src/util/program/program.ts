@@ -1,19 +1,18 @@
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import type { Null } from '@npc/core';
 import { toBN } from '@npc/core';
 import anchor from '@npc/solana/util/anchor/anchor';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { DecodeTransactionArgs, type DecodedTransactionIx } from '@npc/solana/util/transaction-query/transaction-query';
 import { AddressUtil } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID } from '@orca-so/whirlpools-sdk';
-import { IDL } from '@orca-so/whirlpools-sdk/dist/artifacts/whirlpool';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, WHIRLPOOL_IDL } from '@orca-so/whirlpools-sdk';
 import { DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
 import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, TransactionInstruction, TransactionMessage, type CompiledInstruction, type ParsedAccountData, type VersionedMessage } from '@solana/web3.js';
+import bs58 from 'bs58';
 import type { ProgramErrorInfo, TempTokenAccount, TokenTransfer } from './program.interfaces';
 
 const _idlCache = new Map<string, Idl>([
-  [ORCA_WHIRLPOOL_PROGRAM_ID.toBase58(), IDL],
+  [ORCA_WHIRLPOOL_PROGRAM_ID.toBase58(), WHIRLPOOL_IDL],
 ]);
 const _programCache = new Map<string, Program>();
 const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
@@ -192,7 +191,7 @@ function _toTransactionInstruction(message: VersionedMessage, compiledIx: Compil
         pubkey: message.getAccountKeys().get(accountIndex)!,
       })
     ),
-    data: bs58.decode(compiledIx.data),
+    data: Buffer.from(bs58.decode(compiledIx.data)),
   });
 }
 

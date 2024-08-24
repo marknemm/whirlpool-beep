@@ -200,7 +200,7 @@ let _wallet: WalletExt;
  * @returns The {@link WalletExt} singleton.
  * @throws An {@link Error} if the {@link WalletExt} private key is invalid or does not match the expected public key.
  */
-export default function wallet(): WalletExt {
+export function wallet(): WalletExt {
   if (!_wallet) {
     _wallet = new WalletExt();
 
@@ -210,3 +210,5 @@ export default function wallet(): WalletExt {
 
   return _wallet;
 }
+
+export default wallet;

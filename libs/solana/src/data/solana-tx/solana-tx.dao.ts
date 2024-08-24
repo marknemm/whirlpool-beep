@@ -1,11 +1,10 @@
-import type { DAOInsertOptions, DAOOptions, ErrorWithCode, Null } from '@npc/core';
-import { db, debug, handleInsertError, handleSelectError } from '@npc/core';
+import { db, debug, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import { type TxSummary } from '@npc/solana/util/transaction-query/transaction-query';
 
 /**
  * Pure static data access object for Solana Tx DB operations.
  */
-export default class SolanaTxDAO {
+export class SolanaTxDAO {
 
   /**
    * Private constructor for pure static class.
@@ -77,3 +76,5 @@ export default class SolanaTxDAO {
   }
 
 }
+
+export default SolanaTxDAO;

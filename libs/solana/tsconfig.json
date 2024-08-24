@@ -8,7 +8,9 @@
       "@npc/solana/*": ["src/*"]
     }
   },
-  "references": [{ "path": "../core" }],
   "include": ["src/**/*.ts"],
-  "exclude": ["*.spec.ts"]
+  "exclude": ["*.spec.ts"],
+  "references": [
+    { "path": "../core" }
+  ]
 }

@@ -1,8 +1,9 @@
 import { BN, type Address } from '@coral-xyz/anchor';
-import { env, error, expBackoff, info, toBN, toStr } from '@npc/core';
+import { error, expBackoff, info, toBN, toStr } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
+import env from '@npc/orca/util/env/env';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
 import { getProgramErrorInfo, getTransferTotalsFromIxs, getTxSummary, SendTransactionResult, TransactionContext } from '@npc/solana';
 import { Percentage } from '@orca-so/common-sdk';

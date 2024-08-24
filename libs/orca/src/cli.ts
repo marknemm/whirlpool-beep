@@ -1,6 +1,7 @@
-import { debug, env, error, execCli, migrateDb } from '@npc/core';
+import { debug, error, execCli, migrateDb } from '@npc/core';
 import { join } from 'node:path';
 import yargs from 'yargs';
+import env from './util/env/env';
 
 /**
  * Main entry point.
@@ -21,8 +22,10 @@ async function main() {
       yargs(process.argv.slice(2))
         .usage('Usage: $0 <command> [options]')
         .strict()
-        .commandDir('cmd', {
-          extensions: ['js', 'ts'],
+        .commandDir('cli', {
+          extensions: __filename.endsWith('.js')
+            ? ['js']
+            : ['js', 'ts'],
           visit: (commandModule) => commandModule.default
         })
         .demandCommand()

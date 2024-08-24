@@ -10,7 +10,7 @@ let _anchor: AnchorProvider;
  *
  * @returns The {@link AnchorProvider} singleton.
  */
-export default function anchor() {
+export function anchor() {
   if (!_anchor) {
     _anchor = new AnchorProvider(rpc(), wallet(), AnchorProvider.defaultOptions());
 
@@ -19,3 +19,5 @@ export default function anchor() {
 
   return _anchor;
 }
+
+export default anchor;

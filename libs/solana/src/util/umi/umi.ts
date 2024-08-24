@@ -18,7 +18,7 @@ let _umi: Umi;
  *
  * @returns The singleton {@link Umi} client.
  */
-export default function umi(): Umi {
+export function umi(): Umi {
   if (!_umi) {
     _umi = createUmi(rpc()).use(mplTokenMetadata());
 
@@ -27,3 +27,5 @@ export default function umi(): Umi {
 
   return _umi;
 }
+
+export default umi;

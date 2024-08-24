@@ -1,13 +1,12 @@
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import type { DAOInsertOptions, DAOOptions, ErrorWithCode, Null } from '@npc/core';
-import { db, debug, handleInsertError, handleSelectError } from '@npc/core';
-import { type Address, AddressUtil } from '@orca-so/common-sdk';
+import { db, debug, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { AddressUtil, type Address } from '@orca-so/common-sdk';
 import type { SolanaTokenRow } from './solana-token.doa.interfaces';
 
 /**
  * Pure static data access object for Solana Token DB operations.
  */
-export default class SolanaTokenDAO {
+export class SolanaTokenDAO {
 
   /**
    * Private constructor for pure static class.
@@ -137,3 +136,4 @@ export default class SolanaTokenDAO {
 }
 
 export type * from './solana-token.doa.interfaces';
+export default SolanaTokenDAO;

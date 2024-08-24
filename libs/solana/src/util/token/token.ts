@@ -1,9 +1,10 @@
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import type { Null } from '@npc/core';
-import { env, expBackoff, info, warn } from '@npc/core';
+import { expBackoff, info, warn } from '@npc/core';
 import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
 import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
+import env from '@npc/solana/util/env/env';
 import umi from '@npc/solana/util/umi/umi';
 import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
 import { PublicKey } from '@solana/web3.js';

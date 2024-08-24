@@ -1,5 +1,6 @@
 import type { Null } from '@npc/core';
-import { env, expBackoff, info, warn } from '@npc/core';
+import { expBackoff, info, warn } from '@npc/core';
+import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { genComputeBudget } from '@npc/solana/util/transaction-budget/transaction-budget';
 import { confirmTx, getTxInstructions, sendTx, signTx, simulateTx } from '@npc/solana/util/transaction/transaction';
@@ -11,7 +12,7 @@ import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactio
 /**
  * A context for building, sending, confirming, and retrying {@link Transaction}s or {@link VersionedTransaction}s.
  */
-export default class TransactionContext {
+export class TransactionContext {
 
   /**
    * The default {@link BuildTransactionOptions} to use for building a {@link Transaction} or {@link VersionedTransaction}.
@@ -552,3 +553,4 @@ export default class TransactionContext {
 }
 
 export type * from './transaction-context.interfaces';
+export default TransactionContext;

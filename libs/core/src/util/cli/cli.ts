@@ -1,11 +1,10 @@
-import env from '@npc/core/util/env/env';
-import { info } from '@npc/core/util/log/log';
-import { blue } from 'colors';
+import env from '@/util/env/env.js';
+import colors from 'colors';
 import { glob } from 'glob';
-import { join, sep } from 'node:path';
+import { sep } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import prompts from 'prompts';
-import type { Cli } from './cli.interfaces';
+import type { Cli } from './cli.interfaces.js';
 
 /**
  * Executes a CLI command while prompting the user for input if not provided.
@@ -27,18 +26,14 @@ export async function execCli(cli: Cli): Promise<void> {
 
     // Show help for CLI command, prompt for arguments, and update argv with them
     cli.builder().showHelp();
-    const args = await prompt(`\nInput ${blue(command)} arguments: `);
-    process.argv = [...process.argv, ...args.split(/\s+/)];
+    const args = await prompt(`\nInput ${colors.blue(command)} arguments: `);
+    if (args?.trim()) {
+      process.argv = [...process.argv, ...args.trim().split(/\s+/)];
+    }
   }
 
-  // Parse the CLI command and arguments
-  const argv = await cli.builder().parse();
-  info(`\n${blue(command)} ${process.argv.slice(3)}\n`);
-
-  // Execute the CLI command
-  const cmdPathname = join(cli.commandPath, `${command}.ts`);
-  const handler = (await import(cmdPathname)).default.handler;
-  await handler?.(argv);
+  // Parse the CLI command and run it
+  await cli.builder().parse();
 }
 
 /**
@@ -49,7 +44,7 @@ export async function execCli(cli: Cli): Promise<void> {
  */
 export async function promptCliCommand(cmdDir: string): Promise<string> {
   const cliCommands = (await glob(`${cmdDir}/*.ts`, { withFileTypes: false }))
-    .map((path) => path.split(sep).pop()!.replace('.ts', ''))
+    .map((path) => path.split(sep).pop()!.replace(/(\.d)?\.ts/, ''))
     .filter((cmd) => env.NODE_ENV === 'development' || cmd !== 'airdrop')
     .sort();
 
@@ -58,11 +53,11 @@ export async function promptCliCommand(cmdDir: string): Promise<string> {
       type: 'select',
       name: 'command',
       message: 'Choose a CLI command to run',
-      choices: cliCommands.map((command) => ({
+      choices: await Promise.all(cliCommands.map(async (command) => ({
         title: command,
-        description: require(`${cmdDir}/${command}`).default.description, // eslint-disable-line @typescript-eslint/no-var-requires
+        description: (await import(`${cmdDir}/${command}`)).default.description,
         value: command,
-      })),
+      }))),
     });
     return answer.command;
   }
@@ -87,4 +82,4 @@ export async function prompt(question: string): Promise<string> {
   return userInput;
 }
 
-export type * from './cli.interfaces';
+export type * from './cli.interfaces.js';

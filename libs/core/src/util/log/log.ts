@@ -1,9 +1,7 @@
-import { DECIMAL_REGEX, SECRETS_REGEX } from '@npc/core/constants/regex';
-import env from '@npc/core/util/env/env';
+import { DECIMAL_REGEX, SECRETS_REGEX } from '@/constants/regex';
+import env from '@/util/env/env';
 import { PublicKey } from '@solana/web3.js';
-import { path as appRootPath } from 'app-root-path';
 import { red, yellow } from 'colors';
-import { join } from 'node:path';
 import { inspect, type InspectOptions } from 'node:util';
 import { createLogger, format, transports, type Logger, type transport } from 'winston'; // eslint-disable-line no-restricted-imports
 
@@ -64,9 +62,7 @@ const logger = createLogger({
     env.LOG_FILE_OUT
       ? [
         new transports.File({
-          dirname: env.LOG_FILE_OUT.charAt(0) !== '/'
-            ? join(appRootPath, env.LOG_FILE_OUT)
-            : env.LOG_FILE_OUT,
+          dirname: env.LOG_FILE_OUT,
           filename: `${new Date().toISOString()}.log.ansi`,
         })
       ]

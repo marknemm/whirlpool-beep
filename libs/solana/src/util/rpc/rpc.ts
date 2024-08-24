@@ -1,5 +1,6 @@
-import { env, info } from '@npc/core';
+import { info } from '@npc/core';
 import { Connection, type ConnectionConfig } from '@solana/web3.js';
+import env from '../env/env';
 
 let _rpc: Connection;
 
@@ -8,7 +9,7 @@ let _rpc: Connection;
  *
  * @returns The {@link Connection} singleton.
  */
-export default function rpc(): Connection {
+export function rpc(): Connection {
   if (!_rpc) {
     const config: ConnectionConfig = {
       commitment: env.COMMITMENT_DEFAULT,
@@ -20,3 +21,5 @@ export default function rpc(): Connection {
 
   return _rpc;
 }
+
+export default rpc;

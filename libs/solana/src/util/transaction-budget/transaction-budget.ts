@@ -1,5 +1,6 @@
 import type { Null } from '@npc/core';
-import { debug, env, error } from '@npc/core';
+import { debug, error } from '@npc/core';
+import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { toLamports, toMicroLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
 import wallet from '@npc/solana/util/wallet/wallet';

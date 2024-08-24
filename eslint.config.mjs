@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config({
   files: ['src/**/*.{js,mjs,cjs,ts}'],
-  ignores: ['node_modules', 'dist', 'src/util/db/db.interfaces.ts'],
+  ignores: ['node_modules', 'dist'],
   extends: [
     eslint.configs.recommended,
     jsdoc.configs['flat/recommended'],
