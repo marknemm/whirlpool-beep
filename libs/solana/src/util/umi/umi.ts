@@ -1,7 +1,7 @@
 import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { type Umi } from '@metaplex-foundation/umi';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { info } from '@npc/core';
+import { debug } from '@npc/core';
 import rpc from '@npc/solana/util/rpc/rpc';
 
 let _umi: Umi;
@@ -22,7 +22,7 @@ export function umi(): Umi {
   if (!_umi) {
     _umi = createUmi(rpc()).use(mplTokenMetadata());
 
-    info('-- Initialized UMI --');
+    debug('-- Initialized UMI --');
   }
 
   return _umi;

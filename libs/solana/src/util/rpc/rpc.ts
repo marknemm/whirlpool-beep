@@ -1,4 +1,4 @@
-import { info } from '@npc/core';
+import { debug } from '@npc/core';
 import { Connection, type ConnectionConfig } from '@solana/web3.js';
 import env from '../env/env';
 
@@ -16,7 +16,7 @@ export function rpc(): Connection {
     };
     _rpc = new Connection(env.RPC_ENDPOINT, config);
 
-    info('-- Initialized RPC Connection --\n', config);
+    debug('-- Initialized RPC Connection --\n', config);
   }
 
   return _rpc;

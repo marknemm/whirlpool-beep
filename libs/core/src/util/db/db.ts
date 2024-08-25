@@ -2,7 +2,7 @@ import type { DAOInsertOptions, DAOOptions } from '@/interfaces/dao.interfaces';
 import type { ErrorWithCode } from '@/interfaces/error.interfaces';
 import type { Null } from '@/interfaces/nullable.interfaces';
 import env from '@/util/env/env';
-import { debug, error, info } from '@/util/log/log';
+import { debug, error } from '@/util/log/log';
 import { promises as fs } from 'fs';
 import { CamelCasePlugin, FileMigrationProvider, Kysely, Migrator, PostgresDialect, type MigrationResult } from 'kysely';
 import { join } from 'node:path';
@@ -38,7 +38,7 @@ export function db(): Kysely<DB> {
       ],
     });
 
-    info('-- Initialized DB Client --');
+    debug('-- Initialized DB Client --');
   }
 
   return _db;
@@ -102,7 +102,7 @@ export function handleSelectError(
  * @throws An {@link Error} if the migration fails.
  */
 export async function migrateDb(): Promise<MigrationResult[]> {
-  info('\n-- Migrating DB Schema to latest version --');
+  debug('\n-- Migrating DB Schema to latest version --');
 
   const migrator = new Migrator({
     db: db(),
@@ -118,7 +118,7 @@ export async function migrateDb(): Promise<MigrationResult[]> {
   for (const res of results ?? []) {
     switch (res.status) {
       case 'Success':
-        info(`migration '${res.migrationName}' was executed successfully`);
+        debug(`migration '${res.migrationName}' was executed successfully`);
         break;
       case 'Error':
         error(`failed to execute migration "${res.migrationName}"`);
@@ -131,7 +131,7 @@ export async function migrateDb(): Promise<MigrationResult[]> {
     throw err;
   }
 
-  info(`DB schema migration finished, completed ${(results ?? []).length} migrations\n`);
+  debug(`DB schema migration finished, completed ${(results ?? []).length} migrations\n`);
   return results ?? [];
 }
 

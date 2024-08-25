@@ -1,6 +1,6 @@
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { decodeBase58, env, info, toBN } from '@npc/core';
+import { debug, decodeBase58, env, toBN } from '@npc/core';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token';
 import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion';
@@ -204,8 +204,8 @@ export function wallet(): WalletExt {
   if (!_wallet) {
     _wallet = new WalletExt();
 
-    info('-- Initialized Wallet --');
-    info('Wallet Address:', _wallet.publicKey.toBase58());
+    debug('-- Initialized Wallet --');
+    debug('Wallet Address:', _wallet.publicKey.toBase58());
   }
 
   return _wallet;

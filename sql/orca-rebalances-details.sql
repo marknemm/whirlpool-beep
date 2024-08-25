@@ -15,9 +15,9 @@ SELECT
   ,liquidity_withdraw.token_amount_a / (10 ^ token_a.decimals) * -1 AS a_withdraw
   ,liquidity_withdraw.token_amount_b / (10 ^ token_b.decimals) * -1 AS b_withdraw
   ,liquidity_withdraw.usd * -1                                      AS usd_withdraw
-  ,fee_reward.token_amount_a / (10 ^ token_a.decimals)              AS a_collected
-  ,fee_reward.token_amount_b / (10 ^ token_b.decimals)              AS b_collected
-  ,fee_reward.usd                                                   AS usd_collected
+  ,fee_reward.token_amount_a / (10 ^ token_a.decimals)              AS a_collect
+  ,fee_reward.token_amount_b / (10 ^ token_b.decimals)              AS b_collect
+  ,fee_reward.usd                                                   AS usd_collect
   ,(open_tx.fee + close_tx.fee) / (10 ^ 9)                          AS tx_fee_sol
   ,(
     (liquidity_withdraw.token_amount_a * -1)

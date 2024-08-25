@@ -1,6 +1,6 @@
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import type { Null } from '@npc/core';
-import { info } from '@npc/core';
+import { debug } from '@npc/core';
 import { anchor, getTokenPair } from '@npc/solana';
 import { buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID, PriceMath, WhirlpoolContext, type Whirlpool, type WhirlpoolClient, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
@@ -18,7 +18,7 @@ export default function whirlpoolClient(): WhirlpoolClient {
 
     _whirlpoolClient = buildWhirlpoolClient(ctx);
 
-    info('-- Initialized Whirlpool Client --');
+    debug('-- Initialized Whirlpool Client --');
   }
 
   return _whirlpoolClient;
@@ -73,7 +73,7 @@ export async function formatWhirlpool(whirlpool: Whirlpool | WhirlpoolData | Nul
   const address = (whirlpool as Whirlpool).getAddress?.().toBase58() ?? '';
 
   return (address ? `${address} -- ` : '')
-    + `${tokenA.metadata.symbol} / ${tokenB.metadata.symbol} -- spacing: ${whirlpoolData.tickSpacing}`.trim();
+    + `${tokenA.metadata.symbol} / ${tokenB.metadata.symbol} / ${whirlpoolData.tickSpacing}`.trim();
 }
 
 /**

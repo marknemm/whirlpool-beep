@@ -1,7 +1,7 @@
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import type { Null } from '@npc/core';
-import { expBackoff, info, warn } from '@npc/core';
+import { debug, expBackoff, warn } from '@npc/core';
 import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
 import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
 import env from '@npc/solana/util/env/env';
@@ -89,7 +89,7 @@ export async function getToken(
     return _tokenCache.get(query)!;
   }
 
-  info('Fetching token using query:', query);
+  debug('Fetching token using query:', query);
 
   if (!PublicKeyUtils.isBase58(query) || query.length < 32) {
     // Query token via standard token list API that is used by solana explorer.
@@ -122,7 +122,7 @@ export async function getToken(
     _tokenCache.set(query, tokenAsset);
     _tokenCache.set(tokenAsset.publicKey, tokenAsset);
 
-    info('Fetched token:', formatToken(tokenAsset));
+    debug('Fetched token:', formatToken(tokenAsset));
     await SolanaTokenDAO.insert(tokenAsset, { catchErrors: true });
   } else {
     warn('Failed to fetch token using query:', query);

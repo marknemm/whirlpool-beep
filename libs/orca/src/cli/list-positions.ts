@@ -1,7 +1,12 @@
 import type { CliArgs } from '@npc/core';
 import { error, info } from '@npc/core';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
+import { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
+import { formatPosition } from '@npc/orca/util/position/position';
+import { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
+import { WhirlpoolData } from '@orca-so/whirlpools-sdk';
+import { green } from 'colors';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -25,11 +30,29 @@ async function handler(argv: CliArgs<typeof cli.options>) {
     const whirlpoolAddress = await getWhirlpoolAddressFromCliArgs(argv);
     const bundledPositions = await getPositions({ whirlpoolAddress });
 
-    info('Positions:', bundledPositions.map((pos) => pos.position.getAddress().toBase58()));
+    const whirlpoolPositions = new Map<WhirlpoolData, BundledPosition[]>();
+
+    for (const bundledPosition of bundledPositions) {
+      const whirlpoolData = bundledPosition.position.getWhirlpoolData();
+      if (!whirlpoolPositions.has(whirlpoolData)) {
+        whirlpoolPositions.set(whirlpoolData, []);
+      }
+      whirlpoolPositions.get(whirlpoolData)!.push(bundledPosition);
+    }
+
+    for (const whirlpoolData of whirlpoolPositions.keys()) {
+      info(
+        `\n${await formatWhirlpool(whirlpoolData)}\n  `,
+        green((await Promise.all(
+          whirlpoolPositions.get(whirlpoolData)!.map((bundledPosition) => formatPosition(bundledPosition))
+        )).sort().join('\n   ')),
+        `\n( count: ${whirlpoolPositions.get(whirlpoolData)!.length} )\n`
+      );
+    }
 
     whirlpoolAddress
-      ? info(`Retrieved ${bundledPositions.length} owned positions under whirlpool:`, whirlpoolAddress.toBase58())
-      : info(`Retrieved ${bundledPositions.length} owned positions`);
+      ? info(`Retrieved ${bundledPositions.length} positions under whirlpool:`, whirlpoolAddress.toBase58())
+      : info(`Retrieved ${bundledPositions.length} total positions`);
   } catch (err) {
     error(err);
     process.exit(1);
