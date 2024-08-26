@@ -1,6 +1,7 @@
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, decodeBase58, env, toBN } from '@npc/core';
+import { debug, decodeBase58, toBN } from '@npc/core';
+import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token';
 import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion';

@@ -1,4 +1,4 @@
-import type { SolanaToken } from '@npc/core';
+import type { SolanaToken } from '@npc/db';
 import type { Selectable } from 'kysely';
 
 /**

@@ -1,5 +1,5 @@
-import env from '@/util/env/env';
-import { debug, warn } from '@/util/log/log';
+import env from '@npc/core/util/env/env';
+import { debug, warn } from '@npc/core/util/log/log';
 import type { ExpBackoffOpts } from './async.interfaces';
 
 /**

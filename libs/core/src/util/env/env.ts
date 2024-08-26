@@ -1,55 +1,10 @@
-import { bool, cleanEnv, num, str, url } from 'envalid';
+import { REGEX_ESCAPE } from '@npc/core/constants/regex';
+import { bool, cleanEnv, num, str } from 'envalid';
 
 /**
- * Preprocessed, validated, and strongly typed environment variables.
+ * Preprocessed, validated, and strongly typed environment variables for core.
  */
 export const env = cleanEnv(process.env, {
-
-  /**
-   * The database root certificate authority signature.
-   */
-  DB_CA: str({ default: undefined }),
-
-  /**
-   * The database host.
-   */
-  DB_HOST: str(),
-
-  /**
-   * Whether to automatically migrate the database schema on startup.
-   *
-   * @default false
-   */
-  DB_MIGRATE: bool({ default: false }),
-
-  /**
-   * The database name.
-   */
-  DB_NAME: str(),
-
-  /**
-   * The database password.
-   */
-  DB_PASSWORD: str(),
-
-  /**
-   * The database port.
-   *
-   * @default 5432
-   */
-  DB_PORT: num({ default: 5432 }),
-
-  /**
-   * The database user.
-   */
-  DB_USER: str(),
-
-  /**
-   * Whether to use SSL for the database connection.
-   *
-   * @default true
-   */
-  DB_SSL: bool({ default: true }),
 
   /**
    * The log line break length.
@@ -122,32 +77,27 @@ export const env = cleanEnv(process.env, {
    */
   RETRY_MAX_RETRIES: num({ default: 10 }),
 
-  /**
-   * The RPC endpoint used to access the Solana cluster.
-   */
-  RPC_ENDPOINT: url(),
-
-  /**
-   * The user's base58 wallet address.
-   */
-  WALLET_ADDRESS: str(),
-
-  /**
-   * The user's base58 wallet private key.
-   */
-  WALLET_PRIVATE_KEY: str(),
-
 });
 
 /**
- * Gets the secret environment variables.
+ * Gets the names of secret environment variables.
  *
- * @returns The secret environment variables.
+ * @returns The secret environment variable names.
  */
-export function getSecretEnvVars(): (keyof typeof env)[] {
-  return Object.keys(env).filter(
-    (key) => /API_KEY|PASSWORD|PRIVATE|^RPC_ENDPOINT|SECRET/i.test(key)
-  ) as (keyof typeof env)[];
+export function getSecretEnvVarNames<T extends Object>(): (keyof T)[] {
+  return Object.keys(process.env).filter(
+    (key) => /API_KEY|PASSWORD|PRIVATE|SECRET/i.test(key)
+  ) as (keyof T)[];
 }
+
+/**
+ * {@link RegExp} to detect secret environment variable values.
+ */
+export const SECRETS_REGEX = new RegExp(
+  getSecretEnvVarNames()
+    .map((key) => process.env[key]?.toString().replace(REGEX_ESCAPE, '\\$&'))
+    .join('|').replace(/\|{2,}/g, '|').replace(/^\||\|$/g, ''),
+  'g'
+);
 
 export default env;

@@ -1,5 +1,6 @@
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { db, debug, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { debug, type ErrorWithCode, type Null } from '@npc/core';
+import { db, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions } from '@npc/db';
 import { AddressUtil, type Address } from '@orca-so/common-sdk';
 import type { SolanaTokenRow } from './solana-token.doa.interfaces';
 

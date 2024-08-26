@@ -5,14 +5,12 @@
     "outDir": "dist",
     "baseUrl": "./",
     "paths": {
-      "@npc/orca/*": ["./src/*"]
+      "@npc/db/*": ["src/*"],
     }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["*.spec.ts"],
   "references": [
-    { "path": "../core" },
-    { "path": "../db" },
-    { "path": "../solana" }
+    { "path": "../core" }
   ]
 }

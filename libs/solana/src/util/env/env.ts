@@ -1,4 +1,5 @@
 import { env as coreEnv } from '@npc/core';
+import { env as dbEnv } from '@npc/db';
 import { cleanEnv, num, str, url } from 'envalid';
 
 /**
@@ -6,6 +7,7 @@ import { cleanEnv, num, str, url } from 'envalid';
  */
 export const env = {
   ...coreEnv,
+  ...dbEnv,
   ...cleanEnv(process.env, {
 
     /**

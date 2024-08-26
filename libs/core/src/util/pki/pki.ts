@@ -1,4 +1,4 @@
-import { PUBLIC_KEY_REGEX } from '@/constants/regex';
+import { PUBLIC_KEY_REGEX } from '@npc/core/constants/regex';
 import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 

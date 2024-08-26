@@ -136,7 +136,5 @@ scratch.*
 .turbo
 .dump
 
-
-
 .nx/cache
 .nx/workspace-data

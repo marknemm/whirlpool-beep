@@ -1,4 +1,4 @@
-import env from '@/util/env/env.js';
+import env from '@npc/core/util/env/env.js';
 import colors from 'colors';
 import { glob } from 'glob';
 import { sep } from 'node:path';

@@ -1,4 +1,4 @@
-import { env } from '@/util/env/env';
+import { env } from '@npc/db/util/env/env';
 import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
 import { defineConfig, getKnexTimestampPrefix } from 'kysely-ctl';
 import { Pool } from 'pg';
@@ -23,6 +23,7 @@ export default defineConfig({
 		],
 	}),
 	migrations: {
+		allowJS: true,
 		getMigrationPrefix: getKnexTimestampPrefix,
 	},
 });

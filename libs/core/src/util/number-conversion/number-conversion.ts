@@ -1,5 +1,5 @@
-import type { Null } from '@/interfaces/nullable.interfaces';
 import { BN } from '@coral-xyz/anchor';
+import type { Null } from '@npc/core/interfaces/nullable.interfaces';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import Decimal from 'decimal.js';
 

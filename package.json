@@ -3,13 +3,17 @@
   "version": "0.0.1",
   "description": "NPC Beep-Boop-Bop 🤖",
   "scripts": {
-    "build": "npm run build --workspaces",
-    "clean": "rimraf dist libs/*/dist tsconfig.tsbuildinfo libs/*/tsconfig.tsbuildinfo .serverless libs/*/.serverless",
-    "clean:all": "npm run clean && npm run clean:deps && npm run clean:dump && npm run clean:logs",
-    "clean:deps": "rimraf node_modules libs/*/node_modules",
-    "clean:dump": "rimraf .dump libs/*/dump",
-    "clean:logs": "rimraf logs libs/*/logs",
-    "prepare": "ts-patch install -s"
+    "build": "npm run build --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "clean:all": "npm run clean:all --workspaces --if-present",
+    "clean:deps": "npm run clean:deps --workspaces --if-present",
+    "clean:dump": "npm run clean:dump --workspaces --if-present",
+    "clean:logs": "npm run clean:logs --workspaces --if-present",
+    "dev:package": "npm run dev:package --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "prepare": "ts-patch install -s",
+    "prod:package": "npm run prod:package --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
@@ -45,6 +49,7 @@
   },
   "workspaces": [
     "libs/core",
+    "libs/db",
     "libs/solana",
     "libs/*"
   ]

@@ -1,6 +1,7 @@
-import { env } from '@npc/core'; // Load and validate env variables ASAP
+import env from '@npc/solana/util/env/env'; // Load and validate env variables ASAP
 
-import { debug, error, execCli, migrateDb } from '@npc/core';
+import { debug, error, execCli } from '@npc/core';
+import { migrateDb } from '@npc/db';
 import { join } from 'node:path';
 import yargs from 'yargs';
 

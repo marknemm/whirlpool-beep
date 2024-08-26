@@ -17,7 +17,7 @@ export async function rebalance() {
   info('Environment variables loaded and validated:', { ...env }, '\n');
 
   if (env.DB_MIGRATE) {
-    const { migrateDb } = await import('@npc/core');
+    const { migrateDb } = await import('@npc/db');
     await migrateDb();
   }
 

@@ -1,5 +1,6 @@
-import type { DAOInsertOptions, ErrorWithCode, Null } from '@npc/core';
-import { db, debug, handleInsertError, toBigInt } from '@npc/core';
+import type { ErrorWithCode, Null } from '@npc/core';
+import { debug, toBigInt } from '@npc/core';
+import { db, handleInsertError, type DAOInsertOptions } from '@npc/db';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import type { CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.interfaces';
 import { SolanaTxDAO } from '@npc/solana';
