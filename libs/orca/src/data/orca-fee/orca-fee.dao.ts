@@ -1,6 +1,4 @@
-import type { ErrorWithCode, Null } from '@npc/core';
-import { debug, toBigInt } from '@npc/core';
-import { db, handleInsertError, type DAOInsertOptions } from '@npc/db';
+import { db, debug, handleDBInsertError, numericToBigInt, type DAOInsertOptions, type ErrorWithCode, type Null } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import type { CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards.interfaces';
 import { SolanaTxDAO } from '@npc/solana';
@@ -45,8 +43,8 @@ export default class OrcaFeeDAO {
       const result = await db().insertInto('orcaFee')
         .values({
           position: positionId,
-          tokenAmountA: toBigInt(txSummary.tokenAmountA),
-          tokenAmountB: toBigInt(txSummary.tokenAmountB),
+          tokenAmountA: numericToBigInt(txSummary.tokenAmountA),
+          tokenAmountB: numericToBigInt(txSummary.tokenAmountB),
           solanaTx: solanaTxId,
           usd: txSummary.usd,
         })
@@ -56,7 +54,7 @@ export default class OrcaFeeDAO {
       debug(`Inserted Orca Fee into database ( ID: ${result?.id} ):`, txSummary.signature);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Orca Fee', positionAddress, opts);
+      handleDBInsertError(err as ErrorWithCode, 'Orca Fee', positionAddress, opts);
     }
   }
 

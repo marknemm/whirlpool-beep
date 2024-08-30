@@ -1,9 +1,7 @@
-import type { ErrorWithCode, Null } from '@npc/core';
-import { debug, isAddress } from '@npc/core';
-import { db, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions } from '@npc/db';
+import { db, debug, handleDBInsertError, handleDBSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import { getWhirlpoolTokenPair, toWhirlpoolData } from '@npc/orca/util/whirlpool/whirlpool';
-import { SolanaTokenDAO } from '@npc/solana';
-import { AddressUtil, type Address } from '@orca-so/common-sdk';
+import { isAddress, SolanaTokenDAO, toPubKeyStr } from '@npc/solana';
+import { type Address } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 
 /**
@@ -28,7 +26,7 @@ export default class OrcaWhirlpoolDAO {
      */
     static async getId(address: Address | Null, opts?: DAOOptions): Promise<number | undefined> {
       if (!address) return;
-      address = AddressUtil.toString(address);
+      address = toPubKeyStr(address);
 
       debug('Getting Orca Whirlpool ID from database:', address);
 
@@ -41,7 +39,7 @@ export default class OrcaWhirlpoolDAO {
         debug(`Got Orca Whirlpool ID from database ( ID: ${result?.id} ):`, address);
         return result?.id;
       } catch (err) {
-        handleSelectError(err as ErrorWithCode, 'orcaWhirlpool', opts);
+        handleDBSelectError(err as ErrorWithCode, 'orcaWhirlpool', opts);
       }
     }
 
@@ -103,7 +101,7 @@ export default class OrcaWhirlpoolDAO {
         : {};
       opts.ignoreDuplicates ??= true;
       const address = isAddress(addressOrOpts)
-        ? AddressUtil.toString(addressOrOpts as Address)
+        ? toPubKeyStr(addressOrOpts)
         : (whirlpool as Whirlpool).getAddress().toBase58();
 
       // Get token pair from whirlpool data, and implicitly store tokens in database if not already present.
@@ -136,7 +134,7 @@ export default class OrcaWhirlpoolDAO {
         debug(`Inserted Orca Whirlpool into database ( ID: ${result?.id} ):`, address);
         return result?.id;
       } catch (err) {
-        handleInsertError(err as ErrorWithCode, 'Orca Whirlpool', address, opts);
+        handleDBInsertError(err as ErrorWithCode, 'Orca Whirlpool', address, opts);
       }
     }
 

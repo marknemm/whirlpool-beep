@@ -1,5 +1,4 @@
-import { debug, type ErrorWithCode, type Null } from '@npc/core';
-import { db, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions } from '@npc/db';
+import { db, debug, handleDBInsertError, handleDBSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import { type TxSummary } from '@npc/solana/util/transaction-query/transaction-query';
 
 /**
@@ -34,7 +33,7 @@ export class SolanaTxDAO {
         : debug('Solana Tx not found in database:', signature);
       return result?.id;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'SolanaTx', opts);
+      handleDBSelectError(err as ErrorWithCode, 'SolanaTx', opts);
     }
   }
 
@@ -72,7 +71,7 @@ export class SolanaTxDAO {
       debug(`Inserted Solana Tx into database ( ID: ${result?.id} ):`, txSummary.signature);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Solana Tx', txSummary.signature, opts);
+      handleDBInsertError(err as ErrorWithCode, 'Solana Tx', txSummary.signature, opts);
     }
   }
 

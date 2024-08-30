@@ -1,7 +1,7 @@
 import type { CliArgs } from '@npc/core';
 import { env, error, info } from '@npc/core';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { confirmTx } from '@npc/solana/util/transaction/transaction';
+import { confirmTx } from '@npc/solana/util/transaction-exec/transaction-exec';
 import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { type Argv } from 'yargs';

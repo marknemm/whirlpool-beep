@@ -1,6 +1,8 @@
-import { debug, error, type ErrorWithCode, type Null } from '@npc/core';
-import type { DAOInsertOptions, DAOOptions } from '@npc/db/interfaces/dao.interfaces';
-import env from '@npc/db/util/env/env';
+import type { ErrorWithCode } from '@npc/core/interfaces/error.interfaces';
+import type { Null } from '@npc/core/interfaces/nullable.interfaces';
+import type { DAOInsertOptions, DAOOptions } from '@npc/core/src/interfaces/dao.interfaces';
+import env from '@npc/core/util/env/env';
+import { debug, error } from '@npc/core/util/log/log';
 import { promises as fs } from 'fs';
 import { CamelCasePlugin, FileMigrationProvider, Kysely, Migrator, PostgresDialect, type MigrationResult } from 'kysely';
 import { join } from 'node:path';
@@ -43,6 +45,11 @@ export function db(): Kysely<DB> {
 }
 
 /**
+ * Database unique constraint violation error code.
+ */
+export const UNIQUE_VIOLATION_CODE = '23505';
+
+/**
  * Handles an insert error.
  *
  * @param err The error to handle.
@@ -51,7 +58,7 @@ export function db(): Kysely<DB> {
  * @param opts The {@link DAOInsertOptions} used for the operation.
  * @throws The {@link ErrorWithCode} if {@link DAOOptions.catchErrors} is not set in the {@link opts}.
  */
-export function handleInsertError(
+export function handleDBInsertError(
   err: ErrorWithCode,
   tableName: string,
   identifier: unknown,
@@ -79,7 +86,7 @@ export function handleInsertError(
  * @param opts The {@link DAOOptions} used for the operation.
  * @throws The {@link ErrorWithCode} if {@link DAOOptions.catchErrors} is not set in the {@link opts}.
  */
-export function handleSelectError(
+export function handleDBSelectError(
   err: ErrorWithCode,
   tableName: string,
   opts: DAOOptions | Null
@@ -99,7 +106,7 @@ export function handleSelectError(
  * @returns A {@link Promise} that resolves to the {@link MigrationResult} list data.
  * @throws An {@link Error} if the migration fails.
  */
-export async function migrateDb(): Promise<MigrationResult[]> {
+export async function migrateDB(): Promise<MigrationResult[]> {
   debug('\n-- Migrating DB Schema to latest version --');
 
   const migrator = new Migrator({
@@ -132,11 +139,6 @@ export async function migrateDb(): Promise<MigrationResult[]> {
   debug(`DB schema migration finished, completed ${(results ?? []).length} migrations\n`);
   return results ?? [];
 }
-
-/**
- * Database unique constraint violation error code.
- */
-export const UNIQUE_VIOLATION_CODE = '23505';
 
 export type * from './db.interfaces';
 export default db;

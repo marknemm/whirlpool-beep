@@ -1,4 +1,4 @@
-import { error, info, timeout, toStr } from '@npc/core';
+import { error, info, timeout } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import OrcaRebalanceDAO from '@npc/orca/data/orca-rebalance/orca-rebalance.dao';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
@@ -131,7 +131,7 @@ export async function rebalancePosition(
         priceMargin: priceMargin.toString(),
         priceRange,
         tickRange,
-        liquidity: `${toStr(liquidity)} ${liquidityUnit ?? 'usd'}`,
+        liquidity: `${liquidity.toString()} ${liquidityUnit ?? 'usd'}`,
       });
 
       return {

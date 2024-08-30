@@ -1,7 +1,6 @@
-import type { CliArgs } from '@npc/core';
-import { error, warn } from '@npc/core';
-import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@npc/solana/util/transaction-budget/transaction-budget';
-import { getTxInstructions } from '@npc/solana/util/transaction/transaction';
+import { error, log, type CliArgs } from '@npc/core';
+import { getFallbackPriorityFeeEstimate, getHeliusPriorityFeeEstimate } from '@npc/solana/util/compute-budget/compute-budget';
+import { toTxInstructions } from '@npc/solana/util/transaction-exec/transaction-exec';
 import { type Argv } from 'yargs';
 
 const cli = {
@@ -34,16 +33,16 @@ const cli = {
  */
 async function handler(argv: CliArgs<typeof cli.options>) {
   try {
-    const ixs = getTxInstructions(argv.transaction);
+    const ixs = toTxInstructions(argv.transaction);
 
     if (['all', 'helius'].find((s) => s === argv.estimator)) {
       try {
         await getHeliusPriorityFeeEstimate(ixs); // Will log the priority fee estimate via debug log.
       } catch (err) {
-        const log = argv.estimator === 'helius'
-          ? error
-          : warn;
-        log('Could not get helius priority fee estimate:', err);
+        const logLv = argv.estimator === 'helius'
+          ? 'error'
+          : 'warn';
+        log(logLv, 'Could not get helius priority fee estimate:', err);
       }
     }
 

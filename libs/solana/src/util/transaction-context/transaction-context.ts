@@ -1,12 +1,12 @@
 import type { Null } from '@npc/core';
 import { expBackoff, info, warn } from '@npc/core';
+import { genComputeBudget } from '@npc/solana/util/compute-budget/compute-budget';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { genComputeBudget } from '@npc/solana/util/transaction-budget/transaction-budget';
-import { confirmTx, getTxInstructions, sendTx, signTx, simulateTx } from '@npc/solana/util/transaction/transaction';
+import { confirmTx, sendTx, signTx, simulateTx, toTxInstructions } from '@npc/solana/util/transaction-exec/transaction-exec';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { SimulatedTransactionResponse, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type SendTransactionError, type Signer, type TransactionSignature } from '@solana/web3.js';
-import { green } from 'colors';
+import colors from 'colors';
 import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionData, InstructionMetadata, SendTransactionOptions, SendTransactionRecord, SendTransactionResult, SignTransactionOptions, SimulateTransactionOptions, TransactionCtxOptions } from './transaction-context.interfaces';
 
 /**
@@ -105,7 +105,7 @@ export class TransactionContext {
     ctxOpts: TransactionCtxOptions = {}
   ): TransactionContext {
     const instructions = (ixsOrTx instanceof Transaction || ixsOrTx instanceof VersionedTransaction)
-      ? getTxInstructions(ixsOrTx)
+      ? toTxInstructions(ixsOrTx)
       : (ixsOrTx instanceof Array)
         ? ixsOrTx
         : [ixsOrTx];
@@ -295,7 +295,11 @@ export class TransactionContext {
       info('Building Tx:', opMeta);
 
       // Gen compute budget and get latest blockhash timestamp for build
-      const computeBudget = await genComputeBudget(this.instructions, buildOpts.computeBudget, this.sendHistory.length);
+      const computeBudget = await genComputeBudget(
+        this.instructions,
+        buildOpts.computeBudget,
+        this.sendHistory.length
+      );
       const blockhashWithExpiry = await rpc().getLatestBlockhash(buildOpts.commitment);
 
       // Build transaction with specified version
@@ -375,7 +379,7 @@ export class TransactionContext {
       throw new Error('No transaction signature to confirm');
     }
 
-    info(`Confirming Tx ( Commitment: ${green(commitment)} ):`, signature);
+    info(`Confirming Tx ( Commitment: ${colors.green(commitment)} ):`, signature);
 
     // Wait for the transaction to be confirmed or rejected.
     await confirmTx(signature, commitment, opts.blockhashWithExpiry);

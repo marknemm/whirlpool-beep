@@ -1,6 +1,6 @@
 import { debug } from '@npc/core';
+import env from '@npc/solana/util/env/env';
 import { Connection, type ConnectionConfig } from '@solana/web3.js';
-import env from '../env/env';
 
 let _rpc: Connection;
 

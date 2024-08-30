@@ -1,6 +1,6 @@
 import type { Wallet } from '@coral-xyz/anchor';
 import type { Null } from '@npc/core';
-import type { ComputeBudget, ComputeBudgetOptions } from '@npc/solana/util/transaction-budget/transaction-budget';
+import type { ComputeBudget, ComputeBudgetOptions } from '@npc/solana/util/compute-budget/compute-budget';
 import type { AddressLookupTableAccount, BlockhashWithExpiryBlockHeight, Commitment, SendOptions, Signer, SimulateTransactionConfig, Transaction, TransactionInstruction, TransactionSignature, VersionedTransaction } from '@solana/web3.js';
 import type { Required } from 'utility-types';
 import type TransactionContext from './transaction-context';
@@ -327,4 +327,4 @@ export interface InstructionMetadata {
 
 }
 
-export type * from '@npc/solana/util/transaction-budget/transaction-budget.interfaces';
+export type * from '@npc/solana/util/compute-budget/compute-budget.interfaces';

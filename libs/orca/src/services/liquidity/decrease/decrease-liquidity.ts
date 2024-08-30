@@ -1,5 +1,5 @@
 import { BN, type Address } from '@coral-xyz/anchor';
-import { error, expBackoff, info, toBN, toStr } from '@npc/core';
+import { error, expBackoff, info, numericToBN, numericToString } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
@@ -26,7 +26,7 @@ export async function decreaseAllLiquidity(
   const txSummaries = new Map<string, LiquidityTxSummary>();
 
   const bundledPositions = await getPositions({ whirlpoolAddress });
-  const divAmount = toBN(amount).div(toBN(bundledPositions.length));
+  const divAmount = new BN(amount).div(new BN(bundledPositions.length));
 
   bundledPositions.length
     ? info(`Decreasing liquidity of ${bundledPositions.length} positions in whirlpool:`, whirlpoolAddress)
@@ -61,7 +61,7 @@ export async function decreaseLiquidity(
   const opMetadata = {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
-    amount: toStr(amount),
+    amount: numericToString(amount),
   };
 
   try {
@@ -109,20 +109,21 @@ export async function decreaseLiquidity(
  * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
  */
 export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs): Promise<DecreaseLiquidityIxData> {
-  const { position, liquidity } = ixArgs;
+  const { position } = ixArgs;
+  const liquidity = numericToBN(ixArgs.liquidity);
 
   info('Creating Tx to decrease liquidity:', {
     position: position.getAddress().toBase58(),
-    liquidity: toStr(liquidity),
+    liquidity: numericToString(liquidity),
   });
 
-  if (toBN(liquidity).isZero()) {
+  if (liquidity.isZero()) {
     throw new Error('Cannot decrease liquidity by zero');
   }
 
-  if (toBN(liquidity).gt(position.getData().liquidity)) {
+  if (liquidity.gt(position.getData().liquidity)) {
     throw new Error('Cannot decrease liquidity by more than position liquidity: '
-      + `${toStr(liquidity)} > ${toStr(position.getData().liquidity)}`);
+      + `${numericToString(liquidity)} > ${numericToString(position.getData().liquidity)}`);
   }
 
   const quote = decreaseLiquidityQuoteByLiquidityWithParams({
@@ -138,7 +139,7 @@ export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs
     tickLowerIndex: position.getData().tickLowerIndex,
     tickUpperIndex: position.getData().tickUpperIndex,
     // Withdraw amount
-    liquidity: toBN(liquidity),
+    liquidity,
     // Acceptable slippage
     slippageTolerance: Percentage.fromFraction(env.SLIPPAGE_DEFAULT, 100),
   });
@@ -146,8 +147,8 @@ export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
   info('Generated decrease liquidity quote:', {
     position: position.getAddress().toBase58(),
-    [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
-    [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+    [`${tokenA.metadata.symbol} Min`]: numericToString(quote.tokenMinA, tokenA.mint.decimals),
+    [`${tokenB.metadata.symbol} Min`]: numericToString(quote.tokenMinB, tokenB.mint.decimals),
   });
 
   const tx = await position.decreaseLiquidity(quote);
@@ -161,9 +162,9 @@ export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs
       name: 'Decrease Liquidity',
       whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
       position: position.getAddress().toBase58(),
-      liquidity: toStr(liquidity),
-      [`${tokenA.metadata.symbol} Min`]: toStr(quote.tokenMinA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Min`]: toStr(quote.tokenMinB, tokenB.mint.decimals),
+      liquidity: liquidity.toString(),
+      [`${tokenA.metadata.symbol} Min`]: numericToString(quote.tokenMinA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Min`]: numericToString(quote.tokenMinB, tokenB.mint.decimals),
     }
   };
 }
@@ -191,7 +192,7 @@ export async function genDecreaseLiquidityTxSummary(
   const { tokenTotals, usd } = await getTransferTotalsFromIxs([liquidityIx]);
 
   const liquidityTxSummary: LiquidityTxSummary = {
-    liquidity: toBN(ixData.ixArgs.liquidity).neg(),
+    liquidity: numericToBN(ixData.ixArgs.liquidity).neg(),
     liquidityUnit: 'liquidity',
     position,
     slippage: Percentage.fromFraction(
@@ -207,11 +208,11 @@ export async function genDecreaseLiquidityTxSummary(
   info('Decrease liquidity tx summary:', {
     whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
     position: liquidityTxSummary.position.getAddress().toBase58(),
-    liquidity: toStr(liquidityTxSummary.liquidity),
-    [tokenA.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
-    [tokenB.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
+    liquidity: liquidityTxSummary.liquidity.toString(),
+    [tokenA.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
+    [tokenB.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
     usd: `$${liquidityTxSummary.usd}`,
-    fee: toStr(liquidityTxSummary.fee),
+    fee: liquidityTxSummary.fee,
     signature: liquidityTxSummary.signature,
   });
 

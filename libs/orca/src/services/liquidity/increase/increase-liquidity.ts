@@ -1,6 +1,6 @@
 import { BN } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, error, expBackoff, info, toBN, toDecimal, toStr, toTokenAmount } from '@npc/core';
+import { debug, error, expBackoff, info, numericToBN, numericToDecimal, numericToString, usdToTokenAmount } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
@@ -9,8 +9,8 @@ import { getWhirlpool } from '@npc/orca/services/whirlpool/query/query-whirlpool
 import env from '@npc/orca/util/env/env';
 import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, getTokenPrice, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, STABLECOIN_SYMBOL_REGEX, TransactionContext, wallet } from '@npc/solana';
-import { AddressUtil, Percentage, resolveOrCreateATAs, TransactionBuilder, type Address } from '@orca-so/common-sdk';
+import { getProgramErrorInfo, getTokenPrice, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, STABLECOIN_SYMBOL_REGEX, toPubKey, toPubKeyStr, TransactionContext, wallet } from '@npc/solana';
+import { Percentage, resolveOrCreateATAs, TransactionBuilder, type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, WhirlpoolIx, type IncreaseLiquidityParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -44,11 +44,12 @@ export async function increaseAllLiquidity(
     : (unit === 'tokenB')
       ? whirlpool.getTokenBInfo().decimals
       : undefined;
-  const divAmount = toDecimal(amount, decimals).div(bundledPositions.length);
+  const divAmount = numericToDecimal(amount, decimals).div(bundledPositions.length);
 
+  const whirlpoolLogStr = await formatWhirlpool(whirlpool);
   bundledPositions.length
-    ? info(`Increasing liquidity of ${bundledPositions.length} positions in pool:`, await formatWhirlpool(whirlpool))
-    : info('No positions to increase liquidity of in pool:', await formatWhirlpool(whirlpool));
+    ? info(`Increasing liquidity of ${bundledPositions.length} positions in pool:`, whirlpoolLogStr)
+    : info('No positions to increase liquidity of in pool:', whirlpoolLogStr);
 
   // Increase liquidity of each position in parallel
   const promises = bundledPositions.map(async ({ position }) => {
@@ -84,7 +85,7 @@ export async function increaseLiquidity(
   const opMetadata = {
     whirlpool: await formatWhirlpool(whirlpool),
     position: position.getAddress().toBase58(),
-    amount: `${toStr(amount)} ${unit}`,
+    amount: `${amount.toString()} ${unit}`,
   };
 
   try {
@@ -145,8 +146,8 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
   const liquidityDecimals = _getLiquidityDecimals(liquidityUnit, await getWhirlpoolTokenPair(whirlpool));
   const opMetadata = {
     whirlpool: await formatWhirlpool(whirlpool),
-    position: AddressUtil.toString(positionAddress),
-    liquidity: `${toStr(liquidity, liquidityDecimals)} ${liquidityUnit}`,
+    position: toPubKeyStr(positionAddress),
+    liquidity: `${numericToString(liquidity, liquidityDecimals)} ${liquidityUnit}`,
   };
   info('Creating Tx to increase liquidity:', opMetadata);
 
@@ -163,19 +164,21 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
 
   info('Generated increase liquidity quote:', {
     whirlpool: await formatWhirlpool(whirlpool),
-    position: AddressUtil.toString(positionAddress),
-    [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
-    [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+    position: toPubKeyStr(positionAddress),
+    [`${tokenA.metadata.symbol} Max`]: numericToString(quote.tokenMaxA, tokenA.mint.decimals),
+    [`${tokenB.metadata.symbol} Max`]: numericToString(quote.tokenMaxB, tokenB.mint.decimals),
   });
 
   const walletBalanceA = await wallet().getBalance(tokenA.mint.publicKey);
   if (walletBalanceA.lt(quote.tokenMaxA)) {
-    throw new Error(`Insufficient ${tokenA.metadata.symbol} balance: ${toStr(walletBalanceA, tokenA.mint.decimals)}`);
+    const walletBalanceAStr = numericToString(walletBalanceA, tokenA.mint.decimals);
+    throw new Error(`Insufficient ${tokenA.metadata.symbol} balance: ${walletBalanceAStr}`);
   }
 
   const walletBalanceB = await wallet().getBalance(tokenB.mint.publicKey);
   if (walletBalanceB.lt(quote.tokenMaxB)) {
-    throw new Error(`Insufficient ${tokenB.metadata.symbol} balance: ${toStr(walletBalanceB, tokenB.mint.decimals)}`);
+    const walletBalanceBStr = numericToString(walletBalanceB, tokenB.mint.decimals);
+    throw new Error(`Insufficient ${tokenB.metadata.symbol} balance: ${walletBalanceBStr}`);
   }
 
   // Resolve token accounts for the position and wallet token A/B
@@ -204,7 +207,7 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
   const baseParams: IncreaseLiquidityParams = {
     ...quote,
     whirlpool: whirlpool.getAddress(),
-    position: AddressUtil.toPubKey(positionAddress),
+    position: toPubKey(positionAddress),
     positionTokenAccount,
     tokenOwnerAccountA,
     tokenOwnerAccountB,
@@ -249,10 +252,10 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
     debugData: {
       name: 'Increase Liquidity',
       whirlpool: await formatWhirlpool(whirlpool),
-      position: AddressUtil.toString(positionAddress),
-      liquidity: `${toStr(liquidity, liquidityDecimals)} ${liquidityUnit}`,
-      [`${tokenA.metadata.symbol} Max`]: toStr(quote.tokenMaxA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Max`]: toStr(quote.tokenMaxB, tokenB.mint.decimals),
+      position: toPubKeyStr(positionAddress),
+      liquidity: `${numericToString(liquidity, liquidityDecimals)} ${liquidityUnit}`,
+      [`${tokenA.metadata.symbol} Max`]: numericToString(quote.tokenMaxA, tokenA.mint.decimals),
+      [`${tokenB.metadata.symbol} Max`]: numericToString(quote.tokenMaxB, tokenB.mint.decimals),
     }
   };
 }
@@ -292,7 +295,7 @@ async function _resolveTokenAccounts(positionMint: Address, whirlpool: Whirlpool
 
   // Resolve position token account
   const positionTokenAccount = getAssociatedTokenAddressSync(
-    AddressUtil.toPubKey(positionMint),
+    toPubKey(positionMint),
     wallet().publicKey,
     accountResolverOpts.allowPDAOwnerAddress
   );
@@ -320,18 +323,18 @@ async function _toTokenAmount(
 ): Promise<{ tokenAmount: Decimal, tokenUnit: 'tokenA' | 'tokenB' }> {
   const [tokenA, tokenB] = tokenPair;
 
-  debug(`Converting USD (${toStr(usd)}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
+  debug(`Converting USD (${usd.toString()}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
 
   // If either token is a stablecoin, prioritize that token
   if (STABLECOIN_SYMBOL_REGEX.test(tokenA.metadata.symbol)) {
     return {
-      tokenAmount: toTokenAmount(usd, 1),
+      tokenAmount: usdToTokenAmount(usd, 1),
       tokenUnit: 'tokenA'
     };
   }
   if (STABLECOIN_SYMBOL_REGEX.test(tokenB.metadata.symbol)) {
     return {
-      tokenAmount: toTokenAmount(usd, 1),
+      tokenAmount: usdToTokenAmount(usd, 1),
       tokenUnit: 'tokenB'
     };
   }
@@ -340,14 +343,14 @@ async function _toTokenAmount(
   const usdTokenA = await getTokenPrice(tokenA);
   if (usdTokenA) {
     return {
-      tokenAmount: toTokenAmount(usd, usdTokenA),
+      tokenAmount: usdToTokenAmount(usd, usdTokenA),
       tokenUnit: 'tokenA',
     };
   }
   const usdTokenB = await getTokenPrice(tokenB);
   if (usdTokenB) {
     return {
-      tokenAmount: toTokenAmount(usd, usdTokenB),
+      tokenAmount: usdToTokenAmount(usd, usdTokenB),
       tokenUnit: 'tokenB',
     };
   }
@@ -362,10 +365,10 @@ async function _genQuoteViaLiquidity(
 ): Promise<IncreaseLiquidityQuote> {
   const { sqrtPrice, tickCurrentIndex } = whirlpool.getData();
 
-  debug('Getting increase liquidity quote:', toStr(amount));
+  debug('Getting increase liquidity quote:', amount.toString());
 
   return increaseLiquidityQuoteByLiquidityWithParams({
-    liquidity: toBN(amount),
+    liquidity: numericToBN(amount),
     // Pool state
     tickCurrentIndex,
     sqrtPrice,
@@ -396,7 +399,9 @@ async function _genQuoteViaInputToken(
     ? tokenA
     : tokenB;
 
-  debug('Getting increase liquidity quote:', toStr(amount, inputToken.mint.decimals), inputToken.metadata.symbol);
+  debug('Getting increase liquidity quote:',
+    numericToString(amount, inputToken.mint.decimals),
+    inputToken.metadata.symbol);
 
   const tokenMintA = new PublicKey(tokenA.mint.publicKey);
   const tokenMintB = new PublicKey(tokenB.mint.publicKey);
@@ -412,7 +417,7 @@ async function _genQuoteViaInputToken(
     tickUpperIndex: tickRange[1],
     // Input token and amount
     inputTokenMint: new PublicKey(inputToken.mint.publicKey),
-    inputTokenAmount: toBN(amount, inputToken.mint.decimals),
+    inputTokenAmount: numericToBN(amount, inputToken.mint.decimals),
     // Acceptable slippage
     slippageTolerance: Percentage.fromFraction(env.SLIPPAGE_DEFAULT, 100),
     // Token ext
@@ -448,7 +453,7 @@ export async function genIncreaseLiquidityTxSummary(
 
   const liquidityUnit = ixData.ixArgs.liquidityUnit ?? 'usd';
   const liquidityDecimals = _getLiquidityDecimals(liquidityUnit, [tokenA, tokenB]);
-  const liquidity = toBN(ixData.ixArgs.liquidity, liquidityDecimals);
+  const liquidity = numericToBN(ixData.ixArgs.liquidity, liquidityDecimals);
 
   const liquidityTxSummary: LiquidityTxSummary = {
     liquidity,
@@ -467,11 +472,11 @@ export async function genIncreaseLiquidityTxSummary(
   info('Increase liquidity tx summary:', {
     whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
     position: liquidityTxSummary.position.getAddress().toBase58(),
-    liquidity: `${toStr(liquidityTxSummary.liquidity, liquidityDecimals)} ${liquidityUnit}`,
-    [tokenA.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
-    [tokenB.metadata.symbol]: toStr(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
+    liquidity: `${numericToString(liquidityTxSummary.liquidity, liquidityDecimals)} ${liquidityUnit}`,
+    [tokenA.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
+    [tokenB.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
     usd: `$${liquidityTxSummary.usd}`,
-    fee: toStr(liquidityTxSummary.fee),
+    fee: `${liquidityTxSummary.fee}`,
     signature: liquidityTxSummary.signature,
   });
 

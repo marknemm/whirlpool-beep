@@ -1,6 +1,6 @@
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, decodeBase58, toBN } from '@npc/core';
+import { debug, decodeBase58, numericToBN } from '@npc/core';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token';
@@ -55,11 +55,12 @@ export class WalletExt extends Wallet {
     if (currencyToken.metadata.symbol === 'SOL') {
       // Fetch the default wallet balance and convert Lamports to SOL
       const lamports = await rpc().getBalance(wallet().publicKey);
-      amount = toBN(toSol(lamports), currencyToken.mint.decimals);
+      const sol = toSol(lamports);
+      amount = numericToBN(sol, currencyToken.mint.decimals);
     } else {
       // Fetch the desired token account and get amount
       const tokenAccount = await this.getTokenAccount(currencyToken.mint.publicKey);
-      amount = toBN(tokenAccount?.amount, currencyToken.mint.decimals);
+      amount = numericToBN(tokenAccount?.amount, currencyToken.mint.decimals);
     }
 
     return amount;

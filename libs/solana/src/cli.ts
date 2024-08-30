@@ -1,7 +1,6 @@
-import env from '@npc/solana/util/env/env'; // Load and validate env variables ASAP
 
-import { debug, error, execCli } from '@npc/core';
-import { migrateDb } from '@npc/db';
+import { error, execCli } from '@npc/core';
+import Config from '@npc/solana/util/config/config';
 import { join } from 'node:path';
 import yargs from 'yargs';
 
@@ -9,12 +8,7 @@ import yargs from 'yargs';
  * Main entry point.
  */
 async function main() {
-  debug('Environment variables loaded and validated:', { ...env }, '\n');
-
-  // Migrate the database
-  if (env.DB_MIGRATE) {
-    await migrateDb();
-  }
+  await Config.init();
 
   // Execute the CLI
   await execCli({

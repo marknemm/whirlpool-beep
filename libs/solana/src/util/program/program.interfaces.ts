@@ -1,5 +1,51 @@
-import { AccountMeta } from '@solana/web3.js';
+import type { Address, Instruction } from '@coral-xyz/anchor';
+import type { Null } from '@npc/core';
+import type { AccountMeta, ConfirmedTransactionMeta, TransactionSignature, VersionedMessage } from '@solana/web3.js';
 import type BN from 'bn.js';
+
+/**
+ * Arguments for decoding a transaction.
+ */
+export interface DecodeTransactionArgs {
+
+  /**
+   * The read data of a {@link VersionedTransaction}.
+   */
+  transaction: { message: VersionedMessage, signatures: string[] };
+
+  /**
+   * The {@link ConfirmedTransactionMeta} of the transaction to decode.
+   */
+  meta?: ConfirmedTransactionMeta | Null;
+
+  /**
+   * The {@link TransactionSignature} of the transaction to decode.
+   */
+  signature: TransactionSignature;
+
+}
+
+/**
+ * A fully decoded transaction instruction.
+ */
+export interface DecodedTransactionIx extends Instruction {
+
+  /**
+   * The inner {@link Instruction}s of the transaction.
+   */
+  innerInstructions: Omit<DecodedTransactionIx, 'innerInstructions'>[];
+
+  /**
+   * The {@link Address} of the program that handles the instruction.
+   */
+  programId: Address;
+
+  /**
+   * The name of the program that handles the instruction.
+   */
+  programName: string;
+
+}
 
 /**
  * Error information pertaining to `IDL` errors thrown by `Anchor` or a `Smart Contract`.
@@ -11,7 +57,7 @@ export interface ProgramErrorInfo {
    *
    * `< 6000` -> `Anchor`.
    *
-   * `>= 6000` -> `Smart Contracts (Orca Whirlpool)`.
+   * `>= 6000` -> `Smart Contracts`.
    */
   code: number;
 

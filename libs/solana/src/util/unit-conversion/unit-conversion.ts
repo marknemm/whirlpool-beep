@@ -1,7 +1,10 @@
 import type { Null } from '@npc/core';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-const MICRO_LAMPORTS_PER_LAMPORT = 10e6;
+/**
+ * The number of `Micro Lamports` in a `Lamport`.
+ */
+export const MICRO_LAMPORTS_PER_LAMPORT = 10e6;
 
 /**
  * Converts a given amount of either `SOL` (default) or `Micro Lamports` to `Lamports`.

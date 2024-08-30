@@ -1,5 +1,4 @@
-import type { CliArgs } from '@npc/core';
-import { error, info } from '@npc/core';
+import { error, info, type CliArgs } from '@npc/core';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
 import { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';

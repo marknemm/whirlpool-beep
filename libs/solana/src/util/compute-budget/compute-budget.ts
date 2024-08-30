@@ -1,5 +1,4 @@
-import type { Null } from '@npc/core';
-import { debug, error } from '@npc/core';
+import { debug, error, type Null } from '@npc/core';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { toLamports, toMicroLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
@@ -7,7 +6,7 @@ import wallet from '@npc/solana/util/wallet/wallet';
 import { getSimulationComputeUnits } from '@solana-developers/helpers';
 import { ComputeBudgetProgram, type PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import axios from 'axios';
-import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './transaction-budget.interfaces';
+import type { ComputeBudget, ComputeBudgetOptions, PriorityFeeEstimate, PriorityFeeEstimateResponse, TransactionPriority } from './compute-budget.interfaces';
 
 /**
  * Generates a {@link ComputeBudget} for a transaction.
@@ -47,12 +46,15 @@ export async function genComputeBudget(
   if (!computeBudget.priorityFeeLamports && computeBudget.computeUnitLimit) {
     // Every 2 retries, increase the priority level - caps at 'veryHigh'
     if (retry) {
-      computeBudget.priority = getNextPriorityLevel(computeBudget.priority, Math.floor(retry / 2));
+      computeBudget.priority = _getNextPriorityLevel(computeBudget.priority, Math.floor(retry / 2));
     }
 
     // Estimate the priority fee
     const priorityFeeEstimate = await getPriorityFeeEstimate(ixs);
-    const priorityFeeEstimateLamports = toLamports(priorityFeeEstimate[computeBudget.priority], 'Micro Lamports');
+    const priorityFeeEstimateLamports = toLamports(
+      priorityFeeEstimate[computeBudget.priority],
+      'Micro Lamports'
+    );
     const priorityFeeEstimateTotal = Math.ceil(priorityFeeEstimateLamports * computeBudget.computeUnitLimit);
 
     // Adjust the priority fee based on the current estimate, env configs, and retry count
@@ -121,7 +123,7 @@ export async function getComputeLimitEstimate(
  * Enter a negative number to jump backwards.
  * @returns The next {@link TransactionPriority}.
  */
-export function getNextPriorityLevel(priority: TransactionPriority, jump = 1): TransactionPriority {
+function _getNextPriorityLevel(priority: TransactionPriority, jump = 1): TransactionPriority {
   const priorityLevels: TransactionPriority[] = ['min', 'low', 'medium', 'high', 'veryHigh'];
   const priorityIndex = priorityLevels.indexOf(priority);
   return priorityLevels[Math.max(priorityIndex + jump, priorityLevels.length - 1)];
@@ -239,5 +241,4 @@ function _getWriteableAccounts(
     .map((key) => key.pubkey);
 }
 
-export type * from './transaction-budget.interfaces';
-
+export type * from './compute-budget.interfaces';

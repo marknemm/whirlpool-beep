@@ -49,7 +49,6 @@
   },
   "workspaces": [
     "libs/core",
-    "libs/db",
     "libs/solana",
     "libs/*"
   ]

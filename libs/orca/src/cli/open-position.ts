@@ -1,5 +1,4 @@
-import type { CliArgs } from '@npc/core';
-import { error } from '@npc/core';
+import { error, type CliArgs } from '@npc/core';
 import { genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
 import { openPosition } from '@npc/orca/services/position/open/open-position';

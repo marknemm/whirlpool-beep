@@ -11,7 +11,6 @@
   "include": ["src/**/*.ts"],
   "exclude": ["*.spec.ts"],
   "references": [
-    { "path": "../core" },
-    { "path": "../db" }
+    { "path": "../core" }
   ]
 }

@@ -12,7 +12,6 @@
   "exclude": ["*.spec.ts"],
   "references": [
     { "path": "../core" },
-    { "path": "../db" },
     { "path": "../solana" }
   ]
 }

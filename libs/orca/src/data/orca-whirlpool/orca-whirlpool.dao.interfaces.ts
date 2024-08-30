@@ -1,4 +1,4 @@
-import type { OrcaWhirlpool } from '@npc/db';
+import type { OrcaWhirlpool } from '@npc/core';
 import type { Selectable } from 'kysely';
 
 /**

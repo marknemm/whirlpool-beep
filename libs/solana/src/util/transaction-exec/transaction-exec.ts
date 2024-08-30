@@ -1,11 +1,10 @@
 import { type Wallet } from '@coral-xyz/anchor';
-import type { Null } from '@npc/core';
-import { info, timeout } from '@npc/core';
+import { info, Null, timeout } from '@npc/core';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import wallet from '@npc/solana/util/wallet/wallet';
-import { TransactionMessage, VersionedTransaction, type BlockhashWithExpiryBlockHeight, type Commitment, type SendOptions, type Signer, type SimulatedTransactionResponse, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature } from '@solana/web3.js';
-import type { TransactionAction, TransactionError } from './transaction.interfaces';
+import { BlockhashWithExpiryBlockHeight, Commitment, SendOptions, Signer, SimulatedTransactionResponse, SimulateTransactionConfig, TransactionMessage, TransactionSignature, VersionedTransaction, type Transaction, type TransactionInstruction } from '@solana/web3.js';
+import type { TransactionAction, TransactionError } from './transaction-exec.interfaces';
 
 /**
  * Confirms a transaction.
@@ -47,24 +46,6 @@ export async function confirmTx(
   }
 
   return signature;
-}
-
-/**
- * Gets the {@link TransactionInstruction}s from a {@link Transaction} or {@link VersionedTransaction}.
- *
- * @param tx The {@link Transaction}, {@link VersionedTransaction}, or `base64` encoded string to get the instructions from.
- * @returns The {@link TransactionInstruction}s.
- */
-export function getTxInstructions(tx: Transaction | VersionedTransaction | string | Null): TransactionInstruction[] {
-  if (!tx) return [];
-
-  if (typeof tx === 'string') {
-    tx = toVersionedTx(tx);
-  }
-
-  return (tx instanceof VersionedTransaction)
-    ? TransactionMessage.decompile(tx.message).instructions
-    : tx.instructions;
 }
 
 /**
@@ -163,6 +144,24 @@ export async function simulateTx(
 }
 
 /**
+ * Gets the {@link TransactionInstruction}s from a {@link Transaction} or {@link VersionedTransaction}.
+ *
+ * @param tx The {@link Transaction}, {@link VersionedTransaction}, or `base64` encoded string to get the instructions from.
+ * @returns The {@link TransactionInstruction}s.
+ */
+export function toTxInstructions(tx: Transaction | VersionedTransaction | string | Null): TransactionInstruction[] {
+  if (!tx) return [];
+
+  if (typeof tx === 'string') {
+    tx = toVersionedTx(tx);
+  }
+
+  return (tx instanceof VersionedTransaction)
+    ? TransactionMessage.decompile(tx.message).instructions
+    : tx.instructions;
+}
+
+/**
  * Converts a {@link Transaction} to a {@link VersionedTransaction}.
  *
  * `Note`: Must re-sign the transaction after conversion.
@@ -187,4 +186,4 @@ export function toVersionedTx(tx: Transaction | VersionedTransaction | string): 
   );
 }
 
-export type * from './transaction.interfaces';
+export type * from './transaction-exec.interfaces';

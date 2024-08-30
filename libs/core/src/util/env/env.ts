@@ -7,6 +7,52 @@ import { bool, cleanEnv, num, str } from 'envalid';
 export const env = cleanEnv(process.env, {
 
   /**
+   * The database root certificate authority signature.
+   */
+  DB_CA: str({ default: undefined }),
+
+  /**
+   * The database host.
+   */
+  DB_HOST: str(),
+
+  /**
+   * Whether to automatically migrate the database schema on startup.
+   *
+   * @default false
+   */
+  DB_MIGRATE: bool({ default: false }),
+
+  /**
+   * The database name.
+   */
+  DB_NAME: str(),
+
+  /**
+   * The database password.
+   */
+  DB_PASSWORD: str(),
+
+  /**
+   * The database port.
+   *
+   * @default 5432
+   */
+  DB_PORT: num({ default: 5432 }),
+
+  /**
+   * The database user.
+   */
+  DB_USER: str(),
+
+  /**
+   * Whether to use SSL for the database connection.
+   *
+   * @default true
+   */
+  DB_SSL: bool({ default: true }),
+
+  /**
    * The log line break length.
    *
    * @default 40
@@ -84,7 +130,7 @@ export const env = cleanEnv(process.env, {
  *
  * @returns The secret environment variable names.
  */
-export function getSecretEnvVarNames<T extends Object>(): (keyof T)[] {
+export function getSecretEnvVarNames<T extends object>(): (keyof T)[] {
   return Object.keys(process.env).filter(
     (key) => /API_KEY|PASSWORD|PRIVATE|SECRET/i.test(key)
   ) as (keyof T)[];
@@ -95,9 +141,10 @@ export function getSecretEnvVarNames<T extends Object>(): (keyof T)[] {
  */
 export const SECRETS_REGEX = new RegExp(
   getSecretEnvVarNames()
-    .map((key) => process.env[key]?.toString().replace(REGEX_ESCAPE, '\\$&'))
-    .join('|').replace(/\|{2,}/g, '|').replace(/^\||\|$/g, ''),
-  'g'
+    .map((key) => process.env[key]?.toString().replaceAll(
+      new RegExp(REGEX_ESCAPE.source, `${REGEX_ESCAPE.flags}g`), '\\$&')
+    )
+    .join('|').replaceAll(/\|{2,}/g, '|').replaceAll(/^\||\|$/g, '')
 );
 
 export default env;

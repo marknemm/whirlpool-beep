@@ -1,4 +1,4 @@
-import type { Address } from '@orca-so/common-sdk';
+import type { Address } from '@coral-xyz/anchor';
 
 /**
  * Token metadata.

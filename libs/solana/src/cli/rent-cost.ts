@@ -1,5 +1,4 @@
-import type { CliArgs } from '@npc/core';
-import { error, info } from '@npc/core';
+import { error, info, type CliArgs } from '@npc/core';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { toSol } from '@npc/solana/util/unit-conversion/unit-conversion';
 import { type Argv } from 'yargs';

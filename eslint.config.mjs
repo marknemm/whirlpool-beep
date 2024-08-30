@@ -4,7 +4,7 @@ import noFloatingPromise from 'eslint-plugin-no-floating-promise';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config({
-  files: ['src/**/*.{js,mjs,cjs,ts}'],
+  files: ['**/src/**/*.{js,mjs,cjs,ts,mts,cts}'],
   ignores: ['node_modules', 'dist'],
   extends: [
     eslint.configs.recommended,
@@ -80,7 +80,7 @@ export default tseslint.config({
     }],
     'multiline-ternary': ['warn', 'always-multiline'],          // Enable the warning about multiline ternary expressions
     'no-await-in-loop': 'off',                                  // Disable the rule that disallows using await inside of loops
-    'no-console': 'error',                                      // Disallow the use of console.log - importANT to prevent leaking secrets!
+    'no-console': 'error',                                      // Disallow the use of console.log - IMPORTANT to prevent leaking secrets!
     'no-else-return': 'warn',                                   // Enable the warning about using else return
     'no-empty': 'warn',                                         // Enable the warning about empty blocks
     'no-empty-function': ['warn', {                             // Enable the warning about empty functions
@@ -103,7 +103,12 @@ export default tseslint.config({
     'no-param-reassign': 'off',                                 // Disable the rule that disallows reassigning function parameters
     'no-plusplus': 'off',                                       // Disable the rule that disallows unary operators
     'no-promise-executor-return': 'warn',                       // Enable the warning about returning values from promise executors
-    'no-restricted-imports': ['error', 'console', 'winston'],   // Disallow importing certain modules - importANT to prevent vulnerabilities!
+    'no-restricted-imports': [                                  // Disallow importing certain modules - IMPORTANT to prevent vulnerabilities!
+      'error',
+      'console',
+      'node:console',
+      'winston'
+    ],
     'no-restricted-syntax': 'off',                              // Disable the rule that disallows specific syntax
     'no-trailing-spaces': 'warn',                               // Enable the warning about trailing spaces
     'no-underscore-dangle': 'off',                              // Disable the rule that disallows dangling underscores
@@ -140,13 +145,16 @@ export default tseslint.config({
       allowNamedFunctions: true,                                // Allow named functions
     }],
     'prefer-const': 'warn',                                     // Enable the warning about using const
-    'prefer-destructuring': 'warn',                             // Enable the warning about using destructuring
+    'prefer-destructuring': ['warn', {                          // Enable the warning about using destructuring
+      array: false,                                             // Do not use destructuring for arrays
+      object: true,                                             // Use destructuring for objects
+    }],
     'prefer-template': 'warn',                                  // Enable the warning about using template literals
     'quotes': ['warn', 'single'],                               // Use single quotes for strings
     'semi': ['warn', 'always'],                                 // Add semicolons at the end of each statement
     'space-before-blocks': 'warn',                              // Enable the warning about spacing before blocks
     'space-in-parens': 'warn',                                  // Enable the warning about spacing in parentheses
-    'space-infix-ops': 'warn',                                  // Enable the warning about spacing in infix operators
+    'space-infix-ops': 'warn',                                   // Enable the warning about spacing in infix operators
     'spaced-comment': 'warn',                                   // Enable the warning about spacing in comments
   }
 });

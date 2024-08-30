@@ -1,7 +1,7 @@
+import { type Address } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, type ErrorWithCode, type Null } from '@npc/core';
-import { db, handleInsertError, handleSelectError, type DAOInsertOptions, type DAOOptions } from '@npc/db';
-import { AddressUtil, type Address } from '@orca-so/common-sdk';
+import { db, debug, handleDBInsertError, handleDBSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { toPubKeyStr } from '@npc/solana/util/address/address';
 import type { SolanaTokenRow } from './solana-token.doa.interfaces';
 
 /**
@@ -59,12 +59,12 @@ export class SolanaTokenDAO {
 
       (typeof idAddress === 'number')
         ? query.where('id', '=', idAddress)
-        : query.where('address', '=', AddressUtil.toString(idAddress));
+        : query.where('address', '=', toPubKeyStr(idAddress));
 
       debug('Got Solana Token from database:', idAddress);
       return query.executeTakeFirst() as Promise<SolanaTokenRow>;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'solanaToken', opts);
+      handleDBSelectError(err as ErrorWithCode, 'solanaToken', opts);
     }
   }
 
@@ -80,7 +80,7 @@ export class SolanaTokenDAO {
    */
   static async getId(address: Address | Null, opts?: DAOOptions): Promise<number | undefined> {
     if (!address) return;
-    address = AddressUtil.toString(address);
+    address = toPubKeyStr(address);
 
     debug('Getting Solana Token ID from database:', address);
 
@@ -93,7 +93,7 @@ export class SolanaTokenDAO {
       debug(`Got Solana Token ID from database ( ID: ${result?.id} ):`, address);
       return result?.id;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'solanaToken', opts);
+      handleDBSelectError(err as ErrorWithCode, 'solanaToken', opts);
     }
   }
 
@@ -130,7 +130,7 @@ export class SolanaTokenDAO {
       debug(`Inserted Solana Token into database ( ID: ${result?.id} ):`, token.mint.publicKey);
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Solana Token', token.mint.publicKey, opts);
+      handleDBInsertError(err as ErrorWithCode, 'Solana Token', token.mint.publicKey, opts);
     }
   }
 

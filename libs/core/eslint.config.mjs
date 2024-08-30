@@ -1,6 +1,12 @@
+import tseslint from 'typescript-eslint';
 import rootConfig from '../../eslint.config.mjs';
 
-export default {
+export default [
   ...rootConfig,
-  rules: {},
-};
+  ...tseslint.config({
+    ignores: [
+      '**/db.interfaces.ts',
+      '**/migrations/*.ts',
+    ],
+  }),
+];

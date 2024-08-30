@@ -48,7 +48,7 @@ export async function loadSSMParams(): Promise<void> {
           process.env[envVarName] = response.data.Parameter.Value;
           break; // Found in context, no need to look at lower precedence contexts
         }
-      } catch (err) {} // Do nothing if the parameter is not found (log below)
+      } catch (err) { /* Do nothing if the parameter is not found (log below) */ }
     }
 
     if (process.env[envVarName] === undefined) {

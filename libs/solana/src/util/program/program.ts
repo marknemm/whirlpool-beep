@@ -1,21 +1,26 @@
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
-import type { Null } from '@npc/core';
-import { toBN } from '@npc/core';
+import { numericToBN, type Null } from '@npc/core';
+import { toPubKeyStr } from '@npc/solana/util/address/address';
 import anchor from '@npc/solana/util/anchor/anchor';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { DecodeTransactionArgs, type DecodedTransactionIx } from '@npc/solana/util/transaction-query/transaction-query';
-import { AddressUtil } from '@orca-so/common-sdk';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, WHIRLPOOL_IDL } from '@orca-so/whirlpools-sdk';
 import { DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
 import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, TransactionInstruction, TransactionMessage, type CompiledInstruction, type ParsedAccountData, type VersionedMessage } from '@solana/web3.js';
 import bs58 from 'bs58';
-import type { ProgramErrorInfo, TempTokenAccount, TokenTransfer } from './program.interfaces';
+import type { DecodedTransactionIx, DecodeTransactionArgs, ProgramErrorInfo, TempTokenAccount, TokenTransfer } from './program.interfaces';
 
-const _idlCache = new Map<string, Idl>([
-  [ORCA_WHIRLPOOL_PROGRAM_ID.toBase58(), WHIRLPOOL_IDL],
-]);
-const _programCache = new Map<string, Program>();
-const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
+  const _idlCache = new Map<string, Idl>();
+  const _programCache = new Map<string, Program>();
+  const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
+
+/**
+ * Caches the {@link Idl} for a given {@link programId}.
+ *
+ * @param programId The program {@link Address} to cache the {@link Idl} for.
+ * @param idl The {@link Idl} to cache.
+ */
+export function cacheIdl(programId: Address, idl: Idl) {
+  _idlCache.set(toPubKeyStr(programId), idl);
+}
 
 /**
  * Gets the {@link Idl} and caches it for a given {@link programId}.
@@ -24,12 +29,12 @@ const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
  * @returns The {@link Idl} for the program; `undefined` if the {@link Idl} cannot be fetched.
  */
 export async function getIdl<T_Idl extends Idl = Idl>(programId: Address): Promise<T_Idl | undefined> {
-  programId = AddressUtil.toString(programId);
+  programId = toPubKeyStr(programId);
 
   if (!_idlCache.has(programId)) {
     const idl = await Program.fetchIdl(programId, anchor());
     if (idl) {
-      _idlCache.set(programId, idl);
+      cacheIdl(programId, idl);
     }
   }
 
@@ -49,12 +54,12 @@ export async function getIdl<T_Idl extends Idl = Idl>(programId: Address): Promi
  * @returns The {@link Program} for the given program {@link Address} or {@link Idl};
  * `undefined` if the {@link Program} cannot be fetched.
  */
-async function getProgram<T_Idl extends Idl = Idl>(
+export async function getProgram<T_Idl extends Idl = Idl>(
   programId: Address | Null,
   idl?: T_Idl
 ): Promise<Program<T_Idl> | undefined> {
   if (!programId) return;
-  const programIdStr = AddressUtil.toString(programId);
+  const programIdStr = toPubKeyStr(programId);
 
   if (!_programCache.has(programIdStr)) {
     idl ??= await getIdl(programId);
@@ -123,12 +128,12 @@ export async function decodeIx(
   tempTokenAccounts: Map<string, TempTokenAccount> = new Map()
 ): Promise<DecodedTransactionIx> {
   switch (ix.programId.toBase58()) {
-    case ComputeBudgetProgram.programId.toBase58(): return decodeComputeBudgetProgramIx(ix);
-    case SystemProgram.programId.toBase58():        return decodeSystemProgramIx(ix);
-    case TOKEN_PROGRAM_ID.toBase58():               return decodeTokenProgramIx(ix, tempTokenAccounts);
+    case ComputeBudgetProgram.programId.toBase58(): return _decodeComputeBudgetProgramIx(ix);
+    case SystemProgram.programId.toBase58():        return _decodeSystemProgramIx(ix);
+    case TOKEN_PROGRAM_ID.toBase58():               return _decodeTokenProgramIx(ix, tempTokenAccounts);
   }
 
-  return decodeProgramIx(ix);
+  return _decodeProgramIx(ix);
 }
 
 /**
@@ -202,7 +207,7 @@ function _toTransactionInstruction(message: VersionedMessage, compiledIx: Compil
  * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}.
  * @throws If the instruction is not a {@link ComputeBudgetProgram} instruction or cannot be decoded.
  */
-export async function decodeComputeBudgetProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
+async function _decodeComputeBudgetProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
   if (!ComputeBudgetProgram.programId.equals(ix.programId)) {
     throw new Error('Instruction is not a Compute Budget Program instruction');
   }
@@ -235,7 +240,7 @@ export async function decodeComputeBudgetProgramIx(ix: TransactionInstruction): 
  * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}.
  * @throws If the instruction cannot be decoded.
  */
-export async function decodeProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
+async function _decodeProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
   const program = await getProgram(ix.programId);
   if (!program) throw new Error('Failed to fetch Program for instruction');
 
@@ -268,7 +273,7 @@ export async function decodeProgramIx(ix: TransactionInstruction): Promise<Decod
  * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}.
  * @throws If the instruction is not a {@link SystemProgram} instruction or cannot be decoded.
  */
-export async function decodeSystemProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
+async function _decodeSystemProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
   if (!SystemProgram.programId.equals(ix.programId)) {
     throw new Error('Instruction is not a System Program instruction');
   }
@@ -306,7 +311,7 @@ export async function decodeSystemProgramIx(ix: TransactionInstruction): Promise
  * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}.
  * @throws If the instruction is not a `TokenProgram` instruction or cannot be decoded.
  */
-export async function decodeTokenProgramIx(
+async function _decodeTokenProgramIx(
   ix: TransactionInstruction,
   tempTokenAccounts: Map<string, TempTokenAccount> = new Map()
 ): Promise<DecodedTransactionIx> {
@@ -332,7 +337,7 @@ async function _extendTokenTransferIxData(
   tempTokenAccounts: Map<string, TempTokenAccount>
 ): Promise<TokenTransfer> {
   const ixData: TokenTransfer = {
-    amount: toBN(ix.data.amount),
+    amount: numericToBN(ix.data.amount),
     keys: {
       ...ix.keys,
       destinationOwner: '',
@@ -346,8 +351,8 @@ async function _extendTokenTransferIxData(
   const srcAddrStr = srcPublicKey.toBase58();
   const srcTokenAccount = await rpc().getParsedAccountInfo(srcPublicKey);
   ixData.keys.sourceOwner = tempTokenAccounts.get(srcAddrStr)?.owner.pubkey.toBase58()
-                         ?? (srcTokenAccount.value?.data as ParsedAccountData)?.parsed?.info?.owner
-                         ?? srcAddrStr;
+                        ?? (srcTokenAccount.value?.data as ParsedAccountData)?.parsed?.info?.owner
+                        ?? srcAddrStr;
 
   // Derive the owner (wallet account) of the destination token account (ATA)
   const destPublicKey = ixData.keys.destination.pubkey;

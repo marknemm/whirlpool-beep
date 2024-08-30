@@ -1,6 +1,4 @@
-import type { ErrorWithCode, Null } from '@npc/core';
-import { debug, error, toBigInt, warn } from '@npc/core';
-import { db, handleInsertError, handleSelectError, type DAOOptions } from '@npc/db';
+import { db, debug, error, handleDBInsertError, handleDBSelectError, numericToBigInt, warn, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import OrcaWhirlpoolDAO from '@npc/orca/data/orca-whirlpool/orca-whirlpool.dao';
@@ -8,8 +6,8 @@ import type { ClosePositionTxSummary } from '@npc/orca/services/position/close/c
 import type { EmptyPositionTxSummary } from '@npc/orca/services/position/empty/empty-position.interfaces';
 import type { OpenPositionTxSummary } from '@npc/orca/services/position/open/open-position.interfaces';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { SolanaTxDAO } from '@npc/solana';
-import { AddressUtil, Percentage, type Address } from '@orca-so/common-sdk';
+import { SolanaTxDAO, toPubKeyStr } from '@npc/solana';
+import { Percentage, type Address } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
 import { UpdateEmptiedResults } from './orca-position.dao.interfaces';
 
@@ -35,7 +33,7 @@ export default class OrcaPositionDAO {
    */
   static async getId(address: Address | Null, opts?: DAOOptions): Promise<number | undefined> {
     if (!address) return;
-    address = AddressUtil.toString(address);
+    address = toPubKeyStr(address);
 
     debug('Getting Orca Position ID from database:', address);
 
@@ -51,7 +49,7 @@ export default class OrcaPositionDAO {
         : debug('Orca Position ID not found in database:', address);
       return result?.id;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'orcaPosition', opts);
+      handleDBSelectError(err as ErrorWithCode, 'orcaPosition', opts);
     }
   }
 
@@ -64,7 +62,7 @@ export default class OrcaPositionDAO {
    */
   static async getPriceMargin(address: Address | Null, opts?: DAOOptions): Promise<Percentage | undefined> {
     if (!address) return;
-    address = AddressUtil.toString(address);
+    address = toPubKeyStr(address);
 
     debug('Getting Orca Position price margin from database:', address);
 
@@ -82,7 +80,7 @@ export default class OrcaPositionDAO {
         ? Percentage.fromFraction(result.priceMargin, 100)
         : undefined;
     } catch (err) {
-      handleSelectError(err as ErrorWithCode, 'orcaPosition', opts);
+      handleDBSelectError(err as ErrorWithCode, 'orcaPosition', opts);
     }
   }
 
@@ -138,10 +136,10 @@ export default class OrcaPositionDAO {
         .values({
           address,
           openSolanaTx: solanaTxId,
-          priceLower: toBigInt(priceLower, tokenB.mint.decimals),
+          priceLower: numericToBigInt(priceLower, tokenB.mint.decimals),
           priceMargin: priceMargin.toDecimal().mul(100).round().toNumber(),
-          priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
-          priceUpper: toBigInt(priceUpper, tokenB.mint.decimals),
+          priceOrigin: numericToBigInt(priceOrigin, tokenB.mint.decimals),
+          priceUpper: numericToBigInt(priceUpper, tokenB.mint.decimals),
           tickLowerIndex,
           tickUpperIndex,
           whirlpool: whirlpoolId,
@@ -158,7 +156,7 @@ export default class OrcaPositionDAO {
 
       return result?.id;
     } catch (err) {
-      handleInsertError(err as ErrorWithCode, 'Orca Position', address, opts);
+      handleDBInsertError(err as ErrorWithCode, 'Orca Position', address, opts);
     }
   }
 

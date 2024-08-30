@@ -1,8 +1,8 @@
 import { expBackoff, info } from '@npc/core';
 import { WHIRLPOOL_CONFIG_PUBLIC_KEY } from '@npc/orca/constants/whirlpool';
 import whirlpoolClient from '@npc/orca/util/whirlpool/whirlpool';
-import { TransactionContext, getTokenPair } from '@npc/solana';
-import { AddressUtil, type Address } from '@orca-so/common-sdk';
+import { getTokenPair, toPubKeyStr, TransactionContext } from '@npc/solana';
+import { type Address } from '@orca-so/common-sdk';
 import { PriceMath, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 import type { CreateWhirlpoolIxData } from './create-whirlpool.interfaces';
@@ -85,7 +85,7 @@ export async function genCreateWhirlpoolIxData(
     whirlpoolAddress: poolKey,
     debugData: {
       name: 'Create Whirlpool',
-      whirlpool: AddressUtil.toString(poolKey),
+      whirlpool: toPubKeyStr(poolKey),
       tokenA: tokenA.metadata.symbol,
       tokenB: tokenB.metadata.symbol,
       tickSpacing,

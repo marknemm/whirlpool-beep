@@ -1,53 +1,7 @@
-import type { Address, Instruction } from '@coral-xyz/anchor';
-import type { Null } from '@npc/core';
-import type { TokenTransfer } from '@npc/solana/util/program/program';
+import type { DecodedTransactionIx, TokenTransfer } from '@npc/solana/util/program/program';
 import type { ComputeBudget, SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
-import type { ConfirmedTransactionMeta, TransactionSignature, VersionedMessage } from '@solana/web3.js';
+import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
-
-/**
- * Arguments for decoding a transaction.
- */
-export interface DecodeTransactionArgs {
-
-  /**
-   * The read data of a {@link VersionedTransaction}.
-   */
-  transaction: { message: VersionedMessage, signatures: string[] };
-
-  /**
-   * The {@link ConfirmedTransactionMeta} of the transaction to decode.
-   */
-  meta?: ConfirmedTransactionMeta | Null;
-
-  /**
-   * The {@link TransactionSignature} of the transaction to decode.
-   */
-  signature: TransactionSignature;
-
-}
-
-/**
- * A fully decoded transaction instruction.
- */
-export interface DecodedTransactionIx extends Instruction {
-
-  /**
-   * The inner {@link Instruction}s of the transaction.
-   */
-  innerInstructions: Omit<DecodedTransactionIx, 'innerInstructions'>[];
-
-  /**
-   * The {@link Address} of the program that handles the instruction.
-   */
-  programId: Address;
-
-  /**
-   * The name of the program that handles the instruction.
-   */
-  programName: string;
-
-}
 
 /**
  * Summary of a generic transaction.

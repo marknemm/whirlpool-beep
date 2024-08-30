@@ -15,7 +15,7 @@
       "pgOptions": {
         "ssl": {
           "rejectUnauthorized": true,
-          "ca": "libs/db/certs/us-east-1-bundle.pem"
+          "ca": "libs/core/certs/us-east-1-bundle.pem"
         }
       },
       "previewLimit": 50,
@@ -32,7 +32,7 @@
       "pgOptions": {
         "ssl": {
           "rejectUnauthorized": true,
-          "ca": "libs/db/certs/us-east-1-bundle.pem"
+          "ca": "libs/core/certs/us-east-1-bundle.pem"
         }
       },
       "previewLimit": 50,

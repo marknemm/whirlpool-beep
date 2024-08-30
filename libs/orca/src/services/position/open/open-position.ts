@@ -1,4 +1,4 @@
-import { debug, error, expBackoff, info, toNum } from '@npc/core';
+import { debug, error, expBackoff, info, numericToNumber } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
@@ -132,7 +132,7 @@ export async function genOpenPositionIxData(options: OpenPositionOptions): Promi
       bundleIndex,
       positionBundle: positionBundle.positionBundleMint.toBase58(),
       priceMargin: priceMargin.toString(),
-      priceRange: priceRange.map((val) => toNum(val, 3)),
+      priceRange: priceRange.map((val) => numericToNumber(val, 3)),
       tickRange,
     }
   };

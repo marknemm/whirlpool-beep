@@ -1,6 +1,5 @@
-import { BN } from '@coral-xyz/anchor';
 import type { Null } from '@npc/core/interfaces/nullable.interfaces';
-import { DecimalUtil } from '@orca-so/common-sdk';
+import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
 /**
@@ -12,7 +11,7 @@ import Decimal from 'decimal.js';
  * Will only shift the decimal point if the value is a {@link Decimal.Value}.
  * @returns The converted {@link bigint}. If given a `falsey` value, `0` is returned.
  */
-export function toBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): bigint {
+export function numericToBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): bigint {
   if (value instanceof BN) {
     value = BigInt(value.toString());
   }
@@ -21,8 +20,8 @@ export function toBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): 
     return value ?? 0n;
   }
 
-  value = toDecimal(value);
-  value = DecimalUtil.toBN(value, shift);
+  value = numericToDecimal(value);
+  value = value.mul(new Decimal(10).pow(shift)).trunc();
   return BigInt(value.toString());
 }
 
@@ -35,7 +34,7 @@ export function toBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): 
  * Will only shift the decimal point if the value is a {@link Decimal.Value}.
  * @returns The converted {@link BN}. If given a `falsey` value, `0` is returned.
  */
-export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
+export function numericToBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
   if (typeof value === 'bigint') {
     value = new BN(value.toString());
   }
@@ -44,8 +43,9 @@ export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
     return value ?? new BN(0);
   }
 
-  value = toDecimal(value);
-  return DecimalUtil.toBN(value, shift);
+  value = numericToDecimal(value);
+  value = value.mul(new Decimal(10).pow(shift)).trunc();
+  return new BN(value.toString());
 }
 
 /**
@@ -57,7 +57,7 @@ export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
  * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted {@link Decimal}. If given a `falsey` value, `0` is returned.
  */
-export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0): Decimal {
+export function numericToDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0): Decimal {
   if (typeof value === 'number' || typeof value === 'string') {
     value = new Decimal(value);
   }
@@ -69,7 +69,7 @@ export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0):
   if (typeof value === 'bigint') {
     value = new BN(value.toString());
   }
-  return DecimalUtil.fromBN(value, shift);
+  return new Decimal(value.toString()).div(new Decimal(10).pow(shift));
 }
 
 /**
@@ -79,8 +79,8 @@ export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0):
  * @param decimals The decimal precision. Defaults to `0`.
  * @returns The converted `number`. If given a `falsey` value, `0` is returned.
  */
-export function toNum(value: bigint | BN | Decimal.Value | Null, decimals = 0): number {
-  return parseFloat(toStr(value, decimals));
+export function numericToNumber(value: bigint | BN | Decimal.Value | Null, decimals = 0): number {
+  return parseFloat(numericToString(value, decimals));
 }
 
 /**
@@ -93,13 +93,13 @@ export function toNum(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
  * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted `string`. if given a `falsey` value, `'0'` is returned.
  */
-export function toStr(value: bigint | BN | Decimal.Value | Null, decimals = 0): string {
+export function numericToString(value: bigint | BN | Decimal.Value | Null, decimals = 0): string {
   if (!value) return '0';
 
   if (decimals) {
     value = (typeof value === 'bigint' || value instanceof BN)
-      ? toDecimal(value, decimals) // Only left shift decimal point for BN
-      : toDecimal(value);
+      ? numericToDecimal(value, decimals) // Only left shift decimal point for BN
+      : numericToDecimal(value);
 
     return value.toFixed(decimals);
   }
@@ -114,12 +114,12 @@ export function toStr(value: bigint | BN | Decimal.Value | Null, decimals = 0): 
  * @param tokenPrice The price of the token in `USD`.
  * @returns The converted token amount.
  */
-export function toTokenAmount(
+export function usdToTokenAmount(
   usd: BN | Decimal.Value | Null,
   tokenPrice: Decimal.Value | Null
 ): Decimal {
   return (usd && tokenPrice)
-    ? toDecimal(usd).div(tokenPrice)
+    ? numericToDecimal(usd).div(tokenPrice)
     : new Decimal(0);
 }
 
@@ -133,12 +133,12 @@ export function toTokenAmount(
  * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted `USD` amount.
  */
-export function toUSD(
+export function tokenAmountToUSD(
   tokenAmount: BN | Decimal | number | Null,
   tokenPrice: Decimal.Value | Null,
   shift = 0
 ): Decimal {
   return (tokenAmount && tokenPrice)
-    ? toDecimal(tokenAmount, shift).mul(tokenPrice)
+    ? numericToDecimal(tokenAmount, shift).mul(tokenPrice)
     : new Decimal(0);
 }

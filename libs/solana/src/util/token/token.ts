@@ -4,9 +4,9 @@ import type { Null } from '@npc/core';
 import { debug, expBackoff, warn } from '@npc/core';
 import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
 import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
+import { toPubKeyStr } from '@npc/solana/util/address/address';
 import env from '@npc/solana/util/env/env';
 import umi from '@npc/solana/util/umi/umi';
-import { AddressUtil, PublicKeyUtils } from '@orca-so/common-sdk';
 import { PublicKey } from '@solana/web3.js';
 import axios, { AxiosError } from 'axios';
 import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token.interfaces';
@@ -24,13 +24,6 @@ const _tokenCache = new Map<string, DigitalAsset>();
  * Indexed by both token address and symbol.
  */
 const _tokenPriceCache = new Map<string, number>();
-
-/**
- * Clears the token cache.
- */
-export function clearTokenCache() {
-  _tokenCache.clear();
-}
 
 /**
  * Fetches an NFT {@link DigitalAsset} by a given {@link query}.
@@ -75,7 +68,7 @@ export async function getTokenPair(
  * @param ignoreCache Whether to ignore the cache and fetch the token. Defaults to `false`.
  * @returns A {@link Promise} that resolves to the {@link DigitalAsset} of the token, or `null` if the token is not found.
  * @throws An error if the GET request fails or returns a non-200 status code.
- * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
+ * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file_search-by-content API for querying tokens.
  */
 export async function getToken(
   query: TokenQuery | Null,
@@ -91,7 +84,7 @@ export async function getToken(
 
   debug('Fetching token using query:', query);
 
-  if (!PublicKeyUtils.isBase58(query) || query.length < 32) {
+  if (!toPubKeyStr(query)) {
     // Query token via standard token list API that is used by solana explorer.
     const response = await axios.get<TokenQueryResponse>(env.TOKEN_LIST_API, {
       params: {
@@ -109,12 +102,12 @@ export async function getToken(
 
     // Assume query is an exact match of token symbol, otherwise compare query with all token metadata.
     const tokenMeta = response.data.content.find((token) => token.symbol === query)
-                   ?? response.data.content.find((token) => JSON.stringify(token).includes(query as string));
+                  ?? response.data.content.find((token) => JSON.stringify(token).includes(query as string));
     query = tokenMeta?.address ?? '';
   }
 
   // Fetch token DigitalAsset metadata using PDA and UMI.
-  const tokenAsset = PublicKeyUtils.isBase58(query) && query.length >= 32
+  const tokenAsset = toPubKeyStr(query)
     ? await fetchDigitalAsset(umi(), publicKey(query))
     : null;
 
@@ -183,8 +176,8 @@ export async function getTokenPrice(
     }, {
       retryFilter: (result, err) => (err as AxiosError)?.response?.status === 429,
     })
-    // Development environment query direct liquidity pool value based on stable coin
-    : await _getDevTokenPrice(token);
+    // Development environment cannot query DeFi value
+    : _getDevTokenPrice(token);
 
   // Add to cache and return.
   if (price) {
@@ -194,11 +187,11 @@ export async function getTokenPrice(
   return price;
 }
 
-async function _getDevTokenPrice(token: DigitalAsset): Promise<number> {
+function _getDevTokenPrice(token: DigitalAsset): number {
   switch (token.metadata.symbol) {
-    case 'SOL': 10
-    case 'devSAMO': .01
-    case 'devTMAC': .1
+    case 'SOL':     return 10;
+    case 'devSAMO': return .01;
+    case 'devTMAC': return .1;
   }
 
   return 1;
@@ -231,7 +224,7 @@ function _queryToString(query: DigitalAsset | TokenQuery | Null): string {
 
   return (typeof query === 'string')
     ? query
-    : AddressUtil.toString(query as TokenQuery);
+    : toPubKeyStr(query as TokenQuery);
 }
 
 export type * from './token.interfaces';

@@ -1,5 +1,3 @@
-import { PUBLIC_KEY_REGEX } from '@npc/core/constants/regex';
-import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 /**
@@ -27,15 +25,4 @@ export function encodeBase58(input: string | Uint8Array | null): string {
     input = JSON.parse(input) as Uint8Array;
   }
   return bs58.encode(Uint8Array.from(input));
-}
-
-/**
- * Checks if a given {@link address} is a valid Solana {@link Address}.
- *
- * @param address The address to check.
- * @returns `true` if the address is valid, `false` otherwise.
- */
-export function isAddress(address: unknown): boolean {
-  return (typeof address === 'string' && PUBLIC_KEY_REGEX.test(address))
-      || address instanceof PublicKey;
 }

@@ -1,5 +1,4 @@
-import type { CliArgs } from '@npc/core';
-import { error, info } from '@npc/core';
+import { error, info, type CliArgs } from '@npc/core';
 import { genGetPositionCliOpts } from '@npc/orca/cli/common/position-opts';
 import { genTransactionCliOpts } from '@npc/orca/cli/common/transaction-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';

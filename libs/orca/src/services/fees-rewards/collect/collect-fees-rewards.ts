@@ -1,9 +1,9 @@
-import { debug, error, expBackoff, info, toStr } from '@npc/core';
+import { debug, error, expBackoff, info, numericToString } from '@npc/core';
 import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
 import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, getToken, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, TransactionContext, wallet } from '@npc/solana';
+import { getProgramErrorInfo, getToken, getTransferTotalsFromIxs, getTxSummary, rpc, TransactionContext, wallet, type SendTransactionResult } from '@npc/solana';
 import { TransactionBuilder, type Address, type Instruction } from '@orca-so/common-sdk';
 import { collectFeesQuote, collectRewardsQuote, PoolUtil, TickArrayUtil, TokenExtensionUtil, type CollectFeesQuote, type CollectRewardsQuote, type Position } from '@orca-so/whirlpools-sdk';
 import BN from 'bn.js';
@@ -148,8 +148,14 @@ export async function genCollectFeesRewardsIxData(
       name: 'Collect Fees and Rewards',
       whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
       position: position.getAddress().toBase58(),
-      [`${tokenA.metadata.symbol} Fee Estimate:`]: toStr(collectFeesQuote.feeOwedA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Fee Estimate:`]: toStr(collectFeesQuote.feeOwedB, tokenB.mint.decimals),
+      [`${tokenA.metadata.symbol} Fee Estimate:`]: numericToString(
+        collectFeesQuote.feeOwedA,
+        tokenA.mint.decimals
+      ),
+      [`${tokenB.metadata.symbol} Fee Estimate:`]: numericToString(
+        collectFeesQuote.feeOwedB,
+        tokenB.mint.decimals
+      ),
     }
   };
 }
@@ -211,7 +217,10 @@ async function _genCollectFeesRewardsQuotes(
       const token = await getToken(rewardInfo.mint.toBase58());
       if (!token) continue;
 
-      debug(`Reward ${green(token.metadata.symbol)} ( idx: ${i} ):`, toStr(rewardOwed, token.mint.decimals));
+      debug(`Reward ${green(token.metadata.symbol)} ( idx: ${i} ):`, numericToString(
+        rewardOwed,
+        token.mint.decimals
+      ));
     }
   }
 
@@ -249,10 +258,10 @@ export async function genCollectFeesRewardsTxSummary(
   info('Fees and rewards tx summary:', {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
-    [tokenA.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountA, tokenA.mint.decimals),
-    [tokenB.metadata.symbol]: toStr(feesRewardsTxSummary.tokenAmountB, tokenB.mint.decimals),
+    [tokenA.metadata.symbol]: numericToString(feesRewardsTxSummary.tokenAmountA, tokenA.mint.decimals),
+    [tokenB.metadata.symbol]: numericToString(feesRewardsTxSummary.tokenAmountB, tokenB.mint.decimals),
     usd: `$${feesRewardsTxSummary.usd}`,
-    fee: toStr(feesRewardsTxSummary.fee),
+    fee: `${feesRewardsTxSummary.fee}`,
     signature: feesRewardsTxSummary.signature,
   });
 

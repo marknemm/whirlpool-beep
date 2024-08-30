@@ -1,5 +1,6 @@
 import { getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { AddressUtil, Percentage, type Address } from '@orca-so/common-sdk';
+import { toPubKey } from '@npc/solana';
+import { Percentage, type Address } from '@orca-so/common-sdk';
 import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PriceMath, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { type PublicKey } from '@solana/web3.js';
 import type Decimal from 'decimal.js';
@@ -92,7 +93,7 @@ export function toTickRangeKeys(
     PDAUtil.getTickArrayFromTickIndex(
       tickIdx,
       tickSpacing,
-      AddressUtil.toPubKey(whirlpoolAddress),
+      toPubKey(whirlpoolAddress),
       ORCA_WHIRLPOOL_PROGRAM_ID
     ).publicKey
   ) as [PublicKey, PublicKey];
