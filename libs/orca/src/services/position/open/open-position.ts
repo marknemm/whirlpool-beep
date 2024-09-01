@@ -12,23 +12,23 @@ import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, W
 import { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
-import type { OpenPositionIxData, OpenPositionOptions, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces';
+import type { OpenPositionArgs, OpenPositionIxData, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
 /**
  * Opens a {@link Position} in a {@link Whirlpool}.
  *
- * @param options The {@link OpenPositionOptions}.
+ * @param args The {@link OpenPositionArgs}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(options: OpenPositionOptions): Promise<OpenPositionTxSummary> {
+export async function openPosition(args: OpenPositionArgs): Promise<OpenPositionTxSummary> {
   const transactionCtx = new TransactionContext();
 
   const {
     whirlpool,
     priceMargin = PRICE_MARGIN_DEFAULT
-  } = options;
+  } = args;
 
   const opMetadata = {
     whirlpool: whirlpool.getAddress().toBase58(),
@@ -44,7 +44,7 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
         await whirlpool.refreshData();
       }
 
-      const openPositionIxData = await genOpenPositionIxData(options);
+      const openPositionIxData = await genOpenPositionIxData(args);
 
       const {
         address,
@@ -86,23 +86,23 @@ export async function openPosition(options: OpenPositionOptions): Promise<OpenPo
 /**
  * Generates {@link OpenPositionIxData} for opening a {@link Position} in a {@link Whirlpool}.
  *
- * @param options The {@link OpenPositionOptions}.
+ * @param args The {@link OpenPositionArgs}.
  * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
  */
-export async function genOpenPositionIxData(options: OpenPositionOptions): Promise<OpenPositionIxData> {
+export async function genOpenPositionIxData(args: OpenPositionArgs): Promise<OpenPositionIxData> {
   const {
     whirlpool,
     priceMargin = PRICE_MARGIN_DEFAULT,
     liquidity,
     liquidityUnit
-  } = options;
+  } = args;
 
   info('Creating instructions to open position:', {
     whirlpool: await formatWhirlpool(whirlpool),
     priceMargin: priceMargin.toString(),
   });
 
-  const positionInitData = await _genPositionInitData(options);
+  const positionInitData = await _genPositionInitData(args);
   const openPositionIx = await _genOpenPositionIx(positionInitData);
   const { address, bundleIndex, positionBundle, priceRange, tickRange } = positionInitData;
 
@@ -143,7 +143,7 @@ async function _genPositionInitData({
   priceMargin = PRICE_MARGIN_DEFAULT,
   bundleIndex,
   bumpIndex = 0
-}: OpenPositionOptions): Promise<PositionInitData> {
+}: OpenPositionArgs): Promise<PositionInitData> {
   // Use Whirlpool price data to generate position tick range
   const tickRange = await _genPositionTickRange(whirlpool, priceMargin);
 

@@ -28,6 +28,7 @@
     "eslint-plugin-jsdoc": "^48.5.0",
     "eslint-plugin-no-floating-promise": "^2.0.0",
     "globals": "^15.6.0",
+    "npm-check-updates": "^17.1.0",
     "rimraf": "^5.0.7",
     "serverless": "^4.1.21",
     "serverless-plugin-common-excludes": "^4.0.0",

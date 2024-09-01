@@ -3,26 +3,26 @@ import type { Address } from '@orca-so/common-sdk';
 import type { Whirlpool, WhirlpoolAccountFetchOptions } from '@orca-so/whirlpools-sdk';
 
 /**
- * The options for getting a {@link Whirlpool} via a Program Derived Address (PDA).
+ * Arguments for getting a {@link Whirlpool} via a Program Derived Address (PDA).
  *
  * @augments WhirlpoolAccountFetchOptions
- * @augments GetWhirlpoolKeyOpts
+ * @augments GetWhirlpoolKeyArgs
  */
-export interface GetWhirlpoolOpts extends WhirlpoolAccountFetchOptions, Partial<GetWhirlpoolKeyOpts> {
+export interface GetWhirlpoolArgs extends WhirlpoolAccountFetchOptions, Partial<GetWhirlpoolKeyArgs> {
 
   /**
    * The {@link Whirlpool} {@link Address}.
    *
-   * If provided, will ignore the {@link GetWhirlpoolKeyOpts} and fetch the {@link Whirlpool} directly.
+   * If provided, will ignore the {@link GetWhirlpoolKeyArgs} and fetch the {@link Whirlpool} directly.
    */
   whirlpoolAddress?: Address;
 
 }
 
 /**
- * The options for getting a {@link Whirlpool} address via a Program Derived Address (PDA).
+ * Arguments for getting a {@link Whirlpool} address via a Program Derived Address (PDA).
  */
-export interface GetWhirlpoolKeyOpts {
+export interface GetWhirlpoolKeyArgs {
 
   /**
    * The token A {@link Address} or {@link TokenQuery}.

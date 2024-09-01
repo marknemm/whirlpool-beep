@@ -26,5 +26,6 @@ export default defineConfig({
 	migrations: {
 		allowJS: true,
 		getMigrationPrefix: getKnexTimestampPrefix,
+		migrationFolder: 'src/migrations',
 	},
 });

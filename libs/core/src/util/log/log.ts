@@ -3,7 +3,7 @@ import env, { SECRETS_REGEX } from '@npc/core/util/env/env';
 import colors from 'colors';
 import { inspect, type InspectOptions } from 'node:util';
 import { createLogger, format, transports, type transport } from 'winston'; // eslint-disable-line no-restricted-imports
-import type { LogLevel, LogMessageTransformer } from './log.interfaces';
+import type { LogMessageTransformer } from './log.interfaces';
 
 /**
  * Options for the {@link util.inspect} function.
@@ -73,58 +73,6 @@ const _logger = createLogger({
 const _transformers: LogMessageTransformer[] = [];
 
 /**
- * Log a `debug` message.
- *
- * @param message The message to log.
- */
-export function debug(...message: unknown[]) {
-  log('debug', ...message);
-}
-
-/**
- * Log an `error` message.
- *
- * @param message The message to log.
- */
-export function error(...message: unknown[]) {
-  log('error', ...message);
-}
-
-/**
- * Log an `info` message.
- *
- * @param message The message to log.
- */
-export function info(...message: unknown[]) {
-  log('info', ...message);
-}
-
-/**
- * Log a `warn` message.
- *
- * @param message The message to log.
- */
-export function warn(...message: unknown[]) {
-  log('warn', ...message);
-}
-
-/**
- * Log a message at the specified level.
- *
- * @param level The {@link LogLevel} to log the message at.
- * @param message The message to log.
- */
-export function log(level: LogLevel, ...message: unknown[]) {
-  if (typeof message[0] === 'string') {
-    (message.length === 1)
-      ? _logger.log(level, message[0])
-      : _logger.log(level, message[0], ...message.slice(1));
-  } else {
-    _logger.log(level, message);
-  }
-}
-
-/**
  * Adds a {@link LogMessageTransformer} to the list of transformers.
  *
  * Transformers modify log messages before they are logged.
@@ -138,14 +86,16 @@ export function addLogTransformer(transformer: LogMessageTransformer) {
 
 function _transformMessage(message: unknown, depth = 0): unknown {
   for (const transformer of _transformers) {
-    message = transformer(message);
+    try {
+      message = transformer(message);
+    } catch (e) { /* Ignore transformer errors. */ }
+  }
 
-    // Recursively transform nested fields.
-    if (message instanceof Object && depth < env.LOG_DEPTH) {
-      let key: keyof typeof message;
-      for (key in message) {
-        Object.assign(message, { [key]: _transformMessage(message[key], depth++) });
-      }
+  // Recursively transform nested fields.
+  if (message instanceof Object && depth < env.LOG_DEPTH) {
+    let key: keyof typeof message;
+    for (key in message) {
+      Object.assign(message, { [key]: _transformMessage(message[key], depth++) });
     }
   }
 
@@ -207,4 +157,7 @@ function _getLeadingNewlines(message: string): string {
 export type { LeveledLogMethod, LogCallback, Logger } from 'winston'; // eslint-disable-line no-restricted-imports
 export type * from './log.interfaces';
 
-export default log;
+/**
+ * Log message functions.
+ */
+export const { debug, error, info, log, warn } = _logger;

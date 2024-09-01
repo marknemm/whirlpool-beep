@@ -1,7 +1,7 @@
 {
-  "name": "@npc/orca",
+  "name": "@npc/meteora",
   "version": "0.0.1",
-  "description": "Orca Beep-Boop-Bop 🤖",
+  "description": "Meteora Beep-Boop-Bop 🤖",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --build",
@@ -31,10 +31,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@meteora-ag/dlmm": "^1.1.4",
     "@npc/core": "0.0.1",
     "@npc/solana": "0.0.1",
-    "@orca-so/common-sdk": "^0.6.0",
-    "@orca-so/whirlpools-sdk": "^0.13.0",
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.95.3",
     "axios": "^1.7.3",

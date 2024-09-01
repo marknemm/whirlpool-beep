@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "baseUrl": "./",
+    "paths": {
+      "@npc/meteora/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["*.spec.ts"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../solana" }
+  ]
+}

@@ -116,6 +116,7 @@
   "references": [
     { "path": "./libs/core" },
     { "path": "./libs/solana" },
-    { "path": "./libs/orca" }
+    { "path": "./libs/orca" },
+    { "path": "./libs/meteora" }
   ]
 }

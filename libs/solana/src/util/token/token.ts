@@ -4,11 +4,11 @@ import type { Null } from '@npc/core';
 import { debug, expBackoff, warn } from '@npc/core';
 import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
 import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
-import { toPubKeyStr } from '@npc/solana/util/address/address';
+import { isPubKeyStr, toPubKeyStr } from '@npc/solana/util/address/address';
 import env from '@npc/solana/util/env/env';
 import umi from '@npc/solana/util/umi/umi';
 import { PublicKey } from '@solana/web3.js';
-import axios, { AxiosError } from 'axios';
+import axios, { type AxiosError } from 'axios';
 import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token.interfaces';
 
 /**
@@ -84,25 +84,29 @@ export async function getToken(
 
   debug('Fetching token using query:', query);
 
-  if (!toPubKeyStr(query)) {
-    // Query token via standard token list API that is used by solana explorer.
-    const response = await axios.get<TokenQueryResponse>(env.TOKEN_LIST_API, {
-      params: {
-        chainId: env.CHAIN_ID,
-        limit: 10,
-        query,
-        start: 0,
+  if (!isPubKeyStr(query)) {
+    const tokenMeta = await expBackoff(async () => {
+      // Query token via standard token list API that is used by solana explorer.
+      const response = await axios.get<TokenQueryResponse>(env.TOKEN_LIST_API, {
+        params: {
+          chainId: env.CHAIN_ID,
+          limit: 10,
+          query,
+          start: 0,
+        }
+      });
+
+      // Throw error if response status is not 200.
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch token (${response.status}): ${response.statusText}`);
       }
+
+      // Assume query is an exact match of token symbol, otherwise compare query with all token metadata.
+      return response.data.content.find((token) => token.symbol === query)
+          ?? response.data.content.find((token) => JSON.stringify(token).includes(query as string));
+    }, {
+      retryFilter: (result, err) => (err as AxiosError)?.response?.status === 429,
     });
-
-    // Throw error if response status is not 200.
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch token (${response.status}): ${response.statusText}`);
-    }
-
-    // Assume query is an exact match of token symbol, otherwise compare query with all token metadata.
-    const tokenMeta = response.data.content.find((token) => token.symbol === query)
-                  ?? response.data.content.find((token) => JSON.stringify(token).includes(query as string));
     query = tokenMeta?.address ?? '';
   }
 

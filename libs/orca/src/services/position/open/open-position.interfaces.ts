@@ -37,9 +37,9 @@ export interface OpenPositionIxData extends InstructionData {
 }
 
 /**
- * Options for opening a {@link Position}.
+ * Arguments for opening a {@link Position}.
  */
-export interface OpenPositionOptions {
+export interface OpenPositionArgs {
 
   /**
    * The amount to bump the {@link Position} index by to prevent collision when opening multiple positions in parallel.
