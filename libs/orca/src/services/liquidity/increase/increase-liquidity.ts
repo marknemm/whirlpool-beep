@@ -1,15 +1,15 @@
 import { BN } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, error, expBackoff, info, numericToBN, numericToDecimal, numericToString, usdToTokenAmount } from '@npc/core';
+import type { LiquidityUnit } from '@npc/core';
+import { debug, error, expBackoff, info, numericToBN, numericToDecimal, numericToString } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
 import { getWhirlpool } from '@npc/orca/services/whirlpool/query/query-whirlpool';
 import env from '@npc/orca/util/env/env';
 import { toTickRangeKeys } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, getTokenPrice, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, STABLECOIN_SYMBOL_REGEX, toPubKey, toPubKeyStr, TransactionContext, wallet } from '@npc/solana';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
+import { getProgramErrorInfo, getTokenAmountsForPool, getTransferTotalsFromIxs, getTxSummary, rpc, SendTransactionResult, toPubKey, toPubKeyStr, TransactionContext, wallet } from '@npc/solana';
 import { Percentage, resolveOrCreateATAs, TransactionBuilder, type Address } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, increaseLiquidityQuoteByInputTokenWithParams, increaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil, WhirlpoolIx, type IncreaseLiquidityParams, type IncreaseLiquidityQuote, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -153,14 +153,13 @@ export async function genIncreaseLiquidityIxData(ixArgs: IncreaseLiquidityIxArgs
 
   // Convert to token amount if liquidity is in USD
   const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
-  const { tokenAmount, tokenUnit } = (liquidityUnit === 'usd')
-    ? await _toTokenAmount([tokenA, tokenB], liquidity)
-    : { tokenAmount: liquidity, tokenUnit: undefined };
 
   // Get quote either using raw liquidity as unit or token A/B as unit
   const quote = (liquidityUnit === 'liquidity')
     ? await _genQuoteViaLiquidity(whirlpool, tickRange, liquidity)
-    : await _genQuoteViaInputToken(whirlpool, tickRange, tokenAmount, tokenUnit!);
+    : (liquidityUnit === 'usd')
+      ? await _genQuoteViaUSD(whirlpool, tickRange, liquidity)
+      : await _genQuoteViaInputToken(whirlpool, tickRange, liquidity, liquidityUnit);
 
   info('Generated increase liquidity quote:', {
     whirlpool: await formatWhirlpool(whirlpool),
@@ -309,55 +308,6 @@ async function _resolveTokenAccounts(positionMint: Address, whirlpool: Whirlpool
   };
 }
 
-/**
- * Converts a given {@link usd} amount to a token amount of either token
- * in the given {@link tokenPair} with priority for a stablecoin.
- *
- * @param tokenPair The token pair containing the tokens that the {@link usd} amount may be converted to.
- * @param usd The amount of `USD` to convert.
- * @returns A {@link Promise} that resolves to the token amount and the {@link LiquidityUnit} of the token.
- */
-async function _toTokenAmount(
-  tokenPair: [DigitalAsset, DigitalAsset],
-  usd: BN | Decimal.Value,
-): Promise<{ tokenAmount: Decimal, tokenUnit: 'tokenA' | 'tokenB' }> {
-  const [tokenA, tokenB] = tokenPair;
-
-  debug(`Converting USD (${usd.toString()}) to either token:`, tokenPair.map((token) => token.metadata.symbol));
-
-  // If either token is a stablecoin, prioritize that token
-  if (STABLECOIN_SYMBOL_REGEX.test(tokenA.metadata.symbol)) {
-    return {
-      tokenAmount: usdToTokenAmount(usd, 1),
-      tokenUnit: 'tokenA'
-    };
-  }
-  if (STABLECOIN_SYMBOL_REGEX.test(tokenB.metadata.symbol)) {
-    return {
-      tokenAmount: usdToTokenAmount(usd, 1),
-      tokenUnit: 'tokenB'
-    };
-  }
-
-  // Otherwise, query the USD price of both tokens via API
-  const usdTokenA = await getTokenPrice(tokenA);
-  if (usdTokenA) {
-    return {
-      tokenAmount: usdToTokenAmount(usd, usdTokenA),
-      tokenUnit: 'tokenA',
-    };
-  }
-  const usdTokenB = await getTokenPrice(tokenB);
-  if (usdTokenB) {
-    return {
-      tokenAmount: usdToTokenAmount(usd, usdTokenB),
-      tokenUnit: 'tokenB',
-    };
-  }
-
-  throw new Error(`USD price not found for '${tokenA.metadata.symbol}' or '${tokenB.metadata.symbol}'`);
-}
-
 async function _genQuoteViaLiquidity(
   whirlpool: Whirlpool,
   tickRange: [number, number],
@@ -427,6 +377,29 @@ async function _genQuoteViaInputToken(
       IGNORE_CACHE
     ),
   });
+}
+
+/**
+ * Generates a quote for increasing liquidity in a {@link Whirlpool} using USD.
+ *
+ * @param whirlpool The {@link Whirlpool} to get the increase liquidity quote for.
+ * @param tickRange The tick range to get the quote for.
+ * @param amount The amount of USD to increase liquidity with.
+ * @returns A {@link Promise} that resolves to the {@link IncreaseLiquidityQuote}.
+ */
+async function _genQuoteViaUSD(
+  whirlpool: Whirlpool,
+  tickRange: [number, number],
+  amount: BN | Decimal.Value,
+): Promise<IncreaseLiquidityQuote> {
+  debug('Getting increase liquidity quote:', amount.toString(), 'USD');
+
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpool);
+  const whirlpoolPrice = await getWhirlpoolPrice(whirlpool);
+
+  const [amountA] = await getTokenAmountsForPool([tokenA, tokenB], amount, whirlpoolPrice);
+
+  return _genQuoteViaInputToken(whirlpool, tickRange, amountA, 'tokenA');
 }
 
 /**

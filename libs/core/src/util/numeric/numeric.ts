@@ -106,39 +106,3 @@ export function numericToString(value: bigint | BN | Decimal.Value | Null, decim
 
   return value.toString();
 }
-
-/**
- * Converts a given {@link usd} amount to a token amount based off of a given {@link tokenPrice}.
- *
- * @param usd The amount of `USD` to convert.
- * @param tokenPrice The price of the token in `USD`.
- * @returns The converted token amount.
- */
-export function usdToTokenAmount(
-  usd: BN | Decimal.Value | Null,
-  tokenPrice: Decimal.Value | Null
-): Decimal {
-  return (usd && tokenPrice)
-    ? numericToDecimal(usd).div(tokenPrice)
-    : new Decimal(0);
-}
-
-/**
- * Converts a given token amount to `USD` based off of a given {@link tokenPrice}.
- *
- * @param tokenAmount The amount of the token to convert.
- * @param tokenPrice The price of the token in `USD`.
- * @param shift The number of decimal places to `left shift` the decimal point by. Defaults to `0`.
- * For example, if {@link shift} is `2`, the {@link value} `100` would be converted to `1.00`.
- * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
- * @returns The converted `USD` amount.
- */
-export function tokenAmountToUSD(
-  tokenAmount: BN | Decimal | number | Null,
-  tokenPrice: Decimal.Value | Null,
-  shift = 0
-): Decimal {
-  return (tokenAmount && tokenPrice)
-    ? numericToDecimal(tokenAmount, shift).mul(tokenPrice)
-    : new Decimal(0);
-}

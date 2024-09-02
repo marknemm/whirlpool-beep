@@ -1,4 +1,4 @@
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@npc/core';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import type { IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
@@ -8,33 +8,6 @@ import type { Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpool
 import type { PublicKey } from '@solana/web3.js';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
-
-/**
- * Instruction data and associate metadata for opening a {@link Position}.
- */
-export interface OpenPositionIxData extends InstructionData {
-
-  /**
-   * The {@link IncreaseLiquidityIxData} for increasing liquidity in the new position.
-   */
-  increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
-
-  /**
-   * The {@link PositionInitData} for the new {@link Position}.
-   */
-  positionInitData: PositionInitData;
-
-  /**
-   * The price margin {@link Percentage} that was used when opening the new {@link Position}.
-   */
-  priceMargin: Percentage;
-
-  /**
-   * The {@link Whirlpool} that the new {@link Position} is in.
-   */
-  whirlpool: Whirlpool;
-
-}
 
 /**
  * Arguments for opening a {@link Position}.
@@ -75,6 +48,33 @@ export interface OpenPositionArgs {
 
   /**
    * The {@link Whirlpool} to open a {@link Position} in.
+   */
+  whirlpool: Whirlpool;
+
+}
+
+/**
+ * Instruction data and associate metadata for opening a {@link Position}.
+ */
+export interface OpenPositionIxData extends InstructionData {
+
+  /**
+   * The {@link IncreaseLiquidityIxData} for increasing liquidity in the new position.
+   */
+  increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
+
+  /**
+   * The {@link PositionInitData} for the new {@link Position}.
+   */
+  positionInitData: PositionInitData;
+
+  /**
+   * The price margin {@link Percentage} that was used when opening the new {@link Position}.
+   */
+  priceMargin: Percentage;
+
+  /**
+   * The {@link Whirlpool} that the new {@link Position} is in.
    */
   whirlpool: Whirlpool;
 

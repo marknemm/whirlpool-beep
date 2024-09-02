@@ -3,10 +3,10 @@ import { numericToBN, type Null } from '@npc/core';
 import { toPubKeyStr } from '@npc/solana/util/address/address';
 import anchor from '@npc/solana/util/anchor/anchor';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
-import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, TransactionInstruction, TransactionMessage, type CompiledInstruction, type ParsedAccountData, type VersionedMessage } from '@solana/web3.js';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
+import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type ParsedAccountData } from '@solana/web3.js';
 import bs58 from 'bs58';
-import type { DecodedTransactionIx, DecodeTransactionArgs, ProgramErrorInfo, TempTokenAccount, TokenTransfer } from './program.interfaces';
+import type { DecodedTransactionIx, ProgramErrorInfo, QueriedTransaction, TempTokenAccount, TokenTransfer } from './program.interfaces';
 
   const _idlCache = new Map<string, Idl>();
   const _programCache = new Map<string, Program>();
@@ -128,6 +128,7 @@ export async function decodeIx(
   tempTokenAccounts: Map<string, TempTokenAccount> = new Map()
 ): Promise<DecodedTransactionIx> {
   switch (ix.programId.toBase58()) {
+    case ASSOCIATED_TOKEN_PROGRAM_ID.toBase58():    return _decodeAssociatedTokenProgramIx(ix);
     case ComputeBudgetProgram.programId.toBase58(): return _decodeComputeBudgetProgramIx(ix);
     case SystemProgram.programId.toBase58():        return _decodeSystemProgramIx(ix);
     case TOKEN_PROGRAM_ID.toBase58():               return _decodeTokenProgramIx(ix, tempTokenAccounts);
@@ -137,67 +138,125 @@ export async function decodeIx(
 }
 
 /**
- * Gets the decoded instructions of a transaction.
+ * Gets the decoded instructions of a given {@link transaction}.
  *
- * @param args The {@link DecodeTransactionArgs} to decode the transaction.
+ * @param transaction The {@link QueriedTransaction}, {@link Transaction}, or {@link VersionedTransaction} to decode.
  * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}s.
  */
-export async function decodeTransaction(args: DecodeTransactionArgs): Promise<DecodedTransactionIx[]> {
-  const { transaction, meta, signature } = args;
-  if (_decodedIxCache.has(signature)) { // Grab from cache if it exists
-    return _decodedIxCache.get(signature)!;
+export async function decodeTransaction(
+  transaction: QueriedTransaction | Transaction | VersionedTransaction
+): Promise<DecodedTransactionIx[]> {
+  const isQueriedTransaction = !(transaction instanceof Transaction)
+                            && !(transaction instanceof VersionedTransaction);
+
+  // If cached decoded QueriedTransaction, return it
+  if (isQueriedTransaction && _decodedIxCache.has(transaction.signature)) {
+    return _decodedIxCache.get(transaction.signature)!;
   }
 
-  const ixs = TransactionMessage.decompile(transaction.message).instructions ?? [];
   const decodedIxs: DecodedTransactionIx[] = [];
   const tempTokenAccounts = new Map<string, TempTokenAccount>();
 
+  // Grab TransactionInstructions, decompile if necessary
+  const ixs = (transaction instanceof Transaction)
+    ? transaction.instructions
+    : TransactionMessage.decompile(transaction.message).instructions ?? [];
+
+  // Decode all instructions
   for (let i = 0; i < ixs.length; i++) {
+    // Decoded instruction
     const decodedIx = await decodeIx(ixs[i], tempTokenAccounts);
-    if (decodedIx) {
-      // Record any potential temp token accounts created during the transaction
-      if (decodedIx.programName === 'TokenProgram' && decodedIx.name === 'InitializeAccount') {
-        const initAccountData = decodedIx.data as DecodedInitializeAccountInstruction;
-        const { account } = initAccountData.keys;
-        tempTokenAccounts.set(account.pubkey.toBase58(), initAccountData.keys);
-      }
-
-      // Get inner instructions for the instruction if they exist
-      const compiledInnerIxs = meta?.innerInstructions?.find(
-        (innerIx) => innerIx.index === i
-      )?.instructions ?? [];
-
-      // Decode inner instructions
-      for (const compiledInnerIx of compiledInnerIxs) {
-        const innerIx = _toTransactionInstruction(transaction.message, compiledInnerIx);
-
-        const decodedInnerIx = await decodeIx(innerIx, tempTokenAccounts);
-        if (decodedInnerIx) {
-          decodedIx.innerInstructions.push(decodedInnerIx);
-        }
-      }
-    }
     decodedIxs.push(decodedIx);
+
+    // Record any (temp) token accounts created during the transaction
+    if (decodedIx.programName === 'TokenProgram' && decodedIx.name === 'InitializeAccount') {
+      const initAccountData = decodedIx.data as DecodedInitializeAccountInstruction;
+      const { account } = initAccountData.keys;
+      tempTokenAccounts.set(account.pubkey.toBase58(), initAccountData.keys);
+    }
+
+    // Decode inner instructions if QueriedTransaction
+    if (isQueriedTransaction) {
+      decodedIx.innerInstructions = await _decodeInnerIxs(transaction, i, tempTokenAccounts);
+    }
   }
 
-  if (decodedIxs.length) {
-    _decodedIxCache.set(signature, decodedIxs);
+  // Cache decoded instructions from queried on-chain transactions
+  if (isQueriedTransaction && decodedIxs.length) {
+    _decodedIxCache.set(transaction.signature, decodedIxs);
   }
   return decodedIxs;
 }
 
-function _toTransactionInstruction(message: VersionedMessage, compiledIx: CompiledInstruction): TransactionInstruction {
-  return new TransactionInstruction({
-    programId: message.getAccountKeys().get(compiledIx.programIdIndex)!,
-    keys: compiledIx.accounts.map(
-      (accountIndex) => ({
-        isSigner: message.isAccountSigner(accountIndex),
-        isWritable: message.isAccountWritable(accountIndex),
-        pubkey: message.getAccountKeys().get(accountIndex)!,
-      })
-    ),
-    data: Buffer.from(bs58.decode(compiledIx.data)),
-  });
+/**
+ * Decodes inner instructions for a given {@link transaction}.
+ *
+ * @param transaction The on-chain {@link QueriedTransaction} to decode inner instructions for.
+ * @param outerIxIdx The index of the outer instruction to decode inner instructions for.
+ * @param tempTokenAccounts A map of {@link TempTokenAccount}s created during the transaction.
+ * @returns A {@link Promise} that resolves to the inner {@link DecodedTransactionIx}s.
+ */
+async function _decodeInnerIxs(
+  transaction: QueriedTransaction,
+  outerIxIdx: number,
+  tempTokenAccounts: Map<string, TempTokenAccount>
+): Promise<DecodedTransactionIx[]> {
+  const { message, meta } = transaction;
+  const decodedIxs: DecodedTransactionIx[] = [];
+
+  // Get inner instructions for the instruction if they exist
+  const compiledInnerIxs = meta?.innerInstructions?.find(
+    (innerIx) => innerIx.index === outerIxIdx
+  )?.instructions ?? [];
+
+  // Decode inner instructions
+  for (const compiledInnerIx of compiledInnerIxs) {
+    const innerIx = new TransactionInstruction({
+      programId: message.getAccountKeys().get(compiledInnerIx.programIdIndex)!,
+      keys: compiledInnerIx.accounts.map(
+        (accountIndex) => ({
+          isSigner: message.isAccountSigner(accountIndex),
+          isWritable: message.isAccountWritable(accountIndex),
+          pubkey: message.getAccountKeys().get(accountIndex)!,
+        })
+      ),
+      data: Buffer.from(bs58.decode(compiledInnerIx.data)),
+    });
+
+    const decodedInnerIx = await decodeIx(innerIx, tempTokenAccounts);
+    decodedIxs.push(decodedInnerIx);
+  }
+
+  return decodedIxs;
+}
+
+/**
+ * Decodes an {@link AssociatedTokenProgram} instruction.
+ *
+ * @param ix The {@link TransactionInstruction} to decode.
+ * @returns A {@link Promise} that resolves to the {@link DecodedTransactionIx}.
+ * @throws If the instruction is not an {@link AssociatedTokenProgram} instruction or cannot be decoded.
+ */
+async function _decodeAssociatedTokenProgramIx(ix: TransactionInstruction): Promise<DecodedTransactionIx> {
+  if (!ASSOCIATED_TOKEN_PROGRAM_ID.equals(ix.programId)) {
+    throw new Error('Instruction is not an Associated Token Program instruction');
+  }
+
+  // Manually decode the instruction
+  const decodedTransactionIx = {
+    data: {
+      payer: ix.keys[0].pubkey.toBase58(),
+      associatedTokenAccount: ix.keys[1].pubkey.toBase58(),
+      walletAddress: ix.keys[2].pubkey.toBase58(),
+      tokenMintAddress: ix.keys[3].pubkey.toBase58(),
+    },
+    innerInstructions: [],
+    name: 'CreateAssociatedTokenAccount',
+    programName: 'AssociatedTokenProgram',
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+  };
+
+  return decodedTransactionIx;
 }
 
 /**

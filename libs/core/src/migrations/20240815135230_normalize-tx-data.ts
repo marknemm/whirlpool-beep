@@ -262,7 +262,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 		.dropColumn('close_fee')
 		.dropColumn('open_signature')
 		.dropColumn('close_signature')
-		.alterColumn('close_solana_tx', (col) => col.setNotNull())
+		.alterColumn('open_solana_tx', (col) => col.setNotNull())
 		.execute();
 
 	await db.schema.alterTable('rebalance_tx')

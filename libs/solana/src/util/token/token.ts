@@ -1,7 +1,7 @@
 import { fetchDigitalAsset, type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import type { Null } from '@npc/core';
-import { debug, expBackoff, warn } from '@npc/core';
+import { debug, expBackoff, usdToTokenAmount, warn } from '@npc/core';
 import { STABLECOIN_SYMBOL_REGEX } from '@npc/solana/constants/regex';
 import SolanaTokenDAO from '@npc/solana/data/solana-token/solana-token.dao';
 import { isPubKeyStr, toPubKeyStr } from '@npc/solana/util/address/address';
@@ -9,6 +9,8 @@ import env from '@npc/solana/util/env/env';
 import umi from '@npc/solana/util/umi/umi';
 import { PublicKey } from '@solana/web3.js';
 import axios, { type AxiosError } from 'axios';
+import BN from 'bn.js';
+import Decimal from 'decimal.js';
 import type { TokenPriceResponse, TokenQuery, TokenQueryResponse } from './token.interfaces';
 
 /**
@@ -126,6 +128,65 @@ export async function getToken(
   }
 
   return tokenAsset;
+}
+
+/**
+ * Converts a given amount of `USD` to pool token amounts.
+ *
+ * @param tokenPair The token pair containing the tokens that the {@link usd} amount may be converted to.
+ * @param usd The amount of `USD` to convert.
+ * @param poolPrice The price of pool token A in terms of pool token B (e.g. SOL in terms of USDC).
+ * @returns A {@link Promise} that resolves to the token amount and the {@link LiquidityUnit} of the token.
+ */
+export async function getTokenAmountsForPool(
+  tokenPair: [DigitalAsset, DigitalAsset],
+  usd: BN | Decimal.Value,
+  poolPrice: Decimal.Value
+): Promise<[Decimal, Decimal]> {
+  const [tokenA, tokenB] = tokenPair;
+
+  debug(`Converting USD (${usd.toString()}) to token amounts:`, tokenPair.map((token) => token.metadata.symbol));
+
+  let tokenAmountA: Decimal | undefined,
+      tokenAmountB: Decimal | undefined;
+
+  // If either token is a stablecoin, prioritize that token
+  if (STABLECOIN_SYMBOL_REGEX.test(tokenA.metadata.symbol)) {
+    tokenAmountA = usdToTokenAmount(usd, 1);
+  } else if (STABLECOIN_SYMBOL_REGEX.test(tokenB.metadata.symbol)) {
+    tokenAmountB = usdToTokenAmount(usd, 1);
+  }
+
+  // If no USD stablecoin, query the USD price of both tokens via API
+  if (!tokenAmountA || !tokenAmountB) {
+    try {
+      const usdTokenA = await getTokenPrice(tokenA);
+      if (usdTokenA) {
+        tokenAmountA = usdToTokenAmount(usd, usdTokenA);
+      }
+    } catch (err) { /* Ignore error and try token B */ }
+
+    if (!tokenAmountA) {
+      const usdTokenB = await getTokenPrice(tokenB);
+      if (usdTokenB) {
+        tokenAmountB = usdToTokenAmount(usd, usdTokenB);
+      }
+    }
+  }
+
+  // If both token amounts are still undefined, throw an error
+  if (!tokenAmountA || !tokenAmountB) {
+    throw new Error(`Failed to convert USD to token amounts: ${tokenPair.map(formatToken)}`);
+  }
+
+  // Get amount of missing token based on pool price
+  if (tokenAmountA) {
+    tokenAmountB = tokenAmountA.div(poolPrice);
+  } else {
+    tokenAmountA = tokenAmountB.mul(poolPrice);
+  }
+
+  return [tokenAmountA, tokenAmountB];
 }
 
 /**

@@ -1,6 +1,6 @@
-import { debug, error, expBackoff, info, numericToNumber } from '@npc/core';
+import type { LiquidityUnit } from '@npc/core';
+import { debug, error, expBackoff, genPriceMarginRange, info, numericToNumber } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
 import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle';
@@ -209,9 +209,7 @@ async function _genPositionTickRange(
   const price = await getWhirlpoolPrice(whirlpool);
 
   // Calculate price range based on priceMargin Percentage input
-  const priceMarginValue = price.mul(priceMargin.toDecimal());
-  const lowerPrice = price.minus(priceMarginValue);
-  const upperPrice = price.plus(priceMarginValue);
+  const [lowerPrice, upperPrice] = genPriceMarginRange(price, priceMargin.toDecimal());
 
   // Calculate tick index range based on price range (may not map exactly to price range due to tick spacing)
   return toTickRange([lowerPrice, upperPrice], [decimalsA, decimalsB], tickSpacing); // Subset of [-443636, 443636]

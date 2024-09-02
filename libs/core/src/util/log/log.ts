@@ -92,11 +92,13 @@ function _transformMessage(message: unknown, depth = 0): unknown {
   }
 
   // Recursively transform nested fields.
-  if (message instanceof Object && depth < env.LOG_DEPTH) {
+  if (message instanceof Object && depth <= env.LOG_DEPTH) {
+    const transformedMessage: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
     let key: keyof typeof message;
     for (key in message) {
-      Object.assign(message, { [key]: _transformMessage(message[key], depth++) });
+      transformedMessage[key] = _transformMessage(message[key], depth + 1); // No modify original
     }
+    return transformedMessage;
   }
 
   return message;

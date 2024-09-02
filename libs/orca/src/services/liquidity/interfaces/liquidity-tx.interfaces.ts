@@ -1,4 +1,4 @@
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@npc/core';
 import type { TxSummary } from '@npc/solana';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';

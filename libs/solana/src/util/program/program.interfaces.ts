@@ -4,22 +4,27 @@ import type { AccountMeta, ConfirmedTransactionMeta, TransactionSignature, Versi
 import type BN from 'bn.js';
 
 /**
- * Arguments for decoding a transaction.
+ * Queried on-chain transaction data.
  */
-export interface DecodeTransactionArgs {
+export interface QueriedTransaction {
 
   /**
-   * The read data of a {@link VersionedTransaction}.
+   * The {@link VersionedMessage} of the transaction.
    */
-  transaction: { message: VersionedMessage, signatures: string[] };
+  message: VersionedMessage;
 
   /**
-   * The {@link ConfirmedTransactionMeta} of the transaction to decode.
+   * The {@link ConfirmedTransactionMeta} of the transaction.
    */
   meta?: ConfirmedTransactionMeta | Null;
 
   /**
-   * The {@link TransactionSignature} of the transaction to decode.
+   * The signatures of the transaction.
+   */
+  signatures: string[];
+
+  /**
+   * The {@link TransactionSignature} uniquely identifying the on-chain transaction.
    */
   signature: TransactionSignature;
 

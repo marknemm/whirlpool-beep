@@ -135,7 +135,7 @@ export default class OrcaPositionDAO {
       const result = await db().insertInto('orcaPosition')
         .values({
           address,
-          openSolanaTx: solanaTxId,
+          openTx: solanaTxId,
           priceLower: numericToBigInt(priceLower, tokenB.mint.decimals),
           priceMargin: priceMargin.toDecimal().mul(100).round().toNumber(),
           priceOrigin: numericToBigInt(priceOrigin, tokenB.mint.decimals),
@@ -192,9 +192,9 @@ export default class OrcaPositionDAO {
 
     try {
       const result = await db().updateTable('orcaPosition')
-        .set({ closeSolanaTx: solanaTxId })
+        .set({ closeTx: solanaTxId })
         .where('address', '=', address)
-        .where('closeSolanaTx', 'is', null)
+        .where('closeTx', 'is', null)
         .returning('id')
         .executeTakeFirst();
 

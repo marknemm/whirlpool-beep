@@ -107,7 +107,7 @@ export async function getTxSummary(
       // Decode instructions with best attempt - do not throw errors if decode fails
       try {
         // Assign decoded instructions
-        txSummary.decodedIxs = await decodeTransaction({ transaction, meta, signature });
+        txSummary.decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
 
         // Assign transaction compute budget data
         txSummary.computeBudget = sendResult?.buildRecord.computeBudget
@@ -145,7 +145,9 @@ export async function getComputeBudget(
 ): Promise<Partial<ComputeBudget>> {
   const txResponse = await getTransaction(signature);
   if (!txResponse) return {};
-  const decodedIxs = await decodeTransaction({ ...txResponse, signature });
+
+  const { meta, transaction } = txResponse;
+  const decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
 
   const computeUnitLimitParams = decodedIxs.find((ix) =>
        ix.programId === ComputeBudgetProgram.programId
@@ -191,7 +193,8 @@ export async function getTransfers(
   if (!txResponse) return [];
 
   // Decode instructions (with cache)
-  const decodedIxs = await decodeTransaction({ ...txResponse, signature });
+  const { meta, transaction } = txResponse;
+  const decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
 
   // Extract transfer data
   return getTransfersFromIxs(decodedIxs);

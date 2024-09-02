@@ -22,12 +22,65 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface MeteoraFee {
+  id: Generated<number>;
+  position: number;
+  tokenAmountX: Int8;
+  tokenAmountY: Int8;
+  tx: number;
+  usd: Numeric;
+}
+
+export interface MeteoraLiquidity {
+  id: Generated<number>;
+  liquidity: Int8;
+  liquidityUnit: string;
+  position: number;
+  tokenAmountX: Int8;
+  tokenAmountY: Int8;
+  tx: number;
+  usd: Numeric;
+}
+
+export interface MeteoraPool {
+  address: string;
+  baseFeePercentage: Numeric;
+  binStep: number;
+  id: Generated<number>;
+  maxFeePercentage: Numeric;
+  reserveX: string;
+  reserveY: string;
+  tokenX: number;
+  tokenY: number;
+}
+
+export interface MeteoraPosition {
+  address: string;
+  closeTx: number | null;
+  id: Generated<number>;
+  maxBinId: number;
+  minBinId: number;
+  openTx: number;
+  pool: number;
+  priceLower: Int8;
+  priceMargin: number;
+  priceOrigin: Int8;
+  priceUpper: Int8;
+}
+
+export interface MeteoraRebalance {
+  createdAt: Generated<Timestamp>;
+  id: Generated<number>;
+  positionNew: number;
+  positionOld: number;
+}
+
 export interface OrcaFee {
   id: Generated<number>;
   position: number;
-  solanaTx: number;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
+  tx: number;
   usd: Numeric;
 }
 
@@ -37,18 +90,18 @@ export interface OrcaLiquidity {
   liquidityUnit: string;
   position: number;
   slippage: Numeric;
-  solanaTx: number;
   tokenAmountA: Int8;
   tokenAmountB: Int8;
+  tx: number;
   usd: Numeric;
 }
 
 export interface OrcaPosition {
   address: string;
-  closeSolanaTx: number | null;
+  closeTx: number | null;
   createdAt: Generated<Timestamp>;
   id: Generated<number>;
-  openSolanaTx: number;
+  openTx: number;
   priceLower: Int8;
   priceMargin: number;
   priceOrigin: Int8;
@@ -138,6 +191,11 @@ export interface SolanaTxTransfer {
 }
 
 export interface DB {
+  meteoraFee: MeteoraFee;
+  meteoraLiquidity: MeteoraLiquidity;
+  meteoraPool: MeteoraPool;
+  meteoraPosition: MeteoraPosition;
+  meteoraRebalance: MeteoraRebalance;
   orcaFee: OrcaFee;
   orcaLiquidity: OrcaLiquidity;
   orcaPosition: OrcaPosition;

@@ -1,5 +1,5 @@
 import type { Address } from '@coral-xyz/anchor';
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@npc/core';
 import type { InstructionData } from '@npc/solana';
 import type { IncreaseLiquidityQuote, Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';

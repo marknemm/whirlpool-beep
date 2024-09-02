@@ -45,7 +45,7 @@ export default class OrcaFeeDAO {
           position: positionId,
           tokenAmountA: numericToBigInt(txSummary.tokenAmountA),
           tokenAmountB: numericToBigInt(txSummary.tokenAmountB),
-          solanaTx: solanaTxId,
+          tx: solanaTxId,
           usd: txSummary.usd,
         })
         .returning('id')

@@ -42,7 +42,7 @@ export default class OrcaLiquidityDAO {
           liquidityUnit: txSummary.liquidityUnit,
           tokenAmountA: numericToBigInt(txSummary.tokenAmountA),
           tokenAmountB: numericToBigInt(txSummary.tokenAmountB),
-          solanaTx: solanaTxId,
+          tx: solanaTxId,
           slippage: txSummary.slippage,
           usd: txSummary.usd,
         })

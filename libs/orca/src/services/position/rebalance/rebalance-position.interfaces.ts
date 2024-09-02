@@ -1,4 +1,4 @@
-import type { LiquidityUnit } from '@npc/orca/interfaces/liquidity.interfaces';
+import type { LiquidityUnit } from '@npc/core';
 import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
 import type { Address, Percentage } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';

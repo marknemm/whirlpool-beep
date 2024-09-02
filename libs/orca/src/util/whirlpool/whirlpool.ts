@@ -34,7 +34,7 @@ export default function whirlpoolClient(): WhirlpoolClient {
 export async function getWhirlpoolPrice(whirlpool: Whirlpool | WhirlpoolData): Promise<Decimal> {
   const whirlpoolData = toWhirlpoolData(whirlpool);
   const { sqrtPrice } = whirlpoolData;
-  const [tokenA, tokenB] = await getTokenPair(whirlpoolData.tokenMintA, whirlpoolData.tokenMintB);
+  const [tokenA, tokenB] = await getWhirlpoolTokenPair(whirlpoolData);
 
   return PriceMath.sqrtPriceX64ToPrice(sqrtPrice, tokenA.mint.decimals, tokenB.mint.decimals);
 }

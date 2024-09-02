@@ -1,6 +1,7 @@
-import { debug, error } from '@npc/core';
+import { error } from '@npc/core';
 import { Config } from '@npc/meteora/util/config/config';
 import { getPool } from './services/pool/query/query-pool';
+import { openPosition } from './services/position/open/open-position';
 
 /**
  * Main entry point.
@@ -12,9 +13,10 @@ async function main() {
     tokenA: 'SOL',
     tokenB: 'USDC',
     baseFee: 0.03,
-    binStep: 16,
+    binStep: 2,
   });
-  debug(pool.pubkey);
+
+  await openPosition({ poolAddress: pool.pubkey });
 
   // Execute the CLI
   // await execCli({
