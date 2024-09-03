@@ -5,6 +5,8 @@ import { Position } from '@npc/meteora/interfaces/position';
 import type { InstructionData, SendTransactionResult, TxSummary } from '@npc/solana';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
+import { IncreaseLiquidityIxData } from '../../liquidity/increase/increase-liquidity.interfaces';
+import { LiquidityTxSummary } from '../../liquidity/interfaces/liquidity-tx.interfaces';
 
 /**
  * Arguments for opening a new {@link Position} in a Meteora liquidity pool.
@@ -41,14 +43,14 @@ export interface OpenPositionArgs {
 export interface OpenPositionIxData extends InstructionData {
 
   /**
-   * The {@link IncreaseLiquidityIxData} for increasing liquidity in the new position.
-   */
-  // increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
-
-  /**
    * The bin index range for the new {@link Position}.
    */
   binRange: [number, number];
+
+  /**
+   * The {@link IncreaseLiquidityIxData} for increasing liquidity in the new position.
+   */
+  increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
 
   /**
    * The Meteora {@link DLMM} pool that the new {@link Position} is in.
@@ -92,7 +94,7 @@ export interface OpenPositionTxSummary extends TxSummary {
    *
    * `undefined` if the transaction was excluded.
    */
-  // increaseLiquidityTxSummary?: LiquidityTxSummary;
+  increaseLiquidityTxSummary?: LiquidityTxSummary;
 
   /**
    * The price margin {@link Decimal} for the new {@link Position}.

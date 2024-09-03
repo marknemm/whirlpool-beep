@@ -16,7 +16,10 @@ async function main() {
     binStep: 2,
   });
 
-  await openPosition({ poolAddress: pool.pubkey });
+  await openPosition({
+    poolAddress: pool.pubkey,
+    liquidity: 10,
+  });
 
   // Execute the CLI
   // await execCli({

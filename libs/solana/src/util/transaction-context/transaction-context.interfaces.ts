@@ -323,7 +323,7 @@ export interface InstructionMetadata {
   /**
    * The debug data for the transaction. Should be in a format that is easily loggable.
    */
-  debugData: InstructionDebugData;
+  debugData?: InstructionDebugData;
 
 }
 

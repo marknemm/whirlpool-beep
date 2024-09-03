@@ -1,13 +1,15 @@
 import { StrategyType, type Position } from '@meteora-ag/dlmm';
-import { debug, error, expBackoff, genPriceMarginRange, invertPrice, numericToBN } from '@npc/core';
+import { debug, error, expBackoff, genPriceMarginRange, invertPrice } from '@npc/core';
 import MeteoraPositionDAO from '@npc/meteora/data/meteora-position/meteora-position.dao';
+import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary } from '@npc/meteora/services/liquidity/increase/increase-liquidity';
 import { getPool } from '@npc/meteora/services/pool/query/query-pool';
 import { getPosition } from '@npc/meteora/services/position/query/query-position';
-import { getPoolTokenPair } from '@npc/meteora/util/pool/pool';
-import { decodeIx, getProgramErrorInfo, getTokenAmountsForPool, getTxSummary, TransactionContext, wallet } from '@npc/solana';
+import env from '@npc/meteora/util/env/env';
+import { decodeIx, getProgramErrorInfo, getTxSummary, TransactionContext, wallet } from '@npc/solana';
 import { Keypair } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
+import { IncreaseLiquidityIxData } from '../../liquidity/increase/increase-liquidity.interfaces';
 import { OpenPositionArgs, OpenPositionTxSummary, OpenPositionTxSummaryArgs } from './open-position.interfaces';
 
 /**
@@ -17,7 +19,7 @@ import { OpenPositionArgs, OpenPositionTxSummary, OpenPositionTxSummaryArgs } fr
  * @returns A {@link Promise} that resolves to the opened {@link Position}.
  */
 export async function openPosition(args: OpenPositionArgs): Promise<OpenPositionTxSummary> {
-  const { liquidity, poolAddress, priceMargin = 0.01 } = args;
+  const { liquidity, liquidityUnit, poolAddress, priceMargin = 0.01 } = args;
   const pool = await getPool({ poolAddress });
 
   const activeBin = await pool.getActiveBin();
@@ -32,24 +34,23 @@ export async function openPosition(args: OpenPositionArgs): Promise<OpenPosition
     activeBin.binId + 34
   );
 
-  let totalXAmount = new BN(0);
-  let totalYAmount = new BN(0);
-  if (liquidity) {
-    const [tokenX, tokenY] = await getPoolTokenPair(pool);
-    const tokenPrice = invertPrice(activeBin.pricePerToken);
-    const [decimalXAmount, decimalYAmount] = await getTokenAmountsForPool([tokenX, tokenY], liquidity, tokenPrice);
-    totalXAmount = numericToBN(decimalXAmount, tokenX.mint.decimals);
-    totalYAmount = numericToBN(decimalYAmount, tokenY.mint.decimals);
-  }
-
   const positionKeypair = new Keypair();
 
-  // // Create Position (Spot Balance deposit, Please refer ``example.ts` for more example)
+  const increaseLiquidityIxData: IncreaseLiquidityIxData | undefined = liquidity
+    ? await genIncreaseLiquidityIxData({
+        liquidity,
+        liquidityUnit,
+        poolAddress,
+        positionAddress: positionKeypair.publicKey,
+      })
+    : undefined;
+
   const createPositionTx = await pool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: positionKeypair.publicKey,
     user: wallet().publicKey,
-    totalXAmount,
-    totalYAmount,
+    totalXAmount: increaseLiquidityIxData?.totalXAmount ?? new BN(0),
+    totalYAmount: increaseLiquidityIxData?.totalYAmount ?? new BN(0),
+    slippage: env.SLIPPAGE_DEFAULT,
     strategy: {
       maxBinId,
       minBinId,
@@ -81,6 +82,7 @@ export async function openPosition(args: OpenPositionArgs): Promise<OpenPosition
     const txSummary = await genOpenPositionTxSummary({
       openPositionIxData: {
         binRange: [minBinId, maxBinId],
+        increaseLiquidityIxData,
         pool,
         priceMargin: new Decimal(priceMargin),
         priceOrigin,
@@ -113,7 +115,7 @@ export async function genOpenPositionTxSummary({
   position,
   sendResult
 }: OpenPositionTxSummaryArgs): Promise<OpenPositionTxSummary> {
-  const { binRange, priceMargin, priceOrigin, priceRange } = openPositionIxData;
+  const { binRange, increaseLiquidityIxData, priceMargin, priceOrigin, priceRange } = openPositionIxData;
 
   const txSummary = await getTxSummary(sendResult);
 
@@ -126,12 +128,11 @@ export async function genOpenPositionTxSummary({
     ...txSummary,
   };
 
-  // const increaseLiquidityQuote = increaseLiquidityIxData?.quote;
-  // if (increaseLiquidityQuote) {
-  //   const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, sendResult);
-  //   liquidityTxSummary.fee = 0; // Fee is included in open position tx fee
-  //   openPositionTxSummary.increaseLiquidityTxSummary = liquidityTxSummary;
-  // }
+  if (increaseLiquidityIxData) {
+    const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, sendResult);
+    liquidityTxSummary.fee = 0; // Fee is included in open position tx fee
+    openPositionTxSummary.increaseLiquidityTxSummary = liquidityTxSummary;
+  }
 
   return openPositionTxSummary;
 }

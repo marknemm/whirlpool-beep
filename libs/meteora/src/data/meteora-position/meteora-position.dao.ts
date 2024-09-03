@@ -1,7 +1,7 @@
 import { type Address } from '@coral-xyz/anchor';
 import { type Position } from '@meteora-ag/dlmm';
 import { db, debug, handleDBInsertError, handleDBSelectError, numericToBigInt, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
-// import MeteoraLiquidityDAO from '@npc/meteora/data/meteora-liquidity/meteora-liquidity.dao';
+import MeteoraLiquidityDAO from '@npc/meteora/data/meteora-liquidity/meteora-liquidity.dao';
 import MeteoraPoolDAO from '@npc/meteora/data/meteora-pool/meteora-pool.dao';
 import { getPool } from '@npc/meteora/services/pool/query/query-pool';
 import type { OpenPositionTxSummary } from '@npc/meteora/services/position/open/open-position.interfaces';
@@ -102,7 +102,7 @@ export default class MeteoraPositionDAO {
     if (!txSummary?.position) return;
     const {
       binRange,
-      // increaseLiquidityTxSummary,
+      increaseLiquidityTxSummary,
       priceMargin,
       priceOrigin,
       priceRange,
@@ -147,9 +147,9 @@ export default class MeteoraPositionDAO {
       debug(`Inserted Meteora Position into database ( ID: ${result?.id} ):`, address);
 
       // If the Position was opened with liquidity, insert the LiquidityTxSummary.
-      // if (increaseLiquidityTxSummary) {
-      //   await MeteoraLiquidityDAO.insert(increaseLiquidityTxSummary, opts);
-      // }
+      if (increaseLiquidityTxSummary) {
+        await MeteoraLiquidityDAO.insert(increaseLiquidityTxSummary, opts);
+      }
 
       return result?.id;
     } catch (err) {

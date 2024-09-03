@@ -175,7 +175,7 @@ export async function getTokenAmountsForPool(
   }
 
   // If both token amounts are still undefined, throw an error
-  if (!tokenAmountA || !tokenAmountB) {
+  if (!tokenAmountA && !tokenAmountB) {
     throw new Error(`Failed to convert USD to token amounts: ${tokenPair.map(formatToken)}`);
   }
 
@@ -183,10 +183,10 @@ export async function getTokenAmountsForPool(
   if (tokenAmountA) {
     tokenAmountB = tokenAmountA.div(poolPrice);
   } else {
-    tokenAmountA = tokenAmountB.mul(poolPrice);
+    tokenAmountA = tokenAmountB!.mul(poolPrice);
   }
 
-  return [tokenAmountA, tokenAmountB];
+  return [tokenAmountA!, tokenAmountB!];
 }
 
 /**
