@@ -40,8 +40,8 @@ export default class MeteoraLiquidityDAO {
           position: positionId,
           liquidity: numericToBigInt(txSummary.liquidity),
           liquidityUnit: txSummary.liquidityUnit,
-          tokenAmountX: numericToBigInt(txSummary.totalXAmount),
-          tokenAmountY: numericToBigInt(txSummary.totalYAmount),
+          tokenAmountX: numericToBigInt(txSummary.tokenAmountX),
+          tokenAmountY: numericToBigInt(txSummary.tokenAmountY),
           tx: solanaTxId,
           usd: txSummary.usd,
         })

@@ -4,6 +4,17 @@ import { PUBLIC_KEY_REGEX } from '@npc/solana/constants/regex';
 import { PublicKey } from '@solana/web3.js';
 
 /**
+ * Checks if the given {@link Address} is equal to another {@link Address}.
+ *
+ * @param address1 The first {@link Address} to compare.
+ * @param address2 The second {@link Address} to compare.
+ * @returns `true` if the {@link Address} are equal, `false` otherwise.
+ */
+export function addressEquals(address1: Address, address2: Address): boolean {
+  return toPubKeyStr(address1) === toPubKeyStr(address2);
+}
+
+/**
  * Checks if the given value is a valid {@link Address}.
  *
  * @param address The value to check.

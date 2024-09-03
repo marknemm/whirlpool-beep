@@ -2,6 +2,7 @@ import { StrategyType, type Position } from '@meteora-ag/dlmm';
 import { debug, error, expBackoff, genPriceMarginRange, invertPrice } from '@npc/core';
 import MeteoraPositionDAO from '@npc/meteora/data/meteora-position/meteora-position.dao';
 import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary } from '@npc/meteora/services/liquidity/increase/increase-liquidity';
+import { IncreaseLiquidityIxData } from '@npc/meteora/services/liquidity/increase/increase-liquidity.interfaces';
 import { getPool } from '@npc/meteora/services/pool/query/query-pool';
 import { getPosition } from '@npc/meteora/services/position/query/query-position';
 import env from '@npc/meteora/util/env/env';
@@ -9,7 +10,6 @@ import { decodeIx, getProgramErrorInfo, getTxSummary, TransactionContext, wallet
 import { Keypair } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { IncreaseLiquidityIxData } from '../../liquidity/increase/increase-liquidity.interfaces';
 import { OpenPositionArgs, OpenPositionTxSummary, OpenPositionTxSummaryArgs } from './open-position.interfaces';
 
 /**

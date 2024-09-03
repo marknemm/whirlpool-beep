@@ -1,9 +1,9 @@
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
-import { numericToBN, type Null } from '@npc/core';
+import { numericToBN, warn, type Null } from '@npc/core';
 import { toPubKeyStr } from '@npc/solana/util/address/address';
 import anchor from '@npc/solana/util/anchor/anchor';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, DecodedInitializeAccountInstruction, DecodedTransferInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, DecodedInitializeAccountInstruction, decodeInstruction, TOKEN_PROGRAM_ID, TokenInstruction, type DecodedTransferCheckedInstruction, type DecodedTransferInstruction } from '@solana/spl-token';
 import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, SystemInstruction, SystemProgram, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type ParsedAccountData } from '@solana/web3.js';
 import bs58 from 'bs58';
 import type { DecodedTransactionIx, ProgramErrorInfo, QueriedTransaction, TempTokenAccount, TokenTransfer } from './program.interfaces';
@@ -164,20 +164,31 @@ export async function decodeTransaction(
 
   // Decode all instructions
   for (let i = 0; i < ixs.length; i++) {
-    // Decoded instruction
-    const decodedIx = await decodeIx(ixs[i], tempTokenAccounts);
-    decodedIxs.push(decodedIx);
+    try {
+      // Decoded instruction
+      const decodedIx = await decodeIx(ixs[i], tempTokenAccounts);
+      decodedIxs.push(decodedIx);
 
-    // Record any (temp) token accounts created during the transaction
-    if (decodedIx.programName === 'TokenProgram' && decodedIx.name === 'InitializeAccount') {
-      const initAccountData = decodedIx.data as DecodedInitializeAccountInstruction;
-      const { account } = initAccountData.keys;
-      tempTokenAccounts.set(account.pubkey.toBase58(), initAccountData.keys);
-    }
+      // Record any (temp) token accounts created during the transaction
+      if (decodedIx.programName === 'TokenProgram' && decodedIx.name === 'InitializeAccount') {
+        const initAccountData = decodedIx.data as DecodedInitializeAccountInstruction;
+        const { account } = initAccountData.keys;
+        tempTokenAccounts.set(account.pubkey.toBase58(), initAccountData.keys);
+      }
 
-    // Decode inner instructions if QueriedTransaction
-    if (isQueriedTransaction) {
-      decodedIx.innerInstructions = await _decodeInnerIxs(transaction, i, tempTokenAccounts);
+      // Decode inner instructions if QueriedTransaction
+      if (isQueriedTransaction) {
+        decodedIx.innerInstructions = await _decodeInnerIxs(transaction, i, tempTokenAccounts);
+      }
+    } catch (err) {
+      warn('Failed to decode instruction:', err);
+      decodedIxs.push({
+        data: ixs[i].data,
+        innerInstructions: [],
+        name: 'Unknown',
+        programName: 'Unknown',
+        programId: ixs[i].programId,
+      });
     }
   }
 
@@ -379,9 +390,11 @@ async function _decodeTokenProgramIx(
   }
 
   const decodedTokenIx = decodeInstruction(ix);
+  const isTransfer = decodedTokenIx.data.instruction === TokenInstruction.Transfer
+                  || decodedTokenIx.data.instruction === TokenInstruction.TransferChecked;
 
   return {
-    data: (decodedTokenIx.data.instruction === TokenInstruction.Transfer)
+    data: isTransfer
       ? await _extendTokenTransferIxData(decodedTokenIx as DecodedTransferInstruction, tempTokenAccounts)
       : { ...decodedTokenIx.data, keys: decodedTokenIx.keys },
     innerInstructions: [],
@@ -392,7 +405,7 @@ async function _decodeTokenProgramIx(
 }
 
 async function _extendTokenTransferIxData(
-  ix: DecodedTransferInstruction,
+  ix: DecodedTransferInstruction | DecodedTransferCheckedInstruction,
   tempTokenAccounts: Map<string, TempTokenAccount>
 ): Promise<TokenTransfer> {
   const ixData: TokenTransfer = {

@@ -31,11 +31,11 @@ export interface LiquidityTxSummary extends TxSummary {
   /**
    * The amount of token X that was increased or decreased.
    */
-  totalXAmount: BN;
+  tokenAmountX: BN;
 
   /**
    * The amount of token Y that was increased or decreased.
    */
-  totalYAmount: BN;
+  tokenAmountY: BN;
 
 }

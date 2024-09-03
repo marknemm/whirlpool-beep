@@ -1,9 +1,10 @@
-import { invertPrice, LiquidityUnit, numericToBN } from '@npc/core';
+import { info, invertPrice, LiquidityUnit, numericToBN, numericToString } from '@npc/core';
 import { Position } from '@npc/meteora/interfaces/position';
 import { getPool } from '@npc/meteora/services/pool/query/query-pool';
 import env from '@npc/meteora/util/env/env';
-import { getPoolTokenPair } from '@npc/meteora/util/pool/pool';
-import { getTokenAmountsForPool, getTxSummary, SendTransactionResult } from '@npc/solana';
+import { formatPool, getPoolTokenPair } from '@npc/meteora/util/pool/pool';
+import { getTokenAmountsForPool, getTransferTotalsFromIxs, getTxSummary, SendTransactionResult } from '@npc/solana';
+import BN from 'bn.js';
 import type { LiquidityTxSummary } from '../interfaces/liquidity-tx.interfaces';
 import type { IncreaseLiquidityAmounts, IncreaseLiquidityIxArgs, IncreaseLiquidityIxData } from './increase-liquidity.interfaces';
 
@@ -129,19 +130,40 @@ export async function genIncreaseLiquidityTxSummary(
   ixData: IncreaseLiquidityIxData,
   sendResult: SendTransactionResult
 ): Promise<LiquidityTxSummary> {
-  const { ixArgs, totalXAmount, totalYAmount } = ixData;
+  const { ixArgs } = ixData;
   const { liquidity, liquidityUnit = 'usd' } = ixArgs;
 
+  const pool = await getPool({ poolAddress: position.poolPublicKey });
+  const [tokenX, tokenY] = await getPoolTokenPair(pool);
   const txSummary = await getTxSummary(sendResult.signature);
 
-  return {
+  const liquidityIx = txSummary.decodedIxs.find(
+    (ix) => /add\s*liquidity/i.test(ix.name)
+  );
+  if (!liquidityIx) throw new Error('No increase liquidity instruction found in transaction');
+  const { tokenTotals, usd } = await getTransferTotalsFromIxs([liquidityIx]);
+
+  const liquidityTxSummary: LiquidityTxSummary = {
     ...txSummary,
     liquidity: numericToBN(liquidity),
     liquidityUnit,
     position,
     slippage: env.SLIPPAGE_DEFAULT,
-    totalXAmount,
-    totalYAmount,
+    tokenAmountX: tokenTotals.get(tokenX.mint.publicKey)?.neg() ?? new BN(0),
+    tokenAmountY: tokenTotals.get(tokenY.mint.publicKey)?.neg() ?? new BN(0),
+    usd: usd * -1,
     sendResult,
   };
+
+  info('Increase liquidity tx summary:', {
+    pool: await formatPool(pool),
+    position: liquidityTxSummary.position.publicKey.toBase58(),
+    [tokenX.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountX, tokenX.mint.decimals),
+    [tokenY.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountY, tokenY.mint.decimals),
+    usd: `$${liquidityTxSummary.usd}`,
+    fee: `${liquidityTxSummary.fee}`,
+    signature: liquidityTxSummary.signature,
+  });
+
+  return liquidityTxSummary;
 }

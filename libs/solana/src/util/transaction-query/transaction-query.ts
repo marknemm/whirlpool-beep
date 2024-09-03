@@ -6,8 +6,10 @@ import { getToken, getTokenPrice } from '@npc/solana/util/token/token';
 import { ComputeBudget, type SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
 import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
 import wallet from '@npc/solana/util/wallet/wallet';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ComputeBudgetProgram, SetComputeUnitLimitParams, SetComputeUnitPriceParams, VersionedTransactionResponse, type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
+import { addressEquals } from '../address/address';
 import type { TransferTotals, TxSummary } from './transaction-query.interfaces';
 
 const _txCache = new Map<string, VersionedTransactionResponse>();
@@ -208,9 +210,12 @@ export async function getTransfers(
  */
 export function getTransfersFromIxs(decodedIxs: DecodedTransactionIx[]): TokenTransfer[] {
   return decodedIxs
-    .flatMap((ix) => [ix, ...ix.innerInstructions]) // Flatten ixs and inner ixs
-    .filter((ix) => ix.name === 'Transfer')         // Filter for transfer instructions
-    .map((ix) => ix.data as TokenTransfer);         // Map to transfer data
+    .flatMap((ix) => [ix, ...ix.innerInstructions])  // Flatten ixs and inner ixs
+    .filter((ix) =>                                  // Filter token program ixs
+      addressEquals(ix.programId, TOKEN_PROGRAM_ID)
+      && ['Transfer', 'TransferChecked'].includes(ix.name)
+    )
+    .map((ix) => ix.data as TokenTransfer); // Map to transfer data
 }
 
 /**
