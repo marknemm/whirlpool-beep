@@ -11,7 +11,7 @@ import Decimal from 'decimal.js';
  * Will only shift the decimal point if the value is a {@link Decimal.Value}.
  * @returns The converted {@link bigint}. If given a `falsey` value, `0` is returned.
  */
-export function numericToBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): bigint {
+export function toBigInt(value: bigint | BN | Decimal.Value | Null, shift = 0): bigint {
   if (value instanceof BN) {
     value = BigInt(value.toString());
   }
@@ -20,7 +20,7 @@ export function numericToBigInt(value: bigint | BN | Decimal.Value | Null, shift
     return value ?? 0n;
   }
 
-  value = numericToDecimal(value);
+  value = toDecimal(value);
   value = value.mul(new Decimal(10).pow(shift)).trunc();
   return BigInt(value.toString());
 }
@@ -34,7 +34,7 @@ export function numericToBigInt(value: bigint | BN | Decimal.Value | Null, shift
  * Will only shift the decimal point if the value is a {@link Decimal.Value}.
  * @returns The converted {@link BN}. If given a `falsey` value, `0` is returned.
  */
-export function numericToBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
+export function toBN(value: bigint | BN | Decimal.Value | Null, shift = 0): BN {
   if (typeof value === 'bigint') {
     value = new BN(value.toString());
   }
@@ -43,7 +43,7 @@ export function numericToBN(value: bigint | BN | Decimal.Value | Null, shift = 0
     return value ?? new BN(0);
   }
 
-  value = numericToDecimal(value);
+  value = toDecimal(value);
   value = value.mul(new Decimal(10).pow(shift)).trunc();
   return new BN(value.toString());
 }
@@ -57,7 +57,7 @@ export function numericToBN(value: bigint | BN | Decimal.Value | Null, shift = 0
  * Will only shift the decimal point if the value is not a {@link Decimal.Value}.
  * @returns The converted {@link Decimal}. If given a `falsey` value, `0` is returned.
  */
-export function numericToDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0): Decimal {
+export function toDecimal(value: bigint | BN | Decimal.Value | Null, shift = 0): Decimal {
   if (typeof value === 'number' || typeof value === 'string') {
     value = new Decimal(value);
   }
@@ -79,7 +79,7 @@ export function numericToDecimal(value: bigint | BN | Decimal.Value | Null, shif
  * @param decimals The decimal precision. Defaults to `0`.
  * @returns The converted `number`. If given a `falsey` value, `0` is returned.
  */
-export function numericToNumber(value: bigint | BN | Decimal.Value | Null, decimals = 0): number {
+export function toNumber(value: bigint | BN | Decimal.Value | Null, decimals = 0): number {
   return parseFloat(numericToString(value, decimals));
 }
 
@@ -98,8 +98,8 @@ export function numericToString(value: bigint | BN | Decimal.Value | Null, decim
 
   if (decimals) {
     value = (typeof value === 'bigint' || value instanceof BN)
-      ? numericToDecimal(value, decimals) // Only left shift decimal point for BN
-      : numericToDecimal(value);
+      ? toDecimal(value, decimals) // Only left shift decimal point for BN
+      : toDecimal(value);
 
     return value.toFixed(decimals);
   }

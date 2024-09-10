@@ -1,13 +1,13 @@
-import type { InstructionData } from '@npc/solana';
+import type { InstructionSetMap } from '@npc/solana';
 import { TxSummary } from '@npc/solana';
 import type { CollectFeesQuote, CollectRewardsQuote, Position } from '@orca-so/whirlpools-sdk';
 import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
 /**
- * {@link InstructionData} for collecting fees and rewards from a {@link Position}.
+ * {@link InstructionSetMap} for collecting fees and rewards from a {@link Position}.
  */
-export interface CollectFeesRewardsIxData extends InstructionData {
+export interface CollectFeesRewardsIxData extends InstructionSetMap {
 
   /**
    * The {@link CollectFeesQuote} used to generate the transaction.

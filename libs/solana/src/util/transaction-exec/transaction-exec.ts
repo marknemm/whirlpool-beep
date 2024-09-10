@@ -1,30 +1,34 @@
-import { type Wallet } from '@coral-xyz/anchor';
-import { info, Null, timeout } from '@npc/core';
+import { debug, Null, timeout } from '@npc/core';
 import env from '@npc/solana/util/env/env';
+import { decodeTransaction } from '@npc/solana/util/program/program';
 import rpc from '@npc/solana/util/rpc/rpc';
 import wallet from '@npc/solana/util/wallet/wallet';
-import { BlockhashWithExpiryBlockHeight, Commitment, SendOptions, Signer, SimulatedTransactionResponse, SimulateTransactionConfig, TransactionMessage, TransactionSignature, VersionedTransaction, type Transaction, type TransactionInstruction } from '@solana/web3.js';
-import type { TransactionAction, TransactionError } from './transaction-exec.interfaces';
+import { TransactionMessage, VersionedTransaction, type SimulatedTransactionResponse, type Transaction, type TransactionInstruction, type TransactionSignature } from '@solana/web3.js';
+import { green } from 'colors';
+import type { ConfirmTransactionConfig, SendTransactionConfig, SignTransactionConfig, SimulateTransactionConfig, TransactionAction, TransactionError } from './transaction-exec.interfaces';
 
 /**
  * Confirms a transaction.
  *
  * @param signature The {@link TransactionSignature} of the transaction to confirm.
- * @param commitment The {@link Commitment} level to use when verifying the transaction.
- * If not provided, {@link env.COMMITMENT_DEFAULT} is used.
- * @param blockhashWithExpiry The {@link BlockhashWithExpiryBlockHeight} that was used to generate
- * the recent/latest blockhash timestamp for the transaction that is to be confirmed.
- * If not provided, the latest blockhash is used.
+ * @param config The {@link ConfirmTransactionConfig} to use for confirming the transaction.
  * @returns A {@link Promise} that resolves to the confirmed {@link TransactionSignature}.
  * @throws An {@link Error} if the transaction is rejected.
  */
 export async function confirmTx(
   signature: TransactionSignature,
-  commitment: Commitment = env.COMMITMENT_DEFAULT,
-  blockhashWithExpiry?: BlockhashWithExpiryBlockHeight
+  config: ConfirmTransactionConfig = {}
 ): Promise<TransactionSignature> {
+  const {
+    commitment = env.COMMITMENT_DEFAULT,
+    debugData,
+  } = config;
+
+  debug(`Confirming Tx ( Commitment: ${green(commitment)} ):`, signature);
+  if (debugData) debug(debugData);
+
   // Wait for the transaction to be confirmed as included in a block with commitment 'processed'.
-  blockhashWithExpiry ??= await rpc().getLatestBlockhash();
+  let blockhashWithExpiry = config.blockhashWithExpiry ?? await rpc().getLatestBlockhash();
   let confirmResponse = await rpc().confirmTransaction({ signature, ...blockhashWithExpiry }, 'processed');
 
   // Throw error if transaction was rejected.
@@ -32,7 +36,8 @@ export async function confirmTx(
     throw formatTxError(confirmResponse.value.err, 'confirm');
   }
 
-  info('Transaction has been processed:', signature);
+  debug('Transaction has been processed:', signature);
+  if (debugData) debug(debugData);
   await timeout(3000);
 
   // If a higher commitment level is requested, confirm the transaction with that level using retries.
@@ -42,7 +47,8 @@ export async function confirmTx(
     if (confirmResponse.value.err) {
       throw formatTxError(confirmResponse.value.err, 'confirm');
     }
-    info(`Transaction has been ${commitment}:`, signature);
+    debug(`Transaction has been ${commitment}:`, signature);
+    if (debugData) debug(debugData);
   }
 
   return signature;
@@ -83,12 +89,12 @@ export function formatTxError(err: unknown, action?: TransactionAction, logs?: s
  * Sends a {@link Transaction} or {@link VersionedTransaction}.
  *
  * @param tx The {@link Transaction} or {@link VersionedTransaction} to send.
- * @param opts The {@link SendOptions} to use for sending the transaction.
+ * @param opts The {@link SendTransactionConfig} to use for sending the transaction.
  * @returns A {@link Promise} that resolves to the {@link TransactionSignature} of the sent transaction.
  */
 export async function sendTx(
   tx: Transaction | VersionedTransaction,
-  opts: SendOptions = {}
+  opts: SendTransactionConfig = {}
 ): Promise<TransactionSignature> {
   opts = {
     maxRetries: env.RPC_MAX_RETRIES,
@@ -96,27 +102,43 @@ export async function sendTx(
     ...opts
   };
 
-  return rpc().sendRawTransaction(tx.serialize(), opts);
+  const decodedIxs = await decodeTransaction(tx);
+  const { debugData } = opts;
+
+  debug('Sending Tx:', { decodedIxs, debugData });
+  const signature = await rpc().sendRawTransaction(tx.serialize(), opts);
+
+  debug('Sent Tx:', { decodedIxs, debugData, signature });
+  return signature;
 }
 
 /**
  * Signs a {@link Transaction} or {@link VersionedTransaction}.
  *
  * @param tx The {@link Transaction} or {@link VersionedTransaction} to sign.
- * @param signers The {@link Signer}s to sign the transaction with.
- * @param payerWallet The {@link Wallet} to sign the transaction with.
+ * @param config The {@link SignTransactionConfig} to use for signing the transaction.
  * @returns A {@link Promise} that resolves to the signed {@link Transaction} or {@link VersionedTransaction}.
  */
 export async function signTx<T extends Transaction | VersionedTransaction>(
   tx: T,
-  signers: readonly Signer[] = [],
-  payerWallet: Wallet = wallet()
+  config: SignTransactionConfig = {}
 ): Promise<T> {
+  const {
+    payerWallet = wallet(),
+    signers = [],
+  } = config;
+
   await payerWallet.signTransaction(tx);
 
   (tx instanceof VersionedTransaction)
     ? tx.sign([...signers])
     : signers.forEach((signer) => tx.partialSign(signer));
+
+  debug('Tx signed:', {
+    debugData: config.debugData,
+    payer: payerWallet.publicKey.toBase58(),
+    signers: signers.map((signer) => signer.publicKey.toBase58()),
+  });
 
   return tx;
 }
@@ -125,20 +147,37 @@ export async function signTx<T extends Transaction | VersionedTransaction>(
  * Simulates a {@link Transaction} or {@link VersionedTransaction}.
  *
  * @param tx The {@link Transaction} or {@link VersionedTransaction} to simulate.
- * @param opts The {@link SimulateTransactionConfig} to use for simulating the transaction.
+ * @param config The {@link SimulateTransactionConfig} to use for simulating the transaction.
  * @returns A {@link Promise} that resolves to the {@link SimulatedTransactionResponse}.
  * @throws If the simulation fails.
  */
 export async function simulateTx(
   tx: Transaction | VersionedTransaction,
-  opts: SimulateTransactionConfig = {}
+  config: SimulateTransactionConfig = {}
 ): Promise<SimulatedTransactionResponse> {
+  const { debugData, replaceRecentBlockhash, sigVerify } = config;
+  const decodedIxs = await decodeTransaction(tx);
+
   const versionedTx = await toVersionedTx(tx);
 
-  const response = await rpc().simulateTransaction(versionedTx, opts);
+  debug('Simulating Tx:', {
+    decodedIxs,
+    debugData,
+    replaceRecentBlockhash,
+    sigVerify,
+  });
+
+  const response = await rpc().simulateTransaction(versionedTx, config);
   if (response.value.err) {
     throw formatTxError(response.value.err, 'simulate', response.value.logs);
   }
+
+  debug('Tx simulated:', {
+    decodedIxs,
+    debugData,
+    unitsConsumed: response.value.unitsConsumed,
+    logs: response.value.logs,
+  });
 
   return response.value;
 }

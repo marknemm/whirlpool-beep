@@ -1,5 +1,5 @@
 import type { Null } from '@npc/core/interfaces/nullable.interfaces';
-import { numericToDecimal } from '@npc/core/util/numeric/numeric';
+import { toDecimal } from '@npc/core/util/numeric/numeric';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
@@ -15,7 +15,7 @@ export function genPriceMarginRange(
   priceMargin: Decimal.Value | Null
 ): [Decimal, Decimal] {
   if (!price || !priceMargin) return [new Decimal(0), new Decimal(0)];
-  price = numericToDecimal(price);
+  price = toDecimal(price);
 
   const priceMarginValue = price.mul(priceMargin);
   const lowerPrice = price.minus(priceMarginValue);
@@ -32,7 +32,7 @@ export function genPriceMarginRange(
  */
 export function invertPrice(price: BN | Decimal.Value | Null): Decimal {
   return price
-    ? new Decimal(1).div(numericToDecimal(price))
+    ? new Decimal(1).div(toDecimal(price))
     : new Decimal(0);
 }
 
@@ -48,7 +48,7 @@ export function usdToTokenAmount(
   tokenPrice: Decimal.Value | Null
 ): Decimal {
   return (usd && tokenPrice)
-    ? numericToDecimal(usd).div(tokenPrice)
+    ? toDecimal(usd).div(tokenPrice)
     : new Decimal(0);
 }
 
@@ -68,6 +68,6 @@ export function tokenAmountToUSD(
   shift = 0
 ): Decimal {
   return (tokenAmount && tokenPrice)
-    ? numericToDecimal(tokenAmount, shift).mul(tokenPrice)
+    ? toDecimal(tokenAmount, shift).mul(tokenPrice)
     : new Decimal(0);
 }

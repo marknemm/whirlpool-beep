@@ -1,8 +1,11 @@
 import type { Address, BN } from '@coral-xyz/anchor';
-import type { InstructionData } from '@npc/solana';
+import type { InstructionSetMap } from '@npc/solana';
 import type { DecreaseLiquidityQuote, Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type Decimal from 'decimal.js';
 
+/**
+ * The arguments for generating a transaction instruction to decrease liquidity in a {@link Position}.
+ */
 export interface DecreaseLiquidityIxArgs {
 
   /**
@@ -20,7 +23,7 @@ export interface DecreaseLiquidityIxArgs {
 /**
  * {@link DecreaseLiquidityIxData} for decreasing liquidity in a {@link Position}.
  */
-export interface DecreaseLiquidityIxData extends InstructionData {
+export interface DecreaseLiquidityIxData extends InstructionSetMap {
 
   /**
    * The arguments used to generate the instruction data.

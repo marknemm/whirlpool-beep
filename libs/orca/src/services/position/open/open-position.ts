@@ -1,18 +1,14 @@
-import type { LiquidityUnit } from '@npc/core';
-import { debug, error, expBackoff, genPriceMarginRange, info, numericToNumber } from '@npc/core';
+import { debug, error, expBackoff, genPriceMarginRange, info } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { genIncreaseLiquidityIxData, genIncreaseLiquidityTxSummary, type IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import { getPositionBundle } from '@npc/orca/services/position-bundle/query/query-position-bundle';
+import { genIncreaseLiquidityIxSet } from '@npc/orca/services/liquidity/increase/increase-liquidity';
+import { getPositionBundle } from '@npc/orca/util/position/position';
 import { toPriceRange, toTickRange } from '@npc/orca/util/tick-range/tick-range';
-import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, getTxSummary, TransactionContext, wallet } from '@npc/solana';
-import { Percentage, TransactionBuilder, type Instruction } from '@orca-so/common-sdk';
+import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, resolveWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
+import { getProgramErrorInfo, TransactionContext, wallet } from '@npc/solana';
+import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type BN from 'bn.js';
-import type Decimal from 'decimal.js';
-import type { OpenPositionArgs, OpenPositionIxData, OpenPositionTxSummary, OpenPositionTxSummaryArgs, PositionInitData } from './open-position.interfaces';
+import type { OpenPositionArgs, OpenPositionIxSet, OpenPositionTxCtx, OpenPositionTxSummary } from './open-position.interfaces';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
@@ -23,12 +19,8 @@ const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
 export async function openPosition(args: OpenPositionArgs): Promise<OpenPositionTxSummary> {
-  const transactionCtx = new TransactionContext();
-
-  const {
-    whirlpool,
-    priceMargin = PRICE_MARGIN_DEFAULT
-  } = args;
+  const { priceMargin = PRICE_MARGIN_DEFAULT } = args;
+  const whirlpool = await resolveWhirlpool(args.whirlpool);
 
   const opMetadata = {
     whirlpool: whirlpool.getAddress().toBase58(),
@@ -44,28 +36,12 @@ export async function openPosition(args: OpenPositionArgs): Promise<OpenPosition
         await whirlpool.refreshData();
       }
 
-      const openPositionIxData = await genOpenPositionIxData(args);
-
-      const {
-        address,
-        bundleIndex,
-        positionBundle,
-      } = openPositionIxData.positionInitData;
+      const txCtx = await genOpenPositionTxCtx(args);
 
       // Prepare and send transaction to open position
-      const sendResult = await transactionCtx.resetInstructionData(
-        openPositionIxData,
-        openPositionIxData.increaseLiquidityIxData
-      ).send();
+      const txSummary = await txCtx.send();
 
       // Get, store, and return the open position transaction summary
-      const position = await expBackoff(() => whirlpoolClient().getPosition(address, IGNORE_CACHE));
-      const bundledPosition: BundledPosition = { bundleIndex, position, positionBundle };
-      const txSummary = await genOpenPositionTxSummary({
-        bundledPosition,
-        openPositionIxData,
-        sendResult,
-      });
       await OrcaPositionDAO.insert(txSummary, { catchErrors: true });
       return txSummary;
     }, {
@@ -84,66 +60,43 @@ export async function openPosition(args: OpenPositionArgs): Promise<OpenPosition
 }
 
 /**
- * Generates {@link OpenPositionIxData} for opening a {@link Position} in a {@link Whirlpool}.
+ * Generates an {@link OpenPositionTxCtx} for opening a {@link Position} in a {@link Whirlpool}.
  *
  * @param args The {@link OpenPositionArgs}.
- * @returns A {@link Promise} that resolves to the {@link TransactionBuilder}.
+ * @returns A {@link Promise} that resolves to the {@link OpenPositionTxCtx}.
  */
-export async function genOpenPositionIxData(args: OpenPositionArgs): Promise<OpenPositionIxData> {
+export async function genOpenPositionTxCtx(args: OpenPositionArgs): Promise<OpenPositionTxCtx> {
+  const transactionCtx: OpenPositionTxCtx = new TransactionContext();
+
+  const openPositionIxSet = await genOpenPositionIxSet(args);
+  transactionCtx.setInstructionSet('openPosition', openPositionIxSet);
+
+  if (args.liquidity) {
+    const increaseLiquidityIxSet = await genIncreaseLiquidityIxSet(args.liquidity);
+    transactionCtx.setInstructionSet('increaseLiquidity', increaseLiquidityIxSet);
+  }
+
+  return transactionCtx;
+}
+
+/**
+ * Generates an {@link OpenPositionIxSet} for opening a {@link Position} in a {@link Whirlpool}.
+ *
+ * @param args The {@link OpenPositionArgs}.
+ * @returns A {@link Promise} that resolves to the {@link OpenPositionIxSet}.
+ */
+export async function genOpenPositionIxSet(args: OpenPositionArgs): Promise<OpenPositionIxSet> {
   const {
-    whirlpool,
+    bumpIndex = 0,
     priceMargin = PRICE_MARGIN_DEFAULT,
-    liquidity,
-    liquidityUnit
   } = args;
+  const whirlpool = await resolveWhirlpool(args.whirlpool);
 
   info('Creating instructions to open position:', {
     whirlpool: await formatWhirlpool(whirlpool),
     priceMargin: priceMargin.toString(),
   });
 
-  const positionInitData = await _genPositionInitData(args);
-  const openPositionIx = await _genOpenPositionIx(positionInitData);
-  const { address, bundleIndex, positionBundle, priceRange, tickRange } = positionInitData;
-
-  info('Created instruction to open position:', {
-    whirlpool: await formatWhirlpool(whirlpool),
-    position: address.toBase58(),
-    priceRange,
-    tickRange,
-  });
-
-  // Add instruction to increase liquidity if specified
-  let increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
-  if (liquidity) {
-    increaseLiquidityIxData = await _genIncreaseLiquidityIxData(liquidity, liquidityUnit, positionInitData);
-  }
-
-  return {
-    ...openPositionIx,
-    whirlpool,
-    priceMargin,
-    increaseLiquidityIxData,
-    positionInitData,
-    debugData: {
-      name: 'Open Position',
-      whirlpool: await formatWhirlpool(whirlpool),
-      position: address.toBase58(),
-      bundleIndex,
-      positionBundle: positionBundle.positionBundleMint.toBase58(),
-      priceMargin: priceMargin.toString(),
-      priceRange: priceRange.map((val) => numericToNumber(val, 3)),
-      tickRange,
-    }
-  };
-}
-
-async function _genPositionInitData({
-  whirlpool,
-  priceMargin = PRICE_MARGIN_DEFAULT,
-  bundleIndex,
-  bumpIndex = 0
-}: OpenPositionArgs): Promise<PositionInitData> {
   // Use Whirlpool price data to generate position tick range
   const tickRange = await _genPositionTickRange(whirlpool, priceMargin);
 
@@ -159,7 +112,7 @@ async function _genPositionInitData({
 
   // Find an unoccupied bundle index for the new position
   const emptyIdxs = PositionBundleUtil.getUnoccupiedBundleIndexes(positionBundle);
-  bundleIndex ??= emptyIdxs[bumpIndex % emptyIdxs.length];
+  const bundleIndex = emptyIdxs[bumpIndex % emptyIdxs.length];
   if (bundleIndex == null) throw new Error('No unoccupied bundle index found in position bundle');
 
   // Get PDA for the new position
@@ -173,16 +126,55 @@ async function _genPositionInitData({
   const { decimals: decimalsB } = whirlpool.getTokenBInfo();
   const priceRange = toPriceRange(tickRange, [decimalsA, decimalsB]);
 
-  return {
-    address: bundledPositionPda.publicKey,
+  // Get the position bundle token account (ATA) for the position bundle mint
+  const positionBundleTokenAccount = await wallet().getNFTAccount(positionBundle.positionBundleMint);
+  if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
+
+  debug('Ix details for open position:', {
+    funder: wallet().publicKey.toBase58(),
+    positionBundle: positionBundlePda.publicKey.toBase58(),
+    positionBundleTokenAccount: positionBundleTokenAccount.address.toBase58(),
     bundleIndex,
-    bundledPositionPda,
-    positionBundle,
-    positionBundlePda,
-    priceMargin,
+    bundledPosition: bundledPositionPda.publicKey.toBase58(),
+    whirlpool: await formatWhirlpool(whirlpool),
+    tickLowerIndex: tickRange[0],
+    tickUpperIndex: tickRange[1],
+  });
+
+  // Create instruction to open position inside bundle
+  const openPositionIx = WhirlpoolIx.openBundledPositionIx(
+    whirlpoolClient().getContext().program,
+    {
+      funder: wallet().publicKey,
+      positionBundle: positionBundlePda.publicKey,
+      positionBundleAuthority: wallet().publicKey,
+      positionBundleTokenAccount: new PublicKey(positionBundleTokenAccount.address),
+      bundleIndex,
+      bundledPositionPda,
+      whirlpool: whirlpool.getAddress(),
+      tickLowerIndex: tickRange[0],
+      tickUpperIndex: tickRange[1],
+    }
+  );
+
+  info('Created instruction to open position:', {
+    whirlpool: await formatWhirlpool(whirlpool),
+    position: bundledPositionPda.publicKey,
     priceRange,
     tickRange,
-    whirlpool,
+  });
+
+  return {
+    metadata: {
+      bundleIndex,
+      position: bundledPositionPda.publicKey,
+      positionBundle: positionBundlePda.publicKey,
+      priceMargin,
+      priceRange,
+      tickRange,
+      whirlpool: whirlpool.getAddress(),
+    },
+    ...openPositionIx,
   };
 }
 
@@ -213,106 +205,6 @@ async function _genPositionTickRange(
 
   // Calculate tick index range based on price range (may not map exactly to price range due to tick spacing)
   return toTickRange([lowerPrice, upperPrice], [decimalsA, decimalsB], tickSpacing); // Subset of [-443636, 443636]
-}
-
-/**
- * Generates an {@link Instruction} to open a {@link Position}.
- *
- * @param positionInitData The {@link PositionInitData} for the new position.
- * @returns A {@link Promise} that resolves to the {@link Instruction}.
- */
-async function _genOpenPositionIx(positionInitData: PositionInitData): Promise<Instruction> {
-  const {
-    bundleIndex,
-    bundledPositionPda,
-    positionBundle,
-    positionBundlePda,
-    tickRange,
-    whirlpool,
-  } = positionInitData;
-
-  // Get the position bundle token account (ATA) for the position bundle mint
-  const positionBundleTokenAccount = await wallet().getNFTAccount(positionBundle.positionBundleMint);
-  if (!positionBundleTokenAccount) throw new Error('Position bundle token account (ATA) cannot be found');
-
-  debug('Ix details for open position:', {
-    funder: wallet().publicKey.toBase58(),
-    positionBundle: positionBundlePda.publicKey.toBase58(),
-    positionBundleTokenAccount: positionBundleTokenAccount.address.toBase58(),
-    bundleIndex,
-    bundledPosition: bundledPositionPda.publicKey.toBase58(),
-    whirlpool: await formatWhirlpool(whirlpool),
-    tickLowerIndex: tickRange[0],
-    tickUpperIndex: tickRange[1],
-  });
-
-  // Create instruction to open position inside bundle
-  return WhirlpoolIx.openBundledPositionIx(
-    whirlpoolClient().getContext().program,
-    {
-      funder: wallet().publicKey,
-      positionBundle: positionBundlePda.publicKey,
-      positionBundleAuthority: wallet().publicKey,
-      positionBundleTokenAccount: new PublicKey(positionBundleTokenAccount.address),
-      bundleIndex,
-      bundledPositionPda,
-      whirlpool: whirlpool.getAddress(),
-      tickLowerIndex: tickRange[0],
-      tickUpperIndex: tickRange[1],
-    }
-  );
-}
-
-async function _genIncreaseLiquidityIxData(
-  liquidity: BN | Decimal.Value,
-  liquidityUnit: LiquidityUnit | undefined,
-  positionInitData: PositionInitData
-): Promise<IncreaseLiquidityIxData> {
-  const { address, positionBundle, tickRange, whirlpool } = positionInitData;
-
-  return genIncreaseLiquidityIxData({
-    liquidity,
-    liquidityUnit,
-    positionAddress: address,
-    positionMint: positionBundle.positionBundleMint,
-    tickRange,
-    whirlpool,
-  });
-}
-
-/**
- * Generates a summary of an open {@link Position} transaction.
- *
- * @param args The {@link OpenPositionTxSummaryArgs}.
- * @returns A {@link Promise} that resolves to the {@link OpenPositionTxSummary}.
- */
-export async function genOpenPositionTxSummary({
-  bundledPosition,
-  openPositionIxData,
-  sendResult
-}: OpenPositionTxSummaryArgs): Promise<OpenPositionTxSummary> {
-  const { increaseLiquidityIxData, positionInitData } = openPositionIxData;
-  const { priceMargin, priceRange, tickRange } = positionInitData;
-
-  const txSummary = await getTxSummary(sendResult);
-
-  const openPositionTxSummary: OpenPositionTxSummary = {
-    bundledPosition,
-    priceMargin,
-    priceRange,
-    tickRange,
-    ...txSummary,
-  };
-  const { position } = bundledPosition;
-
-  const increaseLiquidityQuote = increaseLiquidityIxData?.quote;
-  if (increaseLiquidityQuote) {
-    const liquidityTxSummary = await genIncreaseLiquidityTxSummary(position, increaseLiquidityIxData, sendResult);
-    liquidityTxSummary.fee = 0; // Fee is included in open position tx fee
-    openPositionTxSummary.increaseLiquidityTxSummary = liquidityTxSummary;
-  }
-
-  return openPositionTxSummary;
 }
 
 export type * from './open-position.interfaces';

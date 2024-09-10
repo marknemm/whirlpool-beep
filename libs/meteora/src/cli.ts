@@ -1,7 +1,7 @@
-import { error } from '@npc/core';
+import { debug, error } from '@npc/core';
+import { genClosePositionTransactionCtx } from '@npc/meteora/services/close-position/close-position';
 import { Config } from '@npc/meteora/util/config/config';
-import { getPool } from './services/pool/query/query-pool';
-import { openPosition } from './services/position/open/open-position';
+import { getPositions } from '@npc/meteora/util/position/position';
 
 /**
  * Main entry point.
@@ -9,17 +9,23 @@ import { openPosition } from './services/position/open/open-position';
 async function main() {
   await Config.init();
 
-  const pool = await getPool({
-    tokenA: 'SOL',
-    tokenB: 'USDC',
-    baseFee: 0.03,
-    binStep: 2,
-  });
+  // const pool = await getPool({
+  //   tokenA: 'SOL',
+  //   tokenB: 'USDC',
+  //   baseFee: 0.03,
+  //   binStep: 2,
+  // });
 
-  await openPosition({
-    poolAddress: pool.pubkey,
-    liquidity: 10,
-  });
+  // await openPosition({
+  //   poolAddress: pool.pubkey,
+  //   liquidity: 10,
+  // });
+
+  const positions = await getPositions();
+
+  const transactionCtx = await genClosePositionTransactionCtx(positions[0]);
+  const decodedIxs = await transactionCtx.decodeInstructions();
+  debug(decodedIxs);
 
   // Execute the CLI
   // await execCli({

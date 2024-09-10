@@ -1,27 +1,19 @@
-import type { Null } from '@npc/core';
-import { expBackoff, info, warn } from '@npc/core';
-import { genComputeBudget } from '@npc/solana/util/compute-budget/compute-budget';
+import { expBackoff, warn } from '@npc/core';
 import env from '@npc/solana/util/env/env';
-import rpc from '@npc/solana/util/rpc/rpc';
-import { confirmTx, sendTx, signTx, simulateTx, toTxInstructions } from '@npc/solana/util/transaction-exec/transaction-exec';
-import wallet from '@npc/solana/util/wallet/wallet';
-import { SimulatedTransactionResponse, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type SendTransactionError, type Signer, type TransactionSignature } from '@solana/web3.js';
-import colors from 'colors';
-import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionData, InstructionMetadata, SendTransactionOptions, SendTransactionRecord, SendTransactionResult, SignTransactionOptions, SimulateTransactionOptions, TransactionCtxOptions } from './transaction-context.interfaces';
+import TransactionBuilder from '@npc/solana/util/transaction-builder/transaction-builder';
+import { confirmTx, sendTx, simulateTx } from '@npc/solana/util/transaction-exec/transaction-exec';
+import { SimulatedTransactionResponse, type SendTransactionError, type Signer, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature, type VersionedTransaction } from '@solana/web3.js';
+import { getTxSummary, TxSummary } from '../transaction-query/transaction-query';
+import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionSet, InstructionSetObject, ResetTransactionContextOptions, SendTransactionOptions, SendTransactionRecord, SimulateTransactionOptions, TransactionContextOptions, TransactionMetadata } from './transaction-context.interfaces';
 
 /**
  * A context for building, sending, confirming, and retrying {@link Transaction}s or {@link VersionedTransaction}s.
+ *
+ * @param T The {@link InstructionSetObject} that describes the instruction sets contained in this context.
  */
-export class TransactionContext {
-
-  /**
-   * The default {@link BuildTransactionOptions} to use for building a {@link Transaction} or {@link VersionedTransaction}.
-   */
-  static readonly DEFAULT_BUILD_TX_OPTS: BuildTransactionOptions = {
-    commitment: env.COMMITMENT_DEFAULT,
-    computeBudget: env.PRIORITY_LEVEL_DEFAULT,
-    version: 0,
-  };
+export class TransactionContext<
+  T extends InstructionSetObject = InstructionSetObject
+> implements InstructionSet<TransactionMetadata<T>> {
 
   /**
    * The default {@link ConfirmTransactionOptions} to use for confirming a {@link Transaction} or {@link VersionedTransaction}.
@@ -39,126 +31,88 @@ export class TransactionContext {
     skipPreflight: false,
   };
 
-  readonly buildOpts: BuildTransactionOptions;
   readonly confirmOpts: ConfirmTransactionOptions;
   readonly sendOpts: SendTransactionOptions;
 
-  readonly #buildHistory: BuildTransactionRecord[] = [];
-  readonly #sendHistory: SendTransactionRecord[] = [];
+  readonly #builder: TransactionBuilder;
+  readonly #instructionSetMap = new Map<keyof T, T[keyof T]>();
 
-  #cleanupInstructions: TransactionInstruction[] = [];
-  #instructions: TransactionInstruction[] = [];
-  #metadata: InstructionMetadata[] = [];
-  #signers: Signer[] = [];
+  #sendHistory: SendTransactionRecord[] = [];
 
   /**
    * Constructs a new {@link TransactionContext}.
    *
-   * @param ctxOpts The {@link TransactionCtxOptions} to use for the {@link TransactionContext} instance.
+   * @param ctxOpts The {@link TransactionContextOptions} to use for the {@link TransactionContext} instance.
    */
-  constructor(ctxOpts: TransactionCtxOptions = {}) {
-    this.buildOpts = ctxOpts.buildOpts ?? {};
+  constructor(ctxOpts: TransactionContextOptions = {}) {
+    this.#builder = new TransactionBuilder(ctxOpts.buildOpts);
     this.confirmOpts = ctxOpts.confirmOpts ?? {};
     this.sendOpts = ctxOpts.sendOpts ?? {};
   }
 
   /**
-   * Constructs a new {@link TransactionContext} from a {@link Transaction} or {@link VersionedTransaction} and {@link Signer}s.
+   * Constructs a new {@link TransactionContext} from a single {@link InstructionSet}.
    *
-   * @param tx The {@link Transaction} or {@link VersionedTransaction} to construct the {@link TransactionContext} from.
-   * @param signers The {@link Signer}s to construct the {@link TransactionContext} from.
-   * @param ctxOpts The {@link TransactionCtxOptions} to use for the {@link TransactionContext} instance.
+   * @param ixSet The {@link InstructionSet} to construct the {@link TransactionContext} from.
+   * @param ctxOpts The {@link TransactionContextOptions} to use for the {@link TransactionContext} instance.
    * @returns A new {@link TransactionContext} instance.
    */
-  static from(
-    tx: Transaction | VersionedTransaction,
-    signers?: Signer | readonly Signer[],
-    ctxOpts?: TransactionCtxOptions
-  ): TransactionContext;
-
-  /**
-   * Constructs a new {@link TransactionContext} from {@link TransactionInstruction}s and {@link Signer}s.
-   *
-   * @param ixs The {@link TransactionInstruction}(s) to construct the {@link TransactionContext} from.
-   * @param signers The {@link Signer}s to construct the {@link TransactionContext} from.
-   * @param ctxOpts The {@link TransactionCtxOptions} to use for the {@link TransactionContext} instance.
-   * @returns A new {@link TransactionContext} instance.
-   */
-  static from(
-    ixs: TransactionInstruction | TransactionInstruction[],
-    signers?: Signer | readonly Signer[],
-    ctxOpts?: TransactionCtxOptions
-  ): TransactionContext;
-
-  /**
-   * Constructs a new {@link TransactionContext} from a {@link Transaction} or {@link VersionedTransaction} and {@link Signer}s.
-   *
-   * @param ixsOrTx The {@link TransactionInstruction}s {@link Transaction} or {@link VersionedTransaction} to construct
-   * the {@link TransactionContext} from.
-   * @param signers The {@link Signer}s to construct the {@link TransactionContext} from.
-   * @param ctxOpts The {@link TransactionCtxOptions} to use for the {@link TransactionContext} instance.
-   * @returns A new {@link TransactionContext} instance.
-   */
-  static from(
-    ixsOrTx: Transaction | VersionedTransaction | TransactionInstruction | TransactionInstruction[],
-    signers: Signer | readonly Signer[] = [],
-    ctxOpts: TransactionCtxOptions = {}
-  ): TransactionContext {
-    const instructions = (ixsOrTx instanceof Transaction || ixsOrTx instanceof VersionedTransaction)
-      ? toTxInstructions(ixsOrTx)
-      : (ixsOrTx instanceof Array)
-        ? ixsOrTx
-        : [ixsOrTx];
-
-    if (signers && !(signers instanceof Array)) {
-      signers = [signers];
-    }
-
-    return new TransactionContext(ctxOpts)
-      .addInstructions(...instructions)
-      .addSigners(...signers);
+  static fromIxSet<T extends InstructionSet>(
+    ixSet: T,
+    ctxOpts: TransactionContextOptions = {}
+  ): TransactionContext<{ 'default': T }> {
+    return new TransactionContext<{ 'default': T }>(ctxOpts)
+      .setInstructionSet('default', ixSet);
   }
 
   /**
    * The {@link BuildTransactionRecord} history of the {@link TransactionContext}.
    */
   get buildHistory(): readonly BuildTransactionRecord[] {
-    return this.#buildHistory;
+    return this.#builder.buildHistory;
   }
 
   /**
-   * The {@link TransactionInstruction}s used to cleanup temp accounts of the {@link TransactionContext}.
+   * The cleanup {@link TransactionInstruction}s of the {@link TransactionContext}.
    */
   get cleanupInstructions(): readonly TransactionInstruction[] {
-    return this.#cleanupInstructions;
+    return this.#instructionSetArray.reverse().flatMap(
+      (ctx) => ctx.cleanupInstructions
+    );
   }
 
   /**
    * The {@link TransactionInstruction}s of the {@link TransactionContext}.
    */
   get instructions(): readonly TransactionInstruction[] {
-    return this.#instructions;
+    return this.#instructionSetArray.flatMap(
+      (ctx) => ctx?.instructions
+    );
   }
 
   /**
    * The latest {@link BuildTransactionRecord} of the {@link TransactionContext}.
    */
   get latestBuild(): BuildTransactionRecord | undefined {
-    return this.#buildHistory[this.#buildHistory.length - 1];
+    return this.#builder.latestBuild;
   }
 
   /**
    * The latest {@link SendTransactionRecord} of the {@link TransactionContext}.
    */
   get latestSend(): SendTransactionRecord | undefined {
-    return this.#sendHistory[this.#sendHistory.length - 1];
+    return this.sendHistory[this.sendHistory.length - 1];
   }
 
   /**
-   * The {@link InstructionMetadata} of the {@link TransactionContext}.
+   * The metadata of the {@link TransactionContext}.
    */
-  get metadata(): readonly InstructionMetadata[] {
-    return this.#metadata;
+  get metadata(): TransactionMetadata<T> {
+    return Object.fromEntries(
+      Array.from(this.#instructionSetMap.entries()).map(
+        ([key, ixSet]) => [key, ixSet.metadata]
+      )
+    ) as TransactionMetadata<T>;
   }
 
   /**
@@ -181,229 +135,49 @@ export class TransactionContext {
    * The {@link Signer}s of the {@link TransactionContext}.
    */
   get signers(): readonly Signer[] {
-    return this.#signers;
-  }
-
-  /**
-   * Adds {@link TransactionInstruction}s that are used to cleanup temp accounts to the {@link TransactionContext}.
-   *
-   * @param cleanupInstructions The {@link TransactionInstruction}(s) to add to the {@link TransactionContext}.
-   * @returns This {@link TransactionContext} instance.
-   */
-  addCleanupInstructions(...cleanupInstructions: (TransactionInstruction | Null)[]): TransactionContext {
-    // Filter out null/undefined instructions
-    cleanupInstructions = cleanupInstructions.filter((ix) => ix);
-
-    // Cleanup instructions are added in reverse order
-    this.#cleanupInstructions.unshift(...cleanupInstructions as TransactionInstruction[]);
-
-    return this;
-  }
-
-  /**
-   * Adds {@link TransactionInstruction}s to the {@link TransactionContext}.
-   *
-   * @param instructions The {@link TransactionInstruction}(s) to add to the {@link TransactionContext}.
-   * @returns This {@link TransactionContext} instance.
-   */
-  addInstructions(...instructions: (TransactionInstruction | Null)[]): TransactionContext {
-    // Filter out null/undefined instructions & metadata
-    instructions = instructions?.filter((ix) => ix);
-
-    this.#instructions.push(...instructions as TransactionInstruction[]);
-
-    return this;
-  }
-
-  /**
-   * Adds {@link InstructionData} to the {@link TransactionContext}.
-   *
-   * @param instructionData The {@link InstructionData} to add to the {@link TransactionContext}.
-   * @returns This {@link TransactionContext} instance.
-   */
-  addInstructionData(...instructionData: (InstructionData | Null)[]): TransactionContext {
-    for (const datum of instructionData) {
-      if (!datum) continue;
-
-      const { cleanupInstructions = [], instructions, signers = [], ...metadata } = datum;
-
-      this.addCleanupInstructions(...cleanupInstructions);
-      this.addInstructions(...instructions);
-      this.addMetadata(metadata);
-      this.addSigners(...signers);
-    }
-
-    return this;
-  }
-
-  /**
-   * Adds {@link InstructionMetadata}(s) to the {@link TransactionContext}.
-   *
-   * @param metadata The {@link InstructionMetadata}(s) to add to the {@link TransactionContext}.
-   * @returns This {@link TransactionContext} instance.
-   */
-  addMetadata(metadata: InstructionMetadata | Null): TransactionContext {
-    if (!metadata) return this;
-
-    this.#metadata.push(metadata);
-
-    return this;
-  }
-
-  /**
-   * Adds {@link Signer}(s) to the {@link TransactionContext}.
-   *
-   * @param signers The {@link Signer}(s) to add to the {@link TransactionContext}.
-   * @returns This {@link TransactionContext} instance.
-   */
-  addSigners(...signers: (Signer | Null)[]): TransactionContext {
-    // Filter out null/undefined or duplicate signers
-    signers = signers.filter((newSigner) =>
-      newSigner && !this.#signers.find(
-        (existingSigner) => existingSigner?.publicKey.equals(newSigner.publicKey)
-      )
+    return this.#instructionSetArray.flatMap(
+      (builder) => builder.signers
     );
-
-    this.#signers.push(...signers as Signer[]);
-
-    return this;
   }
 
   /**
-   * Builds a {@link VersionedTransaction} that can be sent to the blockchain.
+   * Array of {@link InstructionSet}s of the {@link TransactionContext}.
+   */
+  get #instructionSetArray(): T[keyof T][] {
+    return Array.from(this.#instructionSetMap.values()) as T[keyof T][];
+  }
+
+  /**
+   * Builds a {@link Transaction} or {@link VersionedTransaction} from the {@link TransactionContext}.
    *
-   * @param buildOpts The {@link BuildTransactionOptions} to use for building the transaction.
-   * Takes precedence over the instance and default build options.
+   * @param opts The {@link BuildTransactionOptions} to use for building the transaction.
    * @returns A {@link Promise} that resolves to the {@link BuildTransactionRecord}.
    */
-  async build(buildOpts: BuildTransactionOptions = {}): Promise<BuildTransactionRecord> {
-    buildOpts = { ...TransactionContext.DEFAULT_BUILD_TX_OPTS, ...this.buildOpts, ...buildOpts };
-    buildOpts.wallet ??= wallet();
+  async build(opts: BuildTransactionOptions = {}): Promise<BuildTransactionRecord> {
+    opts.debugData ??= this.metadata;
 
-    const opMeta = {
-      debugData: this.metadata.map((meta) => meta.debugData),
-      version: buildOpts.version,
-      payer: buildOpts.wallet.publicKey.toBase58(),
-      commitment: buildOpts.commitment,
-      computeBudget: buildOpts.computeBudget,
-      instructionCnt: this.instructions.length + this.cleanupInstructions.length,
-      signerCnt: this.signers.length,
-      buildAttempt: this.buildHistory.length,
-    };
-
-    try {
-      info('Building Tx:', opMeta);
-
-      // Gen compute budget and get latest blockhash timestamp for build
-      const computeBudget = await genComputeBudget(
-        this.instructions,
-        buildOpts.computeBudget,
-        this.sendHistory.length
-      );
-      const blockhashWithExpiry = await rpc().getLatestBlockhash(buildOpts.commitment);
-
-      // Build transaction with specified version
-      const tx = (buildOpts.version === 'legacy')
-        ? new Transaction({
-            feePayer: buildOpts.wallet.publicKey,
-            ...blockhashWithExpiry,
-          }).add(...computeBudget.instructions, ...this.instructions, ...this.cleanupInstructions)
-        : new VersionedTransaction(
-            new TransactionMessage({
-              instructions: [...computeBudget.instructions, ...this.instructions, ...this.cleanupInstructions],
-              payerKey: buildOpts.wallet.publicKey,
-              recentBlockhash: blockhashWithExpiry.blockhash,
-            }).compileToV0Message(buildOpts.addressLookupTableAccounts)
-          );
-
-      // Record new build history
-      const buildRecord: BuildTransactionRecord = {
-        blockhashWithExpiry,
-        buildOpts,
-        computeBudget,
-        metadata: this.metadata,
-        signed: false,
-        simulated: false,
-        timestamp: Date.now(),
-        tx,
-        wallet: buildOpts.wallet,
-      };
-      this.#buildHistory.push(buildRecord);
-
-      const { computeUnitLimit, priorityFeeLamports } = computeBudget;
-      info('Tx built:', {
-        ...opMeta,
-        ...blockhashWithExpiry,
-        computeUnitLimit,
-        priorityFeeLamports,
-      });
-
-      return buildRecord;
-    } catch (err) {
-      warn('Tx build failed:', opMeta);
-      throw err;
-    }
+    return this.#builder
+      .reset({ retainBuildHistory: true })
+      .addCleanupInstructions(...this.cleanupInstructions)
+      .addInstructions(...this.instructions)
+      .addSigners(...this.signers)
+      .build(opts);
   }
 
   /**
-   * Confirms that a {@link Transaction} has been committed to the blockchain.
+   * Resets the {@link TransactionContext} to its initial state.
    *
-   * @param opts The {@link ConfirmTransactionOptions} to use for confirming the transaction.
-   * @returns A {@link Promise} that resolves to the {@link SendTransactionRecord} that was confirmed.
-   */
-  async confirm(opts: ConfirmTransactionOptions = {}): Promise<SendTransactionRecord> {
-    const sendRecord = this.latestSend;
-    if (!sendRecord) {
-      throw new Error('No transaction record to confirm');
-    }
-
-    return this.#confirm(sendRecord, opts);
-  }
-
-  /**
-   * Confirms that a {@link Transaction} in a given {@link SendTransactionRecord} has been committed to the blockchain.
-   *
-   * @param sendRecord The {@link SendTransactionRecord} containing the transaction to confirm.
-   * @param opts The {@link ConfirmTransactionOptions} to use for confirming the transaction.
-   * @returns A {@link Promise} that resolves to the {@link SendTransactionRecord} that was confirmed.
-   */
-  async #confirm(
-    sendRecord: SendTransactionRecord,
-    opts: ConfirmTransactionOptions = {}
-  ): Promise<SendTransactionRecord> {
-    opts = { ...TransactionContext.DEFAULT_CONFIRM_TX_OPTS, ...this.confirmOpts, ...opts };
-    const { commitment = env.COMMITMENT_DEFAULT } = opts;
-
-    const { signature } = sendRecord;
-    if (!signature) {
-      throw new Error('No transaction signature to confirm');
-    }
-
-    info(`Confirming Tx ( Commitment: ${colors.green(commitment)} ):`, signature);
-
-    // Wait for the transaction to be confirmed or rejected.
-    await confirmTx(signature, commitment, opts.blockhashWithExpiry);
-
-    sendRecord.confirmed = true;
-    info('Tx confirmed:', signature);
-    return sendRecord;
-  }
-
-  /**
-   * Resets the {@link InstructionData} in this {@link TransactionContext} instance.
-   *
-   * Clears {@link instructions}, {@link metadata}, and {@link signers}.
-   *
-   * @param instructionData The {@link InstructionData} to reset the {@link TransactionContext} with.
+   * @param opts The {@link ResetTransactionContextOptions} to use for resetting the context.
    * @returns This {@link TransactionContext} instance.
    */
-  resetInstructionData(...instructionData: (InstructionData | Null)[]): TransactionContext {
-    this.#cleanupInstructions = [];
-    this.#instructions = [];
-    this.#metadata = [];
-    this.#signers = [];
+  reset(opts: ResetTransactionContextOptions = {}): this {
+    this.#builder.reset(opts);
 
-    return this.addInstructionData(...instructionData);
+    if (!opts.retainSendHistory) {
+      this.#sendHistory = [];
+    }
+
+    return this;
   }
 
   /**
@@ -412,146 +186,99 @@ export class TransactionContext {
    * @param sendOpts The {@link SendTransactionOptions} to use for sending the transaction.
    * @returns A {@link Promise} that resolves to the {@link SendTransactionRecord}.
    */
-  async send(sendOpts: SendTransactionOptions = {}): Promise<SendTransactionResult> {
+  async send(sendOpts: SendTransactionOptions = {}): Promise<TxSummary<this>> {
     // Prepare send options
     sendOpts = { ...TransactionContext.DEFAULT_SEND_TX_OPTS, ...this.sendOpts, ...sendOpts };
-    const debugData = this.metadata.map((meta) => meta.debugData);
+    sendOpts.debugData ??= this.metadata;
 
     // Transaction send record - added to history on both success and error
-    let sendRecord: SendTransactionRecord = { confirmed: false, sendOpts };
+    let sendRecord: SendTransactionRecord = { sendOpts };
 
     try {
-      return await expBackoff(
-        async (retry: number) => {
-          // Build transaction - use latest build if specified and initial try
-          const buildRecord = (sendOpts.useLatestBuild && retry === 0)
-            ? this.latestBuild ?? await this.build(sendOpts.buildOpts)
-            : await this.build(sendOpts.buildOpts);
+      const signature = await expBackoff(async (retry: number) => {
+        sendRecord = { sendOpts }; // Reset send record on each attempt
 
-          // Record and extract transaction build data
-          sendRecord.buildRecord = buildRecord;
-          const { blockhashWithExpiry, computeBudget, tx } = buildRecord;
-          const { computeUnitLimit, priorityFeeLamports } = computeBudget;
+        // Build transaction - use latest build if specified and initial try
+        const buildRecord = (sendOpts.useLatestBuild && retry === 0)
+          ? this.latestBuild ?? await this.build(sendOpts.buildOpts)
+          : await this.build(sendOpts.buildOpts);
 
-          info('Sending Tx:', {
-            debugData,
-            computeUnitLimit,
-            priorityFeeLamports,
-            sendAttempt: this.sendHistory.length
+        // Record and extract transaction build data
+        sendRecord.buildRecord = buildRecord;
+        const { blockhashWithExpiry, tx } = buildRecord;
+
+        // Send transaction
+        const signature = await sendTx(tx, sendOpts);
+        sendRecord.signature = signature;
+
+        // Confirm transaction
+        if (!sendOpts.skipConfirm) {
+          await confirmTx(signature, {
+            blockhashWithExpiry,
+            debugData: sendOpts.debugData,
+            commitment: sendOpts.preflightCommitment,
           });
-
-          // Sign transaction
-          await this.#sign(buildRecord);
-
-          // Send transaction
-          const signature = await sendTx(tx, sendOpts);
-          sendRecord.signature = signature;
-
-          // Record transaction send history
-          info('Tx sent:', { debugData, signature });
-
-          // Confirm transaction if not skipped
-          if (!sendOpts.skipConfirm) {
-            await this.#confirm(sendRecord, {
-              ...blockhashWithExpiry,
-              commitment: sendOpts.confirmCommitment,
-            });
-          }
-
-          return {
-            buildRecord,
-            confirmed: sendRecord.confirmed,
-            sendOpts,
-            sendHistory: this.sendHistory,
-            signature,
-          };
-        },
-        {
-          // Record send history after each send attempt
-          afterAttempt: (attempt, result, err) => {
-            sendRecord.err = err;
-            this.#sendHistory.push(sendRecord);
-            sendRecord = { confirmed: false, sendOpts };
-          },
-          // Retry on typical blockhash transaction errors
-          retryFilter: (result, err) =>
-               !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash 'too old' - tx wasn't processed in time.
-            || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found'),                       // Blockhash 'too new' - RPC node is behind or on minority fork.
         }
-      );
+
+        return signature;
+      }, {
+        // Record send history after each send attempt
+        afterAttempt: (attempt, result, err) => {
+          sendRecord.err = err;
+          this.#sendHistory.push(sendRecord);
+        },
+        // Retry on typical blockhash transaction errors
+        retryFilter: (result, err) => !sendOpts.disableRetry && (
+             !!(err as SendTransactionError)?.stack?.includes('TransactionExpiredBlockheightExceededError') // Blockhash 'too old' - tx wasn't processed in time.
+          || !!(err as SendTransactionError)?.stack?.includes('Blockhash not found')                        // Blockhash 'too new' - RPC node is behind or on minority fork.
+        ),
+      });
+
+      const txSummary = await getTxSummary(signature);
+      return { ...txSummary, instructionSet: this };
     } catch (err) {
-      warn('Tx execution failed:', debugData);
+      warn('Send Tx failed:', sendOpts.debugData);
       throw err;
     }
   }
 
   /**
-   * Signs the {@link Transaction} or {@link VersionedTransaction}.
+   * Gets the {@link InstructionSet} with the given name.
    *
-   * @param signOpts The {@link SignTransactionOptions} to use for signing the transaction.
-   * @returns A {@link Promise} that resolves to the {@link BuildTransactionRecord} after signing.
+   * @param name The name of the {@link InstructionSet} to get.
+   * @returns The {@link InstructionSet} with the given name.
    */
-  async sign(signOpts: SignTransactionOptions = {}): Promise<BuildTransactionRecord | undefined> {
-    const buildRecord = this.latestBuild;
-    if (!buildRecord) return;
-
-    return this.#sign(buildRecord, signOpts);
+  getInstructionSet<K extends keyof T>(name: K): T[K] | undefined {
+    return this.#instructionSetMap.get(name) as T[K] | undefined;
   }
 
   /**
-   * Signs the {@link Transaction} or {@link VersionedTransaction} in the given {@link BuildTransactionRecord}.
+   * Sets the {@link InstructionSet} with the given name.
    *
-   * @param buildRecord The {@link BuildTransactionRecord} containing the transaction to sign.
-   * @param signOpts The {@link SignTransactionOptions} to use for signing the transaction.
-   * @returns A {@link Promise} that resolves to the {@link BuildTransactionRecord} after signing.
+   * @param name The name of the {@link InstructionSet} to set.
+   * @param value The {@link InstructionSet} to set.
+   * @returns This {@link TransactionContext} instance.
    */
-  async #sign(
-    buildRecord: BuildTransactionRecord,
-    signOpts: SignTransactionOptions = {}
-  ): Promise<BuildTransactionRecord> {
-    const { retainPreviousSignatures = false } = signOpts;
-    const { tx } = buildRecord;
-
-    if (!retainPreviousSignatures) {
-      tx.signatures = [];
-    }
-
-    await signTx(tx, this.signers, buildRecord.wallet);
-    buildRecord.signed = true;
-
-    return buildRecord;
+  setInstructionSet<K extends keyof T>(name: K, value: T[K]): this {
+    this.#instructionSetMap.set(name, value);
+    return this;
   }
 
   /**
    * Simulates the {@link Transaction} or {@link VersionedTransaction}.
    *
-   * @param simulateOpts The {@link SimulateTransactionOptions} to use for simulating the transaction.
+   * @param opts The {@link SimulateTransactionConfig} to use for simulating the transaction.
    * @returns A {@link Promise} that resolves when the transaction has been simulated.
    * @throws If the simulation fails.
    */
-  async simulate(simulateOpts: SimulateTransactionOptions = {}): Promise<SimulatedTransactionResponse> {
-    const { replaceRecentBlockhash = false, sigVerify = true } = simulateOpts;
+  async simulate(opts: SimulateTransactionOptions = {}): Promise<SimulatedTransactionResponse> {
+    opts.debugData ??= this.metadata;
 
-    const buildRecord = simulateOpts.useLatestBuild
-      ? this.latestBuild ?? await this.build(simulateOpts.buildOpts)
-      : await this.build(simulateOpts.buildOpts);
-    const { tx } = buildRecord;
+    const buildRecord = opts.useLatestBuild
+      ? this.latestBuild ?? await this.build(opts.buildOpts)
+      : await this.build(opts.buildOpts);
 
-    const opMeta = {
-      replaceRecentBlockhash,
-      sigVerify,
-      debugData: this.metadata.map((meta) => meta.debugData),
-    };
-    info('Simulating Tx:', opMeta);
-
-    const response = await simulateTx(tx, simulateOpts);
-
-    info('Tx simulated:', {
-      ...opMeta,
-      computeUnits: response.unitsConsumed,
-      logs: response.logs,
-    });
-    return response;
+    return simulateTx(buildRecord.tx, opts);
   }
 
 }

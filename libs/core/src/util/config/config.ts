@@ -1,7 +1,7 @@
 import { migrateDB } from '@npc/core/util/db/db';
 import env from '@npc/core/util/env/env';
 import { addLogTransformer, debug } from '@npc/core/util/log/log';
-import { numericToNumber } from '@npc/core/util/numeric/numeric';
+import { toNumber } from '@npc/core/util/numeric/numeric';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import type { ConfigInitOptions } from './config.interfaces';
@@ -26,7 +26,7 @@ export class Config {
     addLogTransformer((message) => {
       if (message instanceof BN || message instanceof Decimal || typeof message === 'bigint') {
         try {
-          return numericToNumber(message);
+          return toNumber(message);
         } catch (err) {
           return message.toString();
         }

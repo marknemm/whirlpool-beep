@@ -1,6 +1,6 @@
 import type { Address } from '@coral-xyz/anchor';
 import type { LiquidityUnit } from '@npc/core';
-import type { InstructionData } from '@npc/solana';
+import type { InstructionSet } from '@npc/solana';
 import type { IncreaseLiquidityQuote, Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
@@ -43,9 +43,14 @@ export interface IncreaseLiquidityIxArgs {
 }
 
 /**
+ * The instruction set for increasing liquidity in a {@link Position}.
+ */
+export type IncreaseLiquidityIxSet = InstructionSet<IncreaseLiquidityMetadata>;
+
+/**
  * Instruction data for increasing liquidity in a {@link Position}.
  */
-export interface IncreaseLiquidityIxData extends InstructionData {
+export interface IncreaseLiquidityMetadata {
 
   /**
    * The arguments used to generate the instruction data.

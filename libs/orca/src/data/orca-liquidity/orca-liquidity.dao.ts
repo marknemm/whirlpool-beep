@@ -1,4 +1,4 @@
-import { db, debug, handleDBInsertError, numericToBigInt, type DAOInsertOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { db, debug, handleDBInsertError, toBigInt, type DAOInsertOptions, type ErrorWithCode, type Null } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { SolanaTxDAO } from '@npc/solana';
@@ -38,10 +38,10 @@ export default class OrcaLiquidityDAO {
       const result = await db().insertInto('orcaLiquidity')
         .values({
           position: positionId,
-          liquidity: numericToBigInt(txSummary.liquidity),
+          liquidity: toBigInt(txSummary.liquidity),
           liquidityUnit: txSummary.liquidityUnit,
-          tokenAmountA: numericToBigInt(txSummary.tokenAmountA),
-          tokenAmountB: numericToBigInt(txSummary.tokenAmountB),
+          tokenAmountA: toBigInt(txSummary.tokenAmountA),
+          tokenAmountB: toBigInt(txSummary.tokenAmountB),
           tx: solanaTxId,
           slippage: txSummary.slippage,
           usd: txSummary.usd,

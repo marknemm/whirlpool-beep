@@ -1,11 +1,8 @@
+import type { Address } from '@coral-xyz/anchor';
 import type { LiquidityUnit } from '@npc/core';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import type { IncreaseLiquidityIxData } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { InstructionData, SendTransactionResult, TxSummary } from '@npc/solana';
-import type { PDA, Percentage } from '@orca-so/common-sdk';
-import type { Position, PositionBundleData, Whirlpool } from '@orca-so/whirlpools-sdk';
-import type { PublicKey } from '@solana/web3.js';
+import type { InstructionSet, TransactionContext, TxSummary } from '@npc/solana';
+import type { Percentage } from '@orca-so/common-sdk';
+import type { Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
 import type Decimal from 'decimal.js';
 
@@ -47,104 +44,16 @@ export interface OpenPositionArgs {
   priceMargin?: Percentage;
 
   /**
-   * The {@link Whirlpool} to open a {@link Position} in.
+   * The {@link Whirlpool} or {@link Address} of the {@link Whirlpool} to open a {@link Position} in.
    */
-  whirlpool: Whirlpool;
+  whirlpool: Address | Whirlpool;
 
 }
 
 /**
- * Instruction data and associate metadata for opening a {@link Position}.
+ * The metadata for opening a new {@link Position}.
  */
-export interface OpenPositionIxData extends InstructionData {
-
-  /**
-   * The {@link IncreaseLiquidityIxData} for increasing liquidity in the new position.
-   */
-  increaseLiquidityIxData: IncreaseLiquidityIxData | undefined;
-
-  /**
-   * The {@link PositionInitData} for the new {@link Position}.
-   */
-  positionInitData: PositionInitData;
-
-  /**
-   * The price margin {@link Percentage} that was used when opening the new {@link Position}.
-   */
-  priceMargin: Percentage;
-
-  /**
-   * The {@link Whirlpool} that the new {@link Position} is in.
-   */
-  whirlpool: Whirlpool;
-
-}
-
-/**
- * The summary of an open position transaction.
- */
-export interface OpenPositionTxSummary extends TxSummary {
-
-  /**
-   * The {@link BundledPosition} that was opened.
-   */
-  bundledPosition: BundledPosition;
-
-  /**
-   * The {@link LiquidityTxSummary} for the increase liquidity transaction.
-   *
-   * `undefined` if the transaction was excluded.
-   */
-  increaseLiquidityTxSummary?: LiquidityTxSummary;
-
-  /**
-   * The price margin {@link Percentage} for the new {@link Position}.
-   */
-  priceMargin: Percentage;
-
-  /**
-   * The price range for the new {@link Position}.
-   */
-  priceRange: [Decimal, Decimal];
-
-  /**
-   * The tick index range for the new {@link Position}.
-   */
-  tickRange: [number, number];
-
-}
-
-/**
- * Arguments for generating a {@link OpenPositionTxSummary}.
- */
-export interface OpenPositionTxSummaryArgs {
-
-  /**
-   * The {@link BundledPosition} that was opened.
-   */
-  bundledPosition: BundledPosition;
-
-  /**
-   * The {@link OpenPositionIxData} used to generate the summary.
-   */
-  openPositionIxData: OpenPositionIxData;
-
-  /**
-   * The {@link SendTransactionResult} of the open {@link Position} transaction.
-   */
-  sendResult: SendTransactionResult;
-
-}
-
-/**
- * The data pertaining to initialization of the {@link Position} that is being opened.
- */
-export interface PositionInitData {
-
-  /**
-   * The {@link PublicKey} address of the new {@link Position}.
-   */
-  address: PublicKey;
+export interface OpenPositionMetadata {
 
   /**
    * The bundle index of the new {@link Position}.
@@ -152,19 +61,14 @@ export interface PositionInitData {
   bundleIndex: number;
 
   /**
-   * The {@link PDA} for the new bundled {@link Position}.
+   * The {@link Address} of the new {@link Position}.
    */
-  bundledPositionPda: PDA;
+  position: Address;
 
   /**
-   * The {@link PositionBundleData PositionBundle} that will contain the new {@link Position}.
+   * The {@link Address} for the new {@link Position}'s bundle.
    */
-  positionBundle: PositionBundleData;
-
-  /**
-   * The {@link PDA} for the new {@link Position}'s bundle.
-   */
-  positionBundlePda: PDA;
+  positionBundle: Address;
 
   /**
    * The price margin {@link Percentage} for the new {@link Position}.
@@ -182,8 +86,20 @@ export interface PositionInitData {
   tickRange: [number, number];
 
   /**
-   * The {@link Whirlpool} that the new {@link Position} is in.
+   * The {@link Address} of the {@link Whirlpool} that the new {@link Position} is in.
    */
-  whirlpool: Whirlpool;
+  whirlpool: Address;
 
 }
+
+export type OpenPositionIxSet = InstructionSet<OpenPositionMetadata>;
+
+export type OpenPositionTxCtx = TransactionContext<{
+  openPosition: OpenPositionIxSet;
+  increaseLiquidity: InstructionSet;
+}>;
+
+/**
+ * The summary of an open position transaction.
+ */
+export type OpenPositionTxSummary = TxSummary<OpenPositionTxCtx>;

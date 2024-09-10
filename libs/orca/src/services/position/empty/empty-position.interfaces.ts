@@ -1,7 +1,7 @@
 import type { CollectFeesRewardsIxData, CollectFeesRewardsTxSummary } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards';
 import type { DecreaseLiquidityIxData } from '@npc/orca/services/liquidity/decrease/decrease-liquidity';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
-import type { InstructionData, SendTransactionResult, TxSummary } from '@npc/solana';
+import type { InstructionSetMap, SendTransactionResult, TxSummary } from '@npc/solana';
 import type { Position } from '@orca-so/whirlpools-sdk';
 
 /**
@@ -27,9 +27,9 @@ export interface EmptyAllPositionsSummary {
 }
 
 /**
- * {@link InstructionData} for emptying a {@link Position} of its liquidity, fees, and rewards.
+ * {@link InstructionSetMap} for emptying a {@link Position} of its liquidity, fees, and rewards.
  */
-export interface EmptyPositionIxData extends InstructionData {
+export interface EmptyPositionIxData extends InstructionSetMap {
 
   /**
    * The {@link CollectFeesRewardsIxData} for the collect fees and rewards instruction.

@@ -1,5 +1,5 @@
 import { BorshCoder, LangErrorCode, LangErrorMessage, Program, type Address, type Idl } from '@coral-xyz/anchor';
-import { numericToBN, warn, type Null } from '@npc/core';
+import { toBN, warn, type Null } from '@npc/core';
 import { toPubKeyStr } from '@npc/solana/util/address/address';
 import anchor from '@npc/solana/util/anchor/anchor';
 import rpc from '@npc/solana/util/rpc/rpc';
@@ -8,9 +8,9 @@ import { ComputeBudgetInstruction, ComputeBudgetProgram, SendTransactionError, S
 import bs58 from 'bs58';
 import type { DecodedTransactionIx, ProgramErrorInfo, QueriedTransaction, TempTokenAccount, TokenTransfer } from './program.interfaces';
 
-  const _idlCache = new Map<string, Idl>();
-  const _programCache = new Map<string, Program>();
-  const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
+const _idlCache = new Map<string, Idl>();
+const _programCache = new Map<string, Program>();
+const _decodedIxCache = new Map<string, DecodedTransactionIx[]>();
 
 /**
  * Caches the {@link Idl} for a given {@link programId}.
@@ -185,6 +185,7 @@ export async function decodeTransaction(
       decodedIxs.push({
         data: ixs[i].data,
         innerInstructions: [],
+        keys: ixs[i].keys,
         name: 'Unknown',
         programName: 'Unknown',
         programId: ixs[i].programId,
@@ -196,6 +197,35 @@ export async function decodeTransaction(
   if (isQueriedTransaction && decodedIxs.length) {
     _decodedIxCache.set(transaction.signature, decodedIxs);
   }
+  return decodedIxs;
+}
+
+/**
+ * Decodes given {@link TransactionInstruction}s.
+ *
+ * @param ixs The {@link TransactionInstruction}s to decode.
+ * @returns A {@link Promise} that resolves to the decoded {@link DecodedTransactionIx}s.
+ */
+export async function decodeInstructions(ixs: readonly TransactionInstruction[]): Promise<DecodedTransactionIx[]> {
+  const decodedIxs: DecodedTransactionIx[] = [];
+
+  for (const ix of ixs) {
+    try {
+      const decodedIx = await decodeIx(ix);
+      decodedIxs.push(decodedIx);
+    } catch (err) {
+      warn('Failed to decode instruction:', err);
+      decodedIxs.push({
+        data: ix.data,
+        innerInstructions: [],
+        keys: ix.keys,
+        name: 'Unknown',
+        programName: 'Unknown',
+        programId: ix.programId,
+      });
+    }
+  }
+
   return decodedIxs;
 }
 
@@ -262,6 +292,7 @@ async function _decodeAssociatedTokenProgramIx(ix: TransactionInstruction): Prom
       tokenMintAddress: ix.keys[3].pubkey.toBase58(),
     },
     innerInstructions: [],
+    keys: ix.keys,
     name: 'CreateAssociatedTokenAccount',
     programName: 'AssociatedTokenProgram',
     programId: ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -287,6 +318,7 @@ async function _decodeComputeBudgetProgramIx(ix: TransactionInstruction): Promis
   const decodedIx: DecodedTransactionIx = {
     data: {},
     innerInstructions: [],
+    keys: ix.keys,
     name: instructionType,
     programName: ComputeBudgetProgram.name,
     programId: ComputeBudgetProgram.programId,
@@ -317,6 +349,7 @@ async function _decodeProgramIx(ix: TransactionInstruction): Promise<DecodedTran
   const decodedIx: DecodedTransactionIx = {
     data: {},
     innerInstructions: [],
+    keys: ix.keys,
     name: program.idl.name,
     programName: program.idl.name,
     programId: program.programId,
@@ -353,6 +386,7 @@ async function _decodeSystemProgramIx(ix: TransactionInstruction): Promise<Decod
   const decodedIx: DecodedTransactionIx = {
     data: {},
     innerInstructions: [],
+    keys: ix.keys,
     name: instructionType,
     programName: SystemProgram.name,
     programId: SystemProgram.programId,
@@ -398,6 +432,7 @@ async function _decodeTokenProgramIx(
       ? await _extendTokenTransferIxData(decodedTokenIx as DecodedTransferInstruction, tempTokenAccounts)
       : { ...decodedTokenIx.data, keys: decodedTokenIx.keys },
     innerInstructions: [],
+    keys: ix.keys,
     name: TokenInstruction[decodedTokenIx.data.instruction],
     programName: 'TokenProgram',
     programId: TOKEN_PROGRAM_ID,
@@ -409,7 +444,7 @@ async function _extendTokenTransferIxData(
   tempTokenAccounts: Map<string, TempTokenAccount>
 ): Promise<TokenTransfer> {
   const ixData: TokenTransfer = {
-    amount: numericToBN(ix.data.amount),
+    amount: toBN(ix.data.amount),
     keys: {
       ...ix.keys,
       destinationOwner: '',

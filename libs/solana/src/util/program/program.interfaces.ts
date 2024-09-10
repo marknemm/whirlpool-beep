@@ -41,6 +41,11 @@ export interface DecodedTransactionIx extends Instruction {
   innerInstructions: Omit<DecodedTransactionIx, 'innerInstructions'>[];
 
   /**
+   * The keys of the transaction.
+   */
+  keys: AccountMeta[];
+
+  /**
    * The {@link Address} of the program that handles the instruction.
    */
   programId: Address;

@@ -1,6 +1,6 @@
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { type DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { debug, decodeBase58, numericToBN } from '@npc/core';
+import { debug, decodeBase58, toBN } from '@npc/core';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getNFT, getToken, type TokenQuery } from '@npc/solana/util/token/token';
@@ -56,11 +56,11 @@ export class WalletExt extends Wallet {
       // Fetch the default wallet balance and convert Lamports to SOL
       const lamports = await rpc().getBalance(wallet().publicKey);
       const sol = toSol(lamports);
-      amount = numericToBN(sol, currencyToken.mint.decimals);
+      amount = toBN(sol, currencyToken.mint.decimals);
     } else {
       // Fetch the desired token account and get amount
       const tokenAccount = await this.getTokenAccount(currencyToken.mint.publicKey);
-      amount = numericToBN(tokenAccount?.amount, currencyToken.mint.decimals);
+      amount = toBN(tokenAccount?.amount, currencyToken.mint.decimals);
     }
 
     return amount;
@@ -73,13 +73,13 @@ export class WalletExt extends Wallet {
    * @returns A {@link Promise} that resolves to the NFT {@link Account}.
    */
   async getNFTAccount(query: TokenQuery): Promise<Account | null> {
-    const currencyToken = await getToken(query);
-    if (!currencyToken) {
+    const token = await getToken(query);
+    if (!token) {
       throw new Error(`Failed to fetch token metadata for query: ${query}`);
     }
 
     const nftAccounts = await this.getNFTAccounts({
-      mint: new PublicKey(currencyToken.mint.publicKey),
+      mint: new PublicKey(token.mint.publicKey),
     });
 
     return nftAccounts?.length
@@ -113,17 +113,17 @@ export class WalletExt extends Wallet {
   /**
    * Gets an SPL token {@link Account} (`ATA`) associated with the {@link Wallet}.
    *
-   * @param currency The currency {@link TokenQuery} for the SPL token {@link Account}.
+   * @param query The {@link TokenQuery} for the token mint associated with the SPL token {@link Account}.
    * @returns A {@link Promise} that resolves to the SPL token {@link Account}.
    */
-  async getTokenAccount(currency: TokenQuery): Promise<Account | null> {
-    const currencyToken = await getToken(currency);
-    if (!currencyToken) {
-      throw new Error(`Failed to fetch token metadata for query: ${currency}`);
+  async getTokenAccount(query: TokenQuery): Promise<Account | null> {
+    const token = await getToken(query);
+    if (!token) {
+      throw new Error(`Failed to fetch token metadata for query: ${query}`);
     }
 
     const tokenAccounts = await this.getTokenAccounts({
-      mint: new PublicKey(currencyToken.mint.publicKey),
+      mint: new PublicKey(token.mint.publicKey),
     });
 
     return tokenAccounts?.length

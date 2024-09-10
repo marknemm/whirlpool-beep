@@ -1,12 +1,14 @@
 import type { DecodedTransactionIx, TokenTransfer } from '@npc/solana/util/program/program';
-import type { ComputeBudget, SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
+import type { ComputeBudget, InstructionSet } from '@npc/solana/util/transaction-context/transaction-context';
 import type { TransactionSignature } from '@solana/web3.js';
 import type BN from 'bn.js';
 
 /**
- * Summary of a generic transaction.
+ * Summary of a Solana transaction.
+ *
+ * @template T The {@link InstructionSet} type for the transaction.
  */
-export interface TxSummary {
+export interface TxSummary<T extends InstructionSet | undefined = undefined> {
 
   /**
    * The time when the transaction was processed.
@@ -34,14 +36,14 @@ export interface TxSummary {
   fee: number;
 
   /**
+   * The {@link InstructionSet} for the transaction.
+   */
+  instructionSet: T;
+
+  /**
    * The total priority fee paid for the transaction in SOL.
    */
   priorityFee: number;
-
-  /**
-   * The {@link SendTransactionResult} for the transaction.
-   */
-  sendResult?: SendTransactionResult;
 
   /**
    * The {@link TransactionSignature} in base-58 format.

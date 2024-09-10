@@ -1,15 +1,12 @@
-import { db, debug, error, handleDBInsertError, handleDBSelectError, numericToBigInt, warn, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { db, debug, error, handleDBInsertError, handleDBSelectError, toBigInt, warn, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import OrcaWhirlpoolDAO from '@npc/orca/data/orca-whirlpool/orca-whirlpool.dao';
-import type { ClosePositionTxSummary } from '@npc/orca/services/position/close/close-position.interfaces';
-import type { EmptyPositionTxSummary } from '@npc/orca/services/position/empty/empty-position.interfaces';
 import type { OpenPositionTxSummary } from '@npc/orca/services/position/open/open-position.interfaces';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
 import { SolanaTxDAO, toPubKeyStr } from '@npc/solana';
 import { Percentage, type Address } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
-import { UpdateEmptiedResults } from './orca-position.dao.interfaces';
 
 /**
  * Pure static data access object for Orca {@link Position} DB operations.
@@ -101,14 +98,13 @@ export default class OrcaPositionDAO {
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
   static async insert(txSummary: OpenPositionTxSummary, opts?: DAOOptions): Promise<number | undefined> {
-    if (!txSummary?.bundledPosition) return;
     const {
-      bundledPosition,
+      ,
       increaseLiquidityTxSummary,
       priceMargin,
       priceRange,
       tickRange
-    } = txSummary;
+    } = txSummary.instructionSet?.metadata.openPosition ?? {};
     const { position } = bundledPosition;
 
     await OrcaWhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
@@ -136,10 +132,10 @@ export default class OrcaPositionDAO {
         .values({
           address,
           openTx: solanaTxId,
-          priceLower: numericToBigInt(priceLower, tokenB.mint.decimals),
+          priceLower: toBigInt(priceLower, tokenB.mint.decimals),
           priceMargin: priceMargin.toDecimal().mul(100).round().toNumber(),
-          priceOrigin: numericToBigInt(priceOrigin, tokenB.mint.decimals),
-          priceUpper: numericToBigInt(priceUpper, tokenB.mint.decimals),
+          priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
+          priceUpper: toBigInt(priceUpper, tokenB.mint.decimals),
           tickLowerIndex,
           tickUpperIndex,
           whirlpool: whirlpoolId,

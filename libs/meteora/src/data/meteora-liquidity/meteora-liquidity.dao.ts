@@ -1,6 +1,6 @@
-import { db, debug, handleDBInsertError, numericToBigInt, type DAOInsertOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { db, debug, handleDBInsertError, toBigInt, type DAOInsertOptions, type ErrorWithCode, type Null } from '@npc/core';
 import MeteoraPositionDAO from '@npc/meteora/data/meteora-position/meteora-position.dao';
-import type { LiquidityTxSummary } from '@npc/meteora/services/liquidity/interfaces/liquidity-tx.interfaces';
+import type { LiquidityTxSummary } from '@npc/meteora/interfaces/liquidity.interfaces';
 import { SolanaTxDAO } from '@npc/solana';
 
 /**
@@ -38,10 +38,10 @@ export default class MeteoraLiquidityDAO {
       const result = await db().insertInto('meteoraLiquidity')
         .values({
           position: positionId,
-          liquidity: numericToBigInt(txSummary.liquidity),
-          liquidityUnit: txSummary.liquidityUnit,
-          tokenAmountX: numericToBigInt(txSummary.tokenAmountX),
-          tokenAmountY: numericToBigInt(txSummary.tokenAmountY),
+          liquidity: toBigInt(0),
+          liquidityUnit: '',
+          tokenAmountX: toBigInt(txSummary.tokenAmountX),
+          tokenAmountY: toBigInt(txSummary.tokenAmountY),
           tx: solanaTxId,
           usd: txSummary.usd,
         })

@@ -19,7 +19,7 @@ async function main() {
         .usage('Usage: $0 <command> [options]')
         .strict()
         .commandDir('cli', {
-          extensions:  __filename.endsWith('.js')
+          extensions: __filename.endsWith('.js')
             ? ['js']
             : ['js', 'ts'],
           visit: (commandModule) => commandModule.default

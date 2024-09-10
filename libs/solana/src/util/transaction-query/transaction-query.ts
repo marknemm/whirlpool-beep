@@ -1,15 +1,15 @@
-import { debug, expBackoff, numericToNumber, tokenAmountToUSD, warn } from '@npc/core';
+import { debug, expBackoff, toNumber, tokenAmountToUSD, warn } from '@npc/core';
+import { addressEquals } from '@npc/solana/util/address/address';
 import { decodeTransaction } from '@npc/solana/util/program/program';
 import type { DecodedTransactionIx, TokenTransfer } from '@npc/solana/util/program/program.interfaces';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getToken, getTokenPrice } from '@npc/solana/util/token/token';
-import { ComputeBudget, type SendTransactionResult } from '@npc/solana/util/transaction-context/transaction-context';
+import { ComputeBudget } from '@npc/solana/util/transaction-context/transaction-context';
 import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ComputeBudgetProgram, SetComputeUnitLimitParams, SetComputeUnitPriceParams, VersionedTransactionResponse, type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
-import { addressEquals } from '../address/address';
 import type { TransferTotals, TxSummary } from './transaction-query.interfaces';
 
 const _txCache = new Map<string, VersionedTransactionResponse>();
@@ -44,36 +44,12 @@ export async function getTransaction(
 /**
  * Gets the summary of a transaction.
  *
- * @param sendResult The {@link SendTransactionResult} for the transaction.
- * @returns A {@link Promise} that resolves to the summary of the transaction.
- */
-export async function getTxSummary(sendResult: SendTransactionResult): Promise<TxSummary>;
-
-/**
- * Gets the summary of a transaction.
- *
  * @param signature The {@link TransactionSignature} for the transaction.
- * @returns A {@link Promise} that resolves to the summary of the transaction.
+ * @returns A {@link Promise} that resolves to the {@link TxSummary}.
  */
-export async function getTxSummary(signature: TransactionSignature): Promise<TxSummary>;
-
-/**
- * Gets the summary of a transaction.
- *
- * @param sendResultOrSignature The {@link SendTransactionResult} or {@link TransactionSignature} for the transaction.
- * @returns A {@link Promise} that resolves to the summary of the transaction.
- */
-export async function getTxSummary(
-  sendResultOrSignature: TransactionSignature | SendTransactionResult,
-): Promise<TxSummary> {
-  // Extract individual arguments
-  const sendResult = (typeof sendResultOrSignature !== 'string')
-    ? sendResultOrSignature
-    : undefined;
-  const signature = sendResult?.signature ?? sendResultOrSignature as string;
-
+export async function getTxSummary(signature: TransactionSignature): Promise<TxSummary> {
   if (!_txSummaryCache.has(signature)) {
-    debug('Generating Tx Summary...');
+    debug('Generating Tx Summary:', signature);
 
     const txSummary: TxSummary = {
       blockTime: new Date(),
@@ -81,9 +57,9 @@ export async function getTxSummary(
       computeUnitsConsumed: 0,
       decodedIxs: [],
       fee: 0,
+      instructionSet: undefined,
       priorityFee: 0,
       signature,
-      sendResult,
       size: 0,
       tokens: new Map<string, BN>(),
       transfers: [],
@@ -112,8 +88,7 @@ export async function getTxSummary(
         txSummary.decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
 
         // Assign transaction compute budget data
-        txSummary.computeBudget = sendResult?.buildRecord.computeBudget
-          ?? await getComputeBudget(signature);
+        txSummary.computeBudget = await getComputeBudget(signature);
 
         // Assign token transfer data
         txSummary.transfers = await getTransfers(signature);
@@ -130,9 +105,7 @@ export async function getTxSummary(
     _txSummaryCache.set(signature, txSummary);
   }
 
-  const txSummary = _txSummaryCache.get(signature)!;
-  txSummary.sendResult ??= sendResult;
-  return txSummary;
+  return _txSummaryCache.get(signature)!;
 }
 
 /**
@@ -171,7 +144,7 @@ export async function getComputeBudget(
     if (computeUnitPriceMicroLamports) {
       computeBudget.priorityFeeLamports = Math.round(
         toLamports(
-          numericToNumber(computeUnitPriceMicroLamports) * computeUnitLimit,
+          toNumber(computeUnitPriceMicroLamports) * computeUnitLimit,
           'Micro Lamports'
         )
       );

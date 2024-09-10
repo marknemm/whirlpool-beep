@@ -1,5 +1,5 @@
 import { BN, type Address } from '@coral-xyz/anchor';
-import { error, expBackoff, info, numericToBN, numericToString } from '@npc/core';
+import { error, expBackoff, info, numericToString, toBN } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
 import { getPositions } from '@npc/orca/services/position/query/query-position';
@@ -110,7 +110,7 @@ export async function decreaseLiquidity(
  */
 export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs): Promise<DecreaseLiquidityIxData> {
   const { position } = ixArgs;
-  const liquidity = numericToBN(ixArgs.liquidity);
+  const liquidity = toBN(ixArgs.liquidity);
 
   info('Creating Tx to decrease liquidity:', {
     position: position.getAddress().toBase58(),
@@ -192,7 +192,7 @@ export async function genDecreaseLiquidityTxSummary(
   const { tokenTotals, usd } = await getTransferTotalsFromIxs([liquidityIx]);
 
   const liquidityTxSummary: LiquidityTxSummary = {
-    liquidity: numericToBN(ixData.ixArgs.liquidity).neg(),
+    liquidity: toBN(ixData.ixArgs.liquidity).neg(),
     liquidityUnit: 'liquidity',
     position,
     slippage: Percentage.fromFraction(

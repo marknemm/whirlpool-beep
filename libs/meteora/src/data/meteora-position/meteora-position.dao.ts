@@ -1,11 +1,10 @@
 import { type Address } from '@coral-xyz/anchor';
 import { type Position } from '@meteora-ag/dlmm';
-import { db, debug, handleDBInsertError, handleDBSelectError, numericToBigInt, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
+import { db, debug, handleDBInsertError, handleDBSelectError, toBigInt, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import MeteoraLiquidityDAO from '@npc/meteora/data/meteora-liquidity/meteora-liquidity.dao';
 import MeteoraPoolDAO from '@npc/meteora/data/meteora-pool/meteora-pool.dao';
-import { getPool } from '@npc/meteora/services/pool/query/query-pool';
-import type { OpenPositionTxSummary } from '@npc/meteora/services/position/open/open-position.interfaces';
-import { getPoolTokenPair } from '@npc/meteora/util/pool/pool';
+import type { OpenPositionTxSummary } from '@npc/meteora/services/open-position/open-position.interfaces';
+import { getPool, getPoolTokenPair } from '@npc/meteora/util/pool/pool';
 import { SolanaTxDAO, toPubKeyStr } from '@npc/solana';
 import Decimal from 'decimal.js';
 
@@ -136,10 +135,10 @@ export default class MeteoraPositionDAO {
           minBinId,
           openTx: solanaTxId,
           pool: poolId,
-          priceLower: numericToBigInt(priceLower, tokenB.mint.decimals),
+          priceLower: toBigInt(priceLower, tokenB.mint.decimals),
           priceMargin: priceMargin.mul(100).round().toNumber(),
-          priceOrigin: numericToBigInt(priceOrigin, tokenB.mint.decimals),
-          priceUpper: numericToBigInt(priceUpper, tokenB.mint.decimals),
+          priceOrigin: toBigInt(priceOrigin, tokenB.mint.decimals),
+          priceUpper: toBigInt(priceUpper, tokenB.mint.decimals),
         })
         .returning('id')
         .executeTakeFirst();
