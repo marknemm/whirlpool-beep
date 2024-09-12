@@ -48,16 +48,17 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
   );
 
   // Send transaction to create position bundle
-  const txCtx = TransactionContext.fromIxSet({
-    ...initPositionBundleIx,
-    metadata: {
-      positionBundleMetadata: positionBundleMetadataPda.publicKey,
-      positionBundleMintAddress: positionBundleMintKeypair.publicKey,
-      positionBundle: positionBundlePda.publicKey,
-      positionBundleTokenAccount,
-    },
-  });
-  await txCtx.send();
+  await new TransactionContext()
+    .addInstructionSet(initPositionBundleIx)
+    .send({
+      debugData: {
+        name: 'Create Position Bundle',
+        positionBundleMetadata: positionBundleMetadataPda.publicKey,
+        positionBundleMintAddress: positionBundleMintKeypair.publicKey,
+        positionBundle: positionBundlePda.publicKey,
+        positionBundleTokenAccount,
+      }
+    });
 
   // Get and return position bundle data
   const positionBundle = await expBackoff(() =>
@@ -75,20 +76,13 @@ export async function createPositionBundle(): Promise<PositionBundleData> {
  * @returns A {@link Promise} that resolves to the formatted log string.
  */
 export async function formatPosition(
-  position: BundledPosition | Position | Null,
+  position: Address | BundledPosition | Position | Null,
   includeWhirlpool = false
 ): Promise<string> {
   if (!position) return '';
+  position = await resolvePosition(position);
 
-  const bundledPosition = Object.hasOwn(position, 'position')
-    ? position as BundledPosition
-    : undefined;
-
-  position = bundledPosition
-    ? bundledPosition.position
-    : position as Position;
-
-  const whirlpoolData = (position as Position).getWhirlpoolData();
+  const whirlpoolData = position.getWhirlpoolData();
 
   return includeWhirlpool
     ? `${position.getAddress().toBase58()} ---- ${await formatWhirlpool(whirlpoolData)}`
@@ -235,6 +229,30 @@ export async function getPositions({
   }
 
   return positions;
+}
+
+/**
+ * Resolves a {@link Position} from an {@link Address} or {@link Position}.
+ *
+ * @param position The {@link Address} or {@link Position} to resolve.
+ * @param opts The {@link WhirlpoolAccountFetchOptions} to use when fetching the {@link Position}.
+ * @returns A {@link Promise} that resolves to the {@link Position}.
+ */
+export async function resolvePosition(
+  position: Address | BundledPosition | Position,
+  opts?: WhirlpoolAccountFetchOptions
+): Promise<Position> {
+  if (position instanceof Object && 'position' in position) {
+    return (position as BundledPosition).position;
+  }
+
+  if (position instanceof Object && 'getWhirlpoolData' in position) {
+    return position as Position;
+  }
+
+  return getPosition(position as Address, opts).then(
+    (bundledPosition) => bundledPosition.position
+  );
 }
 
 export type * from './position.interfaces';

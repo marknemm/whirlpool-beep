@@ -2,11 +2,15 @@ import { db, debug, error, handleDBInsertError, handleDBSelectError, toBigInt, w
 import OrcaFeeDAO from '@npc/orca/data/orca-fee/orca-fee.dao';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
 import OrcaWhirlpoolDAO from '@npc/orca/data/orca-whirlpool/orca-whirlpool.dao';
-import type { OpenPositionTxSummary } from '@npc/orca/services/position/open/open-position.interfaces';
+import type { ClosePositionSummary } from '@npc/orca/services/close-position/close-position.interfaces';
+import type { EmptyPositionSummary } from '@npc/orca/services/empty-position/empty-position.interfaces';
+import type { OpenPositionSummary } from '@npc/orca/services/open-position/open-position.interfaces';
+import { resolvePosition } from '@npc/orca/util/position/position';
 import { getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
 import { SolanaTxDAO, toPubKeyStr } from '@npc/solana';
 import { Percentage, type Address } from '@orca-so/common-sdk';
 import { type Position } from '@orca-so/whirlpools-sdk';
+import type { UpdateEmptiedResults } from './orca-position.dao.interfaces';
 
 /**
  * Pure static data access object for Orca {@link Position} DB operations.
@@ -90,27 +94,26 @@ export default class OrcaPositionDAO {
    * If the {@link Position} was opened with liquidity, then the associated {@link LiquidityTxSummary}
    * is also inserted via {@link OrcaLiquidityDAO}.
    *
-   * @param txSummary The {@link OpenPositionTxSummary} to use for the insert.
+   * @param summary The {@link OpenPositionSummary} to use for the insert.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the inserted row's DB `id` when the operation is complete.
    * If the insert fails, then resolves to `undefined`.
    * @throws An {@link ErrorWithCode} if the insert fails with an error and
    * {@link DAOOptions.catchErrors} is not set in the {@link opts}.
    */
-  static async insert(txSummary: OpenPositionTxSummary, opts?: DAOOptions): Promise<number | undefined> {
+  static async insert(summary: OpenPositionSummary, opts?: DAOOptions): Promise<number | undefined> {
     const {
-      ,
-      increaseLiquidityTxSummary,
+      positionAddress,
       priceMargin,
       priceRange,
       tickRange
-    } = txSummary.instructionSet?.metadata.openPosition ?? {};
-    const { position } = bundledPosition;
+    } = summary.data;
+    const position = await resolvePosition(positionAddress);
 
     await OrcaWhirlpoolDAO.insert(position.getWhirlpoolData(), position.getData().whirlpool, opts);
     const whirlpoolData = position.getWhirlpoolData();
 
-    const solanaTxId = await SolanaTxDAO.insert(txSummary, { ...opts, ignoreDuplicates: true });
+    const solanaTxId = await SolanaTxDAO.insert(summary, { ...opts, ignoreDuplicates: true });
     if (solanaTxId == null) return; // No throw error - SolanaTxDAO handles errors
 
     const address = position.getAddress().toBase58();
@@ -146,8 +149,8 @@ export default class OrcaPositionDAO {
       debug(`Inserted Orca Position into database ( ID: ${result?.id} ):`, address);
 
       // If the Position was opened with liquidity, insert the LiquidityTxSummary.
-      if (increaseLiquidityTxSummary) {
-        await OrcaLiquidityDAO.insert(increaseLiquidityTxSummary, opts);
+      if (summary.data.increaseLiquidityData) {
+        await OrcaLiquidityDAO.insert({ ...summary, data: summary.data.increaseLiquidityData }, opts);
       }
 
       return result?.id;
@@ -162,48 +165,44 @@ export default class OrcaPositionDAO {
    *
    * `Note`: This method also inserts the {@link FeeRewardTxSummary} and {@link LiquidityTxSummary} associated with the close operation.
    *
-   * @param txSummary The {@link ClosePositionTxSummary} to use for the update.
+   * @param summary The {@link ClosePositionSummary} to use for the update.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the updated row's DB `id` when the operation is complete.
    * If the update fails, then resolves to `undefined`.
    */
   static async updateClosed(
-    txSummary: ClosePositionTxSummary,
+    summary: ClosePositionSummary,
     opts?: DAOOptions
   ): Promise<number | undefined> {
-    const { bundledPosition, signature } = txSummary;
-    if (!bundledPosition || !signature) return;
-
-    const { position } = bundledPosition;
-    const address = position.getAddress().toBase58();
+    const positionAddress = toPubKeyStr(summary.data.positionAddress);
 
     // Update orcaLiquidity and orcaFee tables
-    await OrcaPositionDAO.updateEmptied(txSummary, opts);
+    await OrcaPositionDAO.updateEmptied(summary, opts);
 
     // Insert SolanaTx
-    const solanaTxId = await SolanaTxDAO.insert(txSummary, { ...opts, ignoreDuplicates: true });
+    const solanaTxId = await SolanaTxDAO.insert(summary, { ...opts, ignoreDuplicates: true });
     if (solanaTxId == null) return; // No throw error - SolanaTxDAO handles errors
 
-    debug('Closing Position in database:', address);
+    debug('Closing Position in database:', positionAddress);
 
     try {
       const result = await db().updateTable('orcaPosition')
         .set({ closeTx: solanaTxId })
-        .where('address', '=', address)
+        .where('address', '=', positionAddress)
         .where('closeTx', 'is', null)
         .returning('id')
         .executeTakeFirst();
 
       result
-        ? debug('Position closed in database:', `${address} -- ${signature}`)
-        : warn('Could not close position in database:', `${address} -- ${signature}`);
+        ? debug('Position closed in database:', positionAddress)
+        : warn('Could not close position in database:', positionAddress);
 
       return result?.id;
     } catch (err) {
       if (!opts?.catchErrors) {
         throw err;
       }
-      error('Failed to close position in database:', `${address} -- ${signature}`);
+      error('Failed to close position in database:', positionAddress);
       error(err);
     }
   }
@@ -211,22 +210,22 @@ export default class OrcaPositionDAO {
   /**
    * Updates the liquidity and fee / reward data associated with a position to reflect emptied state.
    *
-   * @param txSummary The {@link EmptyPositionTxSummary} or {@link ClosePositionTxSummary} to use for the update.
+   * @param summary The {@link EmptyPositionSummary} or {@link ClosePositionSummary} to use for the update.
    * @param opts The {@link DAOOptions} to use for the operation.
    * @returns A {@link Promise} that resolves to the {@link UpdateEmptiedResults} when the operation is complete.
    */
   static async updateEmptied(
-    txSummary: EmptyPositionTxSummary | ClosePositionTxSummary,
+    summary: EmptyPositionSummary,
     opts?: DAOOptions
   ): Promise<UpdateEmptiedResults> {
-    const { collectFeesRewardsTxSummary, decreaseLiquidityTxSummary } = txSummary;
+    const { collectFeesRewards, decreaseLiquidity } = summary.data;
 
     return {
-      feeRewardTxId: collectFeesRewardsTxSummary
-        ? await OrcaFeeDAO.insert(collectFeesRewardsTxSummary, opts)
+      feeRewardTxId: collectFeesRewards
+        ? await OrcaFeeDAO.insert({ ...summary, data: collectFeesRewards }, opts)
         : undefined,
-      liquidityTxId: decreaseLiquidityTxSummary
-        ? await OrcaLiquidityDAO.insert(decreaseLiquidityTxSummary, opts)
+      liquidityTxId: decreaseLiquidity
+        ? await OrcaLiquidityDAO.insert({ ...summary, data: decreaseLiquidity }, opts)
         : undefined,
     };
   }

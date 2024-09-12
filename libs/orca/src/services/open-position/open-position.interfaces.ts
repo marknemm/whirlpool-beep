@@ -1,6 +1,7 @@
 import type { Address } from '@coral-xyz/anchor';
 import type { LiquidityUnit } from '@npc/core';
-import type { InstructionSet, TransactionContext, TxSummary } from '@npc/solana';
+import type { IncreaseLiquidityData } from '@npc/orca/services/increase-liquidity/increase-liquidity.interfaces';
+import type { InstructionSet, TxSummary } from '@npc/solana';
 import type { Percentage } from '@orca-so/common-sdk';
 import type { Position, Whirlpool } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';
@@ -51,9 +52,9 @@ export interface OpenPositionArgs {
 }
 
 /**
- * The metadata for opening a new {@link Position}.
+ * The data for opening a new {@link Position}.
  */
-export interface OpenPositionMetadata {
+export interface OpenPositionData {
 
   /**
    * The bundle index of the new {@link Position}.
@@ -61,14 +62,25 @@ export interface OpenPositionMetadata {
   bundleIndex: number;
 
   /**
+   * {@link IncreaseLiquidityData} for the new {@link Position}.
+   * If the {@link Position} was opened with liquidity, this will be set.
+   */
+  increaseLiquidityData?: IncreaseLiquidityData;
+
+  /**
    * The {@link Address} of the new {@link Position}.
    */
-  position: Address;
+  positionAddress: Address;
 
   /**
    * The {@link Address} for the new {@link Position}'s bundle.
    */
   positionBundle: Address;
+
+  /**
+   * The {@link Address} of the new {@link Position}'s mint.
+   */
+  positionMint: Address;
 
   /**
    * The price margin {@link Percentage} for the new {@link Position}.
@@ -88,18 +100,30 @@ export interface OpenPositionMetadata {
   /**
    * The {@link Address} of the {@link Whirlpool} that the new {@link Position} is in.
    */
-  whirlpool: Address;
+  whirlpoolAddress: Address;
 
 }
 
-export type OpenPositionIxSet = InstructionSet<OpenPositionMetadata>;
+/**
+ * The {@link InstructionSet} for opening a new {@link Position}.
+ */
+export interface OpenPositionIxSet extends InstructionSet {
 
-export type OpenPositionTxCtx = TransactionContext<{
-  openPosition: OpenPositionIxSet;
-  increaseLiquidity: InstructionSet;
-}>;
+  /**
+   * The {@link OpenPositionData} for the open position transaction.
+   */
+  data: OpenPositionData;
+
+}
 
 /**
- * The summary of an open position transaction.
+ * The {@link TxSummary} for opening a new {@link Position}.
  */
-export type OpenPositionTxSummary = TxSummary<OpenPositionTxCtx>;
+export interface OpenPositionSummary extends TxSummary {
+
+  /**
+   * The {@link OpenPositionData} for the open position transaction.
+   */
+  data: OpenPositionData;
+
+}

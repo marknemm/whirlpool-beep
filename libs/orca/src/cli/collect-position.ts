@@ -2,8 +2,8 @@ import { error, info, type CliArgs } from '@npc/core';
 import { genGetPositionCliOpts } from '@npc/orca/cli/common/position-opts';
 import { genTransactionCliOpts } from '@npc/orca/cli/common/transaction-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsIxData } from '@npc/orca/services/fees-rewards/collect/collect-fees-rewards';
-import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position';
+import { collectAllFeesRewards, collectFeesRewards, genCollectFeesRewardsIxSet } from '@npc/orca/services/collect-fees-rewards/collect-fees-rewards';
+import { getPosition, getPositionAtIdx } from '@npc/orca/util/position/position';
 import { genComputeBudget } from '@npc/solana';
 import { type Position } from '@orca-so/whirlpools-sdk';
 import { type Argv } from 'yargs';
@@ -52,7 +52,7 @@ async function handler(argv: CliArgs<typeof cli.options>) {
 
     if (position) {
       if (argv.dryRun) {
-        const { instructions } = await genCollectFeesRewardsIxData(position);
+        const { instructions } = await genCollectFeesRewardsIxSet({ position });
         const computeBudget = await genComputeBudget(instructions);
         info('Transaction budget:', computeBudget);
       } else {

@@ -1,14 +1,14 @@
 import { debug, error, expBackoff, genPriceMarginRange, info } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
-import { genIncreaseLiquidityIxSet } from '@npc/orca/services/liquidity/increase/increase-liquidity';
-import { getPositionBundle } from '@npc/orca/util/position/position';
+import { formatPosition, getPositionBundle } from '@npc/orca/util/position/position';
 import { toPriceRange, toTickRange } from '@npc/orca/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, resolveWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, TransactionContext, wallet } from '@npc/solana';
+import { getProgramErrorInfo, TransactionBuilder, TransactionContext, wallet } from '@npc/solana';
 import { Percentage } from '@orca-so/common-sdk';
 import { IGNORE_CACHE, ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil, PositionBundleUtil, WhirlpoolIx, type Position, type Whirlpool } from '@orca-so/whirlpools-sdk';
 import { PublicKey } from '@solana/web3.js';
-import type { OpenPositionArgs, OpenPositionIxSet, OpenPositionTxCtx, OpenPositionTxSummary } from './open-position.interfaces';
+import { genIncreaseLiquidityIxSet } from '../increase-liquidity/increase-liquidity';
+import type { OpenPositionArgs, OpenPositionData, OpenPositionIxSet, OpenPositionSummary } from './open-position.interfaces';
 
 const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
 
@@ -18,65 +18,47 @@ const PRICE_MARGIN_DEFAULT = Percentage.fromFraction(3, 100); // 3%
  * @param args The {@link OpenPositionArgs}.
  * @returns A {@link Promise} that resolves to the newly opened {@link Position}.
  */
-export async function openPosition(args: OpenPositionArgs): Promise<OpenPositionTxSummary> {
-  const { priceMargin = PRICE_MARGIN_DEFAULT } = args;
+export async function openPosition(args: OpenPositionArgs): Promise<OpenPositionSummary> {
+  const txCtx = new TransactionContext();
   const whirlpool = await resolveWhirlpool(args.whirlpool);
 
-  const opMetadata = {
-    whirlpool: whirlpool.getAddress().toBase58(),
-    priceMargin: priceMargin.toString(),
-  };
-
   try {
-    return expBackoff(async (retry) => {
-      info('\n-- Open Position --\n', opMetadata);
+    const openPositionSummary = await expBackoff(async (retry) => {
+      info('\n-- Open Position --\n', args);
 
       // Must refresh data if retrying, or may generate error due to stale data.
       if (retry) {
         await whirlpool.refreshData();
       }
 
-      const txCtx = await genOpenPositionTxCtx(args);
-
       // Prepare and send transaction to open position
-      const txSummary = await txCtx.send();
+      const ixSet = await genOpenPositionIxSet(args);
+      const txSummary = await txCtx.setInstructionSet(ixSet).send({
+        debugData: {
+          name: 'Open Position',
+          ...ixSet.data,
+        }
+      });
 
-      // Get, store, and return the open position transaction summary
-      await OrcaPositionDAO.insert(txSummary, { catchErrors: true });
-      return txSummary;
+      return { ...txSummary, data: ixSet.data };
     }, {
       retryFilter: (result, err) => {
         const errInfo = getProgramErrorInfo(err);
         return ['InvalidTimestamp', 'TokenMaxExceeded'].includes(errInfo?.name ?? '');
       }
     });
+
+    // Store and return the open position transaction summary
+    info('Successfully opened position:', formatPosition(openPositionSummary.data.positionAddress));
+    await OrcaPositionDAO.insert(openPositionSummary, { catchErrors: true });
+    return openPositionSummary;
   } catch (err) {
     const errInfo = getProgramErrorInfo(err);
     (errInfo?.code === 0x0) // New position address clash
-      ? error('Failed to open position due to address clash:', opMetadata)
-      : error('Failed to open position:', opMetadata);
+      ? error('Failed to open position due to address clash:', args)
+      : error('Failed to open position:', args);
     throw err;
   }
-}
-
-/**
- * Generates an {@link OpenPositionTxCtx} for opening a {@link Position} in a {@link Whirlpool}.
- *
- * @param args The {@link OpenPositionArgs}.
- * @returns A {@link Promise} that resolves to the {@link OpenPositionTxCtx}.
- */
-export async function genOpenPositionTxCtx(args: OpenPositionArgs): Promise<OpenPositionTxCtx> {
-  const transactionCtx: OpenPositionTxCtx = new TransactionContext();
-
-  const openPositionIxSet = await genOpenPositionIxSet(args);
-  transactionCtx.setInstructionSet('openPosition', openPositionIxSet);
-
-  if (args.liquidity) {
-    const increaseLiquidityIxSet = await genIncreaseLiquidityIxSet(args.liquidity);
-    transactionCtx.setInstructionSet('increaseLiquidity', increaseLiquidityIxSet);
-  }
-
-  return transactionCtx;
 }
 
 /**
@@ -164,18 +146,34 @@ export async function genOpenPositionIxSet(args: OpenPositionArgs): Promise<Open
     tickRange,
   });
 
-  return {
-    metadata: {
-      bundleIndex,
-      position: bundledPositionPda.publicKey,
-      positionBundle: positionBundlePda.publicKey,
-      priceMargin,
-      priceRange,
-      tickRange,
-      whirlpool: whirlpool.getAddress(),
-    },
-    ...openPositionIx,
+  const txBuilder = new TransactionBuilder()
+    .addInstructionSet(openPositionIx);
+
+  const data: OpenPositionData = {
+    bundleIndex,
+    positionAddress: bundledPositionPda.publicKey,
+    positionBundle: positionBundlePda.publicKey,
+    positionMint: positionBundle.positionBundleMint,
+    priceMargin,
+    priceRange,
+    tickRange,
+    whirlpoolAddress: whirlpool.getAddress(),
   };
+
+  if (args.liquidity) {
+    const increaseLiquidityIxSet = await genIncreaseLiquidityIxSet({
+      liquidity: args.liquidity,
+      liquidityUnit: args.liquidityUnit,
+      positionAddress: bundledPositionPda.publicKey,
+      positionMint: positionBundle.positionBundleMint,
+      tickRange,
+      whirlpool: args.whirlpool,
+    });
+    txBuilder.addInstructionSet(increaseLiquidityIxSet);
+    data.increaseLiquidityData = increaseLiquidityIxSet.data;
+  }
+
+  return { ...txBuilder.instructionSet, data };
 }
 
 /**

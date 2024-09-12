@@ -1,7 +1,7 @@
+import { type Address } from '@coral-xyz/anchor';
 import { db, debug, handleDBInsertError, handleDBSelectError, type DAOInsertOptions, type DAOOptions, type ErrorWithCode, type Null } from '@npc/core';
 import { getWhirlpoolTokenPair, toWhirlpoolData } from '@npc/orca/util/whirlpool/whirlpool';
 import { isAddress, SolanaTokenDAO, toPubKeyStr } from '@npc/solana';
-import { type Address } from '@orca-so/common-sdk';
 import { type Whirlpool, type WhirlpoolData } from '@orca-so/whirlpools-sdk';
 
 /**

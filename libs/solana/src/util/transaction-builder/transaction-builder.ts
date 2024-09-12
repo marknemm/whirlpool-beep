@@ -2,10 +2,10 @@ import { debug, warn, type Null } from '@npc/core';
 import { genComputeBudget } from '@npc/solana/util/compute-budget/compute-budget';
 import env from '@npc/solana/util/env/env';
 import rpc from '@npc/solana/util/rpc/rpc';
-import { signTx, toTxInstructions } from '@npc/solana/util/transaction-exec/transaction-exec';
+import { signTx } from '@npc/solana/util/transaction-exec/transaction-exec';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { Transaction, TransactionMessage, VersionedTransaction, type Signer, type TransactionInstruction } from '@solana/web3.js';
-import type { BuildTransactionOptions, BuildTransactionRecord, InstructionSet, ResetTransactionBuilderOptions } from './transaction-builder.interfaces';
+import type { BuildTransactionOptions, BuildTransactionRecord, InstructionSet } from './transaction-builder.interfaces';
 
 /**
  * A builder for constructing a {@link Transaction}.
@@ -21,7 +21,6 @@ export class TransactionBuilder {
     version: 0,
   };
 
-  #buildHistory: BuildTransactionRecord[] = [];
   #cleanupInstructions: TransactionInstruction[] = [];
   #instructions: TransactionInstruction[] = [];
   #signers: Signer[] = [];
@@ -34,37 +33,6 @@ export class TransactionBuilder {
   constructor(
     public readonly buildOpts: BuildTransactionOptions = {}
   ) {}
-
-  /**
-   * Constructs a new {@link TransactionBuilder} from a {@link Transaction} or {@link VersionedTransaction} and {@link Signer}s.
-   *
-   * @param tx The {@link Transaction} or {@link VersionedTransaction} to construct the {@link TransactionBuilder} from.
-   * @param signers The {@link Signer}s to construct the {@link TransactionBuilder} from.
-   * @param buildOpts The {@link BuildTransactionOptions} to use for building the transaction.
-   * @returns A new {@link TransactionBuilder} instance.
-   */
-  static fromTx(
-    tx: Transaction | VersionedTransaction,
-    signers: Signer | readonly Signer[] = [],
-    buildOpts: BuildTransactionOptions = {}
-  ): TransactionBuilder {
-    const instructions = toTxInstructions(tx);
-
-    if (signers && !(signers instanceof Array)) {
-      signers = [signers];
-    }
-
-    return new TransactionBuilder(buildOpts)
-      .addInstructions(...instructions)
-      .addSigners(...signers);
-  }
-
-  /**
-   * The {@link BuildTransactionRecord} history of the {@link TransactionBuilder}.
-   */
-  get buildHistory(): readonly BuildTransactionRecord[] {
-    return this.#buildHistory;
-  }
 
   /**
    * The {@link TransactionInstruction}s used to cleanup temp accounts in the transaction.
@@ -87,16 +55,8 @@ export class TransactionBuilder {
     return {
       cleanupInstructions: this.cleanupInstructions,
       instructions: this.instructions,
-      metadata: {},
       signers: this.signers,
     };
-  }
-
-  /**
-   * The latest {@link BuildTransactionRecord} of the {@link TransactionBuilder}.
-   */
-  get latestBuild(): BuildTransactionRecord | undefined {
-    return this.#buildHistory[this.#buildHistory.length - 1];
   }
 
   /**
@@ -116,8 +76,7 @@ export class TransactionBuilder {
     // Filter out null/undefined instructions
     cleanupInstructions = cleanupInstructions.filter((ix) => ix);
 
-    // Cleanup instructions are added in reverse order
-    this.#cleanupInstructions.unshift(...cleanupInstructions as TransactionInstruction[]);
+    this.#cleanupInstructions.push(...cleanupInstructions as TransactionInstruction[]);
 
     return this;
   }
@@ -133,6 +92,23 @@ export class TransactionBuilder {
     instructions = instructions?.filter((ix) => ix);
 
     this.#instructions.push(...instructions as TransactionInstruction[]);
+
+    return this;
+  }
+
+  /**
+   * Adds an {@link InstructionSet} to the {@link TransactionBuilder}.
+   * If the {@link InstructionSet} is `null`, it is ignored.
+   *
+   * @param instructionSet The {@link InstructionSet} to add to the {@link TransactionBuilder}.
+   * @returns This {@link TransactionBuilder} instance.
+   */
+  addInstructionSet(instructionSet: InstructionSet | Null): this {
+    if (instructionSet) {
+      this.addCleanupInstructions(...instructionSet.cleanupInstructions)
+          .addInstructions(...instructionSet.instructions)
+          .addSigners(...instructionSet.signers);
+    }
 
     return this;
   }
@@ -174,8 +150,8 @@ export class TransactionBuilder {
       commitment: buildOpts.commitment,
       computeBudget: buildOpts.computeBudget,
       instructionCnt: this.instructions.length + this.cleanupInstructions.length,
+      priorityFeeAugment: buildOpts.priorityFeeAugment,
       signerCnt: this.signers.length,
-      buildAttempt: this.#buildHistory.length,
     };
 
     try {
@@ -185,19 +161,26 @@ export class TransactionBuilder {
       const computeBudget = await genComputeBudget(
         this.instructions,
         buildOpts.computeBudget,
-        this.#buildHistory.length
+        buildOpts.priorityFeeAugment
       );
       const blockhashWithExpiry = await rpc().getLatestBlockhash(buildOpts.commitment);
+
+      // Combine all instructions
+      const instructions = [
+        ...computeBudget.instructions,
+        ...this.instructions,
+        ...this.cleanupInstructions.toReversed() // Must cleanup in reverse order
+      ];
 
       // Build transaction with specified version
       const tx = (buildOpts.version === 'legacy')
         ? new Transaction({
             feePayer: buildOpts.wallet.publicKey,
             ...blockhashWithExpiry,
-          }).add(...computeBudget.instructions, ...this.instructions, ...this.cleanupInstructions)
+          }).add(...instructions)
         : new VersionedTransaction(
             new TransactionMessage({
-              instructions: [...computeBudget.instructions, ...this.instructions, ...this.cleanupInstructions],
+              instructions,
               payerKey: buildOpts.wallet.publicKey,
               recentBlockhash: blockhashWithExpiry.blockhash,
             }).compileToV0Message(buildOpts.addressLookupTableAccounts)
@@ -230,7 +213,6 @@ export class TransactionBuilder {
         priorityFeeLamports,
       });
 
-      this.#buildHistory.push(buildRecord);
       return buildRecord;
     } catch (err) {
       warn('Tx build failed:', opMeta);
@@ -241,17 +223,31 @@ export class TransactionBuilder {
   /**
    * Resets the {@link TransactionBuilder} to its initial state.
    *
-   * @param opts The {@link ResetTransactionBuilderOptions} to use for resetting the builder.
+   * @param instructionSet The {@link InstructionSet} to set on the {@link TransactionBuilder}.
    * @returns This {@link TransactionBuilder} instance.
    */
-  reset(opts: ResetTransactionBuilderOptions = {}): this {
+  reset(instructionSet?: InstructionSet): this {
     this.#cleanupInstructions = [];
     this.#instructions = [];
     this.#signers = [];
 
-    if (!opts.retainBuildHistory) {
-      this.#buildHistory = [];
+    if (instructionSet) {
+      this.setInstructionSet(instructionSet);
     }
+
+    return this;
+  }
+
+  /**
+   * Sets the {@link InstructionSet} of the {@link TransactionBuilder}.
+   *
+   * @param instructionSet The {@link InstructionSet} to set on the {@link TransactionBuilder}.
+   * @returns This {@link TransactionBuilder} instance.
+   */
+  setInstructionSet(instructionSet: InstructionSet): this {
+    this.addCleanupInstructions(...instructionSet.cleanupInstructions)
+        .addInstructions(...instructionSet.instructions)
+        .addSigners(...instructionSet.signers);
 
     return this;
   }

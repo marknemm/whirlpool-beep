@@ -15,7 +15,7 @@ export async function rebalance() {
   const {
     genPriceRangeRebalanceFilter,
     rebalanceAllPositions
-  } = await import('@npc/orca/services/position/rebalance/rebalance-position');
+  } = await import('@npc/orca/services/rebalance-position/rebalance-position');
 
   // Rebalance all positions
   await rebalanceAllPositions({

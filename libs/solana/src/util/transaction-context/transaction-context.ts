@@ -2,18 +2,14 @@ import { expBackoff, warn } from '@npc/core';
 import env from '@npc/solana/util/env/env';
 import TransactionBuilder from '@npc/solana/util/transaction-builder/transaction-builder';
 import { confirmTx, sendTx, simulateTx } from '@npc/solana/util/transaction-exec/transaction-exec';
-import { SimulatedTransactionResponse, type SendTransactionError, type Signer, type SimulateTransactionConfig, type Transaction, type TransactionInstruction, type TransactionSignature, type VersionedTransaction } from '@solana/web3.js';
-import { getTxSummary, TxSummary } from '../transaction-query/transaction-query';
-import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionSet, InstructionSetObject, ResetTransactionContextOptions, SendTransactionOptions, SendTransactionRecord, SimulateTransactionOptions, TransactionContextOptions, TransactionMetadata } from './transaction-context.interfaces';
+import { getTxSummary, type TxSummary } from '@npc/solana/util/transaction-query/transaction-query';
+import { type SendTransactionError, type SimulatedTransactionResponse, type SimulateTransactionConfig, type Transaction, type TransactionSignature, type VersionedTransaction } from '@solana/web3.js';
+import type { BuildTransactionOptions, BuildTransactionRecord, ConfirmTransactionOptions, InstructionSet, ResetTransactionContextOptions, SendTransactionOptions, SendTransactionRecord, SimulateTransactionOptions, TransactionContextOptions } from './transaction-context.interfaces';
 
 /**
  * A context for building, sending, confirming, and retrying {@link Transaction}s or {@link VersionedTransaction}s.
- *
- * @param T The {@link InstructionSetObject} that describes the instruction sets contained in this context.
  */
-export class TransactionContext<
-  T extends InstructionSetObject = InstructionSetObject
-> implements InstructionSet<TransactionMetadata<T>> {
+export class TransactionContext extends TransactionBuilder {
 
   /**
    * The default {@link ConfirmTransactionOptions} to use for confirming a {@link Transaction} or {@link VersionedTransaction}.
@@ -34,9 +30,7 @@ export class TransactionContext<
   readonly confirmOpts: ConfirmTransactionOptions;
   readonly sendOpts: SendTransactionOptions;
 
-  readonly #builder: TransactionBuilder;
-  readonly #instructionSetMap = new Map<keyof T, T[keyof T]>();
-
+  #buildHistory: BuildTransactionRecord[] = [];
   #sendHistory: SendTransactionRecord[] = [];
 
   /**
@@ -45,56 +39,23 @@ export class TransactionContext<
    * @param ctxOpts The {@link TransactionContextOptions} to use for the {@link TransactionContext} instance.
    */
   constructor(ctxOpts: TransactionContextOptions = {}) {
-    this.#builder = new TransactionBuilder(ctxOpts.buildOpts);
+    super(ctxOpts.buildOpts);
     this.confirmOpts = ctxOpts.confirmOpts ?? {};
     this.sendOpts = ctxOpts.sendOpts ?? {};
-  }
-
-  /**
-   * Constructs a new {@link TransactionContext} from a single {@link InstructionSet}.
-   *
-   * @param ixSet The {@link InstructionSet} to construct the {@link TransactionContext} from.
-   * @param ctxOpts The {@link TransactionContextOptions} to use for the {@link TransactionContext} instance.
-   * @returns A new {@link TransactionContext} instance.
-   */
-  static fromIxSet<T extends InstructionSet>(
-    ixSet: T,
-    ctxOpts: TransactionContextOptions = {}
-  ): TransactionContext<{ 'default': T }> {
-    return new TransactionContext<{ 'default': T }>(ctxOpts)
-      .setInstructionSet('default', ixSet);
   }
 
   /**
    * The {@link BuildTransactionRecord} history of the {@link TransactionContext}.
    */
   get buildHistory(): readonly BuildTransactionRecord[] {
-    return this.#builder.buildHistory;
-  }
-
-  /**
-   * The cleanup {@link TransactionInstruction}s of the {@link TransactionContext}.
-   */
-  get cleanupInstructions(): readonly TransactionInstruction[] {
-    return this.#instructionSetArray.reverse().flatMap(
-      (ctx) => ctx.cleanupInstructions
-    );
-  }
-
-  /**
-   * The {@link TransactionInstruction}s of the {@link TransactionContext}.
-   */
-  get instructions(): readonly TransactionInstruction[] {
-    return this.#instructionSetArray.flatMap(
-      (ctx) => ctx?.instructions
-    );
+    return this.#buildHistory;
   }
 
   /**
    * The latest {@link BuildTransactionRecord} of the {@link TransactionContext}.
    */
   get latestBuild(): BuildTransactionRecord | undefined {
-    return this.#builder.latestBuild;
+    return this.buildHistory[this.buildHistory.length - 1];
   }
 
   /**
@@ -102,17 +63,6 @@ export class TransactionContext<
    */
   get latestSend(): SendTransactionRecord | undefined {
     return this.sendHistory[this.sendHistory.length - 1];
-  }
-
-  /**
-   * The metadata of the {@link TransactionContext}.
-   */
-  get metadata(): TransactionMetadata<T> {
-    return Object.fromEntries(
-      Array.from(this.#instructionSetMap.entries()).map(
-        ([key, ixSet]) => [key, ixSet.metadata]
-      )
-    ) as TransactionMetadata<T>;
   }
 
   /**
@@ -131,37 +81,12 @@ export class TransactionContext<
     return this.latestSend?.signature;
   }
 
-  /**
-   * The {@link Signer}s of the {@link TransactionContext}.
-   */
-  get signers(): readonly Signer[] {
-    return this.#instructionSetArray.flatMap(
-      (builder) => builder.signers
-    );
-  }
-
-  /**
-   * Array of {@link InstructionSet}s of the {@link TransactionContext}.
-   */
-  get #instructionSetArray(): T[keyof T][] {
-    return Array.from(this.#instructionSetMap.values()) as T[keyof T][];
-  }
-
-  /**
-   * Builds a {@link Transaction} or {@link VersionedTransaction} from the {@link TransactionContext}.
-   *
-   * @param opts The {@link BuildTransactionOptions} to use for building the transaction.
-   * @returns A {@link Promise} that resolves to the {@link BuildTransactionRecord}.
-   */
-  async build(opts: BuildTransactionOptions = {}): Promise<BuildTransactionRecord> {
-    opts.debugData ??= this.metadata;
-
-    return this.#builder
-      .reset({ retainBuildHistory: true })
-      .addCleanupInstructions(...this.cleanupInstructions)
-      .addInstructions(...this.instructions)
-      .addSigners(...this.signers)
-      .build(opts);
+  /** @inheritdoc */
+  async build(buildOpts: BuildTransactionOptions = {}): Promise<BuildTransactionRecord> {
+    buildOpts.priorityFeeAugment ??= this.#sendHistory.length;
+    const buildRecord = await super.build(buildOpts);
+    this.#buildHistory.push(buildRecord);
+    return buildRecord;
   }
 
   /**
@@ -170,8 +95,42 @@ export class TransactionContext<
    * @param opts The {@link ResetTransactionContextOptions} to use for resetting the context.
    * @returns This {@link TransactionContext} instance.
    */
-  reset(opts: ResetTransactionContextOptions = {}): this {
-    this.#builder.reset(opts);
+  reset(opts?: ResetTransactionContextOptions): this;
+
+  /**
+   * Resets the {@link TransactionContext} to its initial state.
+   *
+   * @param instructionSet The {@link InstructionSet} to reset the state to.
+   * @param opts The {@link ResetTransactionContextOptions} to use for resetting the context.
+   * @returns This {@link TransactionContext} instance.
+   */
+  reset(instructionSet?: InstructionSet, opts?: ResetTransactionContextOptions): this;
+
+  /**
+   * Resets the {@link TransactionContext} to its initial state.
+   *
+   * @param optsOrState The {@link ResetTransactionContextOptions} or the {@link InstructionSet} to reset the state to.
+   * If not provided, resets to an empty state.
+   * @param opts The {@link ResetTransactionContextOptions} to use for resetting the context.
+   * @returns This {@link TransactionContext} instance.
+   */
+  reset(
+    optsOrState?: InstructionSet | ResetTransactionContextOptions,
+    opts: ResetTransactionContextOptions = {}
+  ): this {
+    const instructionSet = ('instructions' in (optsOrState ?? {}))
+      ? optsOrState as InstructionSet
+      : undefined;
+
+    opts ??= !('instructions' in (optsOrState ?? {}))
+      ? optsOrState as ResetTransactionContextOptions
+      : {};
+
+    super.reset(instructionSet);
+
+    if (!opts.retainBuildHistory) {
+      this.#buildHistory = [];
+    }
 
     if (!opts.retainSendHistory) {
       this.#sendHistory = [];
@@ -186,10 +145,9 @@ export class TransactionContext<
    * @param sendOpts The {@link SendTransactionOptions} to use for sending the transaction.
    * @returns A {@link Promise} that resolves to the {@link SendTransactionRecord}.
    */
-  async send(sendOpts: SendTransactionOptions = {}): Promise<TxSummary<this>> {
+  async send(sendOpts: SendTransactionOptions = {}): Promise<TxSummary> {
     // Prepare send options
     sendOpts = { ...TransactionContext.DEFAULT_SEND_TX_OPTS, ...this.sendOpts, ...sendOpts };
-    sendOpts.debugData ??= this.metadata;
 
     // Transaction send record - added to history on both success and error
     let sendRecord: SendTransactionRecord = { sendOpts };
@@ -234,34 +192,11 @@ export class TransactionContext<
         ),
       });
 
-      const txSummary = await getTxSummary(signature);
-      return { ...txSummary, instructionSet: this };
+      return getTxSummary(signature);
     } catch (err) {
       warn('Send Tx failed:', sendOpts.debugData);
       throw err;
     }
-  }
-
-  /**
-   * Gets the {@link InstructionSet} with the given name.
-   *
-   * @param name The name of the {@link InstructionSet} to get.
-   * @returns The {@link InstructionSet} with the given name.
-   */
-  getInstructionSet<K extends keyof T>(name: K): T[K] | undefined {
-    return this.#instructionSetMap.get(name) as T[K] | undefined;
-  }
-
-  /**
-   * Sets the {@link InstructionSet} with the given name.
-   *
-   * @param name The name of the {@link InstructionSet} to set.
-   * @param value The {@link InstructionSet} to set.
-   * @returns This {@link TransactionContext} instance.
-   */
-  setInstructionSet<K extends keyof T>(name: K, value: T[K]): this {
-    this.#instructionSetMap.set(name, value);
-    return this;
   }
 
   /**
@@ -272,8 +207,6 @@ export class TransactionContext<
    * @throws If the simulation fails.
    */
   async simulate(opts: SimulateTransactionOptions = {}): Promise<SimulatedTransactionResponse> {
-    opts.debugData ??= this.metadata;
-
     const buildRecord = opts.useLatestBuild
       ? this.latestBuild ?? await this.build(opts.buildOpts)
       : await this.build(opts.buildOpts);

@@ -1,14 +1,13 @@
 import { BN, type Address } from '@coral-xyz/anchor';
 import { error, expBackoff, info, numericToString, toBN } from '@npc/core';
 import OrcaLiquidityDAO from '@npc/orca/data/orca-liquidity/orca-liquidity.dao';
-import type { LiquidityTxSummary } from '@npc/orca/services/liquidity/interfaces/liquidity-tx.interfaces';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
 import env from '@npc/orca/util/env/env';
+import { getPositions } from '@npc/orca/util/position/position';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
-import { getProgramErrorInfo, getTransferTotalsFromIxs, getTxSummary, SendTransactionResult, TransactionContext } from '@npc/solana';
+import { getProgramErrorInfo, TransactionContext } from '@npc/solana';
 import { Percentage } from '@orca-so/common-sdk';
 import { decreaseLiquidityQuoteByLiquidityWithParams, IGNORE_CACHE, TokenExtensionUtil, type Position } from '@orca-so/whirlpools-sdk';
-import { DecreaseLiquidityIxArgs, DecreaseLiquidityIxData } from './decrease-liquidity.interfaces';
+import type { DecreaseLiquidityArgs, DecreaseLiquidityIxSet, DecreaseLiquiditySummary } from './decrease-liquidity.interfaces';
 
 /**
  * Decreases liquidity of all {@link Position}s in a {@link Whirlpool}.
@@ -20,10 +19,10 @@ import { DecreaseLiquidityIxArgs, DecreaseLiquidityIxData } from './decrease-liq
 export async function decreaseAllLiquidity(
   whirlpoolAddress: Address,
   amount: BN | number
-): Promise<Map<string, LiquidityTxSummary>> {
+): Promise<Map<string, DecreaseLiquiditySummary>> {
   info('\n-- Decrease All liquidity --');
 
-  const txSummaries = new Map<string, LiquidityTxSummary>();
+  const txSummaries = new Map<string, DecreaseLiquiditySummary>();
 
   const bundledPositions = await getPositions({ whirlpoolAddress });
   const divAmount = new BN(amount).div(new BN(bundledPositions.length));
@@ -50,14 +49,14 @@ export async function decreaseAllLiquidity(
  *
  * @param position The {@link Position} to decrease the liquidity of.
  * @param amount The amount of liquidity to withdraw from the {@link Position}.
- * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
+ * @returns A {@link Promise} that resolves to the {@link DecreaseLiquiditySummary}.
  * @throws An {@link Error} if the transaction fails to complete.
  */
 export async function decreaseLiquidity(
   position: Position,
   amount: BN | number
-): Promise<LiquidityTxSummary> {
-  const transactionCtx = new TransactionContext();
+): Promise<DecreaseLiquiditySummary> {
+  const txCtx = new TransactionContext();
   const opMetadata = {
     whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
     position: position.getAddress().toBase58(),
@@ -65,7 +64,7 @@ export async function decreaseLiquidity(
   };
 
   try {
-    return expBackoff(async (retry) => {
+    const summary = await expBackoff(async (retry) => {
       info('\n-- Decreasing liquidity --\n', {
         ...opMetadata,
         retry,
@@ -77,24 +76,27 @@ export async function decreaseLiquidity(
       }
 
       // Generate instruction data to decrease liquidity
-      const ixData = await genDecreaseLiquidityIxData({ position, liquidity: amount });
+      const ixSet = await genDecreaseLiquidityIxSet({ position, liquidity: amount });
 
       // Execute and verify the transaction
-      const sendResult = await transactionCtx
-        .resetInstructionData(ixData)
-        .send();
+      const txSummary = await txCtx.send({
+        debugData: {
+          name: 'Decrease Liquidity',
+          ...ixSet.data,
+        }
+      });
 
-      // Get Liquidity tx summary and insert into DB
-      const txSummary = await genDecreaseLiquidityTxSummary(position, ixData, sendResult);
-      await OrcaLiquidityDAO.insert(txSummary, { catchErrors: true });
-
-      return txSummary;
+      return { ...txSummary, data: ixSet.data };
     }, {
       retryFilter: (result, err) => {
         const errInfo = getProgramErrorInfo(err);
         return ['InvalidTimestamp', 'LiquidityUnderflow', 'TokenMinSubceeded'].includes(errInfo?.name ?? '');
       },
     });
+
+    // Insert the liquidity transaction summary into the database
+    await OrcaLiquidityDAO.insert(summary, { catchErrors: true });
+    return summary;
   } catch (err) {
     error('Failed to decrease liquidity:', opMetadata);
     throw err;
@@ -102,15 +104,15 @@ export async function decreaseLiquidity(
 }
 
 /**
- * Creates {@link DecreaseLiquidityIxData} to decrease liquidity in a given {@link Position}.
+ * Creates {@link DecreaseLiquidityIxSet} to decrease liquidity in a given {@link Position}.
  *
- * @param ixArgs The {@link DecreaseLiquidityIxArgs} for generating the instruction data.
- * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityIxData}.
+ * @param args The {@link DecreaseLiquidityArgs} for generating the instruction data.
+ * @returns A {@link Promise} that resolves to the {@link DecreaseLiquidityIxSet}.
  * @throws An {@link Error} if the transaction amount is 0 or greater than position liquidity.
  */
-export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs): Promise<DecreaseLiquidityIxData> {
-  const { position } = ixArgs;
-  const liquidity = toBN(ixArgs.liquidity);
+export async function genDecreaseLiquidityIxSet(args: DecreaseLiquidityArgs): Promise<DecreaseLiquidityIxSet> {
+  const { position } = args;
+  const liquidity = toBN(args.liquidity);
 
   info('Creating Tx to decrease liquidity:', {
     position: position.getAddress().toBase58(),
@@ -151,72 +153,19 @@ export async function genDecreaseLiquidityIxData(ixArgs: DecreaseLiquidityIxArgs
     [`${tokenB.metadata.symbol} Min`]: numericToString(quote.tokenMinB, tokenB.mint.decimals),
   });
 
-  const tx = await position.decreaseLiquidity(quote);
+  const ixSet = (
+    await position.decreaseLiquidity(quote)
+  ).compressIx(false);
+
   return {
-    ...tx.compressIx(false),
-    ixArgs,
-    positionAddress: position.getAddress(),
-    quote,
-    whirlpoolAddress: position.getData().whirlpool,
-    debugData: {
-      name: 'Decrease Liquidity',
-      whirlpool: await formatWhirlpool(position.getWhirlpoolData()),
-      position: position.getAddress().toBase58(),
-      liquidity: liquidity.toString(),
-      [`${tokenA.metadata.symbol} Min`]: numericToString(quote.tokenMinA, tokenA.mint.decimals),
-      [`${tokenB.metadata.symbol} Min`]: numericToString(quote.tokenMinB, tokenB.mint.decimals),
-    }
+    ...ixSet,
+    data: {
+      ...quote,
+      positionAddress: position.getAddress(),
+      tokenMintPair: [tokenA.mint.publicKey, tokenB.mint.publicKey],
+      whirlpoolAddress: position.getData().whirlpool,
+    },
   };
-}
-
-/**
- * Generates a {@link LiquidityTxSummary}.
- *
- * @param position The {@link Position} to get the {@link LiquidityTxSummary} for.
- * @param ixData The {@link DecreaseLiquidityIxData} for the transaction that changed the liquidity.
- * @param sendResult The {@link TransactionSendResult} of the transaction that changed the liquidity.
- * @returns A {@link Promise} that resolves to the {@link LiquidityTxSummary}.
- */
-export async function genDecreaseLiquidityTxSummary(
-  position: Position,
-  ixData: DecreaseLiquidityIxData,
-  sendResult: SendTransactionResult,
-): Promise<LiquidityTxSummary> {
-  const [tokenA, tokenB] = await getWhirlpoolTokenPair(position.getWhirlpoolData());
-  const txSummary = await getTxSummary(sendResult);
-
-  const liquidityIx = txSummary.decodedIxs.find(
-    (ix) => /decrease\s*liquidity/i.test(ix.name)
-  );
-  if (!liquidityIx) throw new Error('No decrease liquidity instruction found in transaction');
-  const { tokenTotals, usd } = await getTransferTotalsFromIxs([liquidityIx]);
-
-  const liquidityTxSummary: LiquidityTxSummary = {
-    liquidity: toBN(ixData.ixArgs.liquidity).neg(),
-    liquidityUnit: 'liquidity',
-    position,
-    slippage: Percentage.fromFraction(
-      ixData.quote.tokenEstA,
-      ixData.quote.tokenMinA
-    ).toDecimal().toNumber() - 1,
-    tokenAmountA: tokenTotals.get(tokenA.mint.publicKey)?.neg() ?? new BN(0),
-    tokenAmountB: tokenTotals.get(tokenB.mint.publicKey)?.neg() ?? new BN(0),
-    ...txSummary,
-    usd: usd * -1, // Tx data is in relationship to wallet, so negate to get flow in/out of pool
-  };
-
-  info('Decrease liquidity tx summary:', {
-    whirlpool: await formatWhirlpool(liquidityTxSummary.position.getWhirlpoolData()),
-    position: liquidityTxSummary.position.getAddress().toBase58(),
-    liquidity: liquidityTxSummary.liquidity.toString(),
-    [tokenA.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountA, tokenA.mint.decimals),
-    [tokenB.metadata.symbol]: numericToString(liquidityTxSummary.tokenAmountB, tokenB.mint.decimals),
-    usd: `$${liquidityTxSummary.usd}`,
-    fee: liquidityTxSummary.fee,
-    signature: liquidityTxSummary.signature,
-  });
-
-  return liquidityTxSummary;
 }
 
 export type * from './decrease-liquidity.interfaces';

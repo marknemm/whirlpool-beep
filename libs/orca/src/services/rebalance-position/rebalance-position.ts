@@ -1,11 +1,10 @@
 import { error, info, timeout } from '@npc/core';
 import OrcaPositionDAO from '@npc/orca/data/orca-position/orca-position.dao';
 import OrcaRebalanceDAO from '@npc/orca/data/orca-rebalance/orca-rebalance.dao';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { closePosition } from '@npc/orca/services/position/close/close-position';
-import { openPosition } from '@npc/orca/services/position/open/open-position';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
+import { closePosition } from '@npc/orca/services/close-position/close-position';
+import { openPosition } from '@npc/orca/services/open-position/open-position';
 import env from '@npc/orca/util/env/env';
+import { getPosition, getPositions, type BundledPosition } from '@npc/orca/util/position/position';
 import { calcPriceMargin, toPriceRange } from '@npc/orca/util/tick-range/tick-range';
 import whirlpoolClient, { formatWhirlpool, getWhirlpoolPrice, getWhirlpoolTokenPair } from '@npc/orca/util/whirlpool/whirlpool';
 import { Percentage } from '@orca-so/common-sdk';
@@ -111,14 +110,15 @@ export async function rebalancePosition(
         ?? env.INCREASE_LIQUIDITY;
 
       // Open new position
-      const openPositionTxSummary = await openPosition({
+      const openPositionSummary = await openPosition({
         whirlpool,
         liquidity,
         liquidityUnit,
         priceMargin,
         bundleIndex: bundledPosition.bundleIndex // Use same bundle index to maintain position address
       });
-      const { bundledPosition: bundledPositionNew, priceRange, tickRange } = openPositionTxSummary;
+      const { positionAddress, priceRange, tickRange } = openPositionSummary.data;
+      const bundledPositionNew = await getPosition(positionAddress);
       const positionNew = bundledPositionNew.position;
 
       // Record rebalance transaction summary

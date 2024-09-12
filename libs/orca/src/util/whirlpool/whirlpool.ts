@@ -109,8 +109,9 @@ export async function getWhirlpoolPrice(whirlpool: Whirlpool | WhirlpoolData): P
  * @see https://github.com/solflare-wallet/utl-api?tab=readme-ov-file#search-by-content API for querying tokens.
  */
 export async function getWhirlpoolTokenPair(
-  whirlpool: Whirlpool | WhirlpoolData
+  whirlpool: Address | Whirlpool | WhirlpoolData
 ): Promise<[DigitalAsset, DigitalAsset]> {
+  whirlpool = await resolveWhirlpool(whirlpool);
   const whirlpoolData = toWhirlpoolData(whirlpool);
 
   return getTokenPair(

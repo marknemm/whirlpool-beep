@@ -1,8 +1,6 @@
 import { error, info, type CliArgs } from '@npc/core';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
-import { getPositions } from '@npc/orca/services/position/query/query-position';
-import { formatPosition } from '@npc/orca/util/position/position';
+import { formatPosition, getPositions, type BundledPosition } from '@npc/orca/util/position/position';
 import { formatWhirlpool } from '@npc/orca/util/whirlpool/whirlpool';
 import { WhirlpoolData } from '@orca-so/whirlpools-sdk';
 import { green } from 'colors';

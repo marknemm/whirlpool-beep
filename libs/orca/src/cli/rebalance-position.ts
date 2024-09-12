@@ -1,9 +1,9 @@
 import { error, type CliArgs } from '@npc/core';
 import { genGetPositionCliOpts, genLiquidityCliOpts } from '@npc/orca/cli/common/position-opts';
 import { genGetWhirlpoolCliOpts, getWhirlpoolAddressFromCliArgs } from '@npc/orca/cli/common/whirlpool-opts';
-import { getPosition, getPositionAtIdx } from '@npc/orca/services/position/query/query-position';
-import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@npc/orca/services/position/rebalance/rebalance-position';
-import type { RebalanceAllPositionsOptions } from '@npc/orca/services/position/rebalance/rebalance-position.interfaces';
+import { genPriceRangeRebalanceFilter, rebalanceAllPositions, rebalancePosition } from '@npc/orca/services/rebalance-position/rebalance-position';
+import type { RebalanceAllPositionsOptions } from '@npc/orca/services/rebalance-position/rebalance-position.interfaces';
+import { getPosition, getPositionAtIdx } from '@npc/orca/util/position/position';
 import { Percentage } from '@orca-so/common-sdk';
 import { type Argv } from 'yargs';
 

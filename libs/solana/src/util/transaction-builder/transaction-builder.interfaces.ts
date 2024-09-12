@@ -5,19 +5,12 @@ import type { AddressLookupTableAccount, BlockhashWithExpiryBlockHeight, Commitm
 /**
  * A transaction instruction set containing data for an atomic set of {@link TransactionInstruction}s.
  */
-export interface InstructionSet<T_META extends object = object> {
+export interface InstructionSet {
 
   /**
    * The cleanup {@link TransactionInstruction}s to be run at the end of the transaction.
    */
   cleanupInstructions: readonly TransactionInstruction[];
-
-  /**
-   * The metadata of the instruction set.
-   *
-   * Typically used to store data used to build or derive the instruction set.
-   */
-  metadata: T_META;
 
   /**
    * The {@link TransactionInstruction}s to be run in the transaction.
@@ -61,6 +54,14 @@ export interface BuildTransactionOptions {
    * Debug data to log when building the transaction.
    */
   debugData?: unknown;
+
+  /**
+   * A weight used to augment the priority fee set within the built transaction.
+   * Typically set as the number of retries for sending the built transaction.
+   *
+   * @default 0
+   */
+  priorityFeeAugment?: number;
 
   /**
    * The {@link SignTransactionOptions} to use when signing the transaction.
@@ -126,20 +127,6 @@ export interface BuildTransactionRecord {
    * The {@link Wallet} used as the payer.
    */
   wallet: Wallet;
-
-}
-
-/**
- * Options for resetting a transaction builder.
- */
-export interface ResetTransactionBuilderOptions {
-
-  /**
-   * Whether to retain the build history.
-   *
-   * @default false
-   */
-  retainBuildHistory?: boolean;
 
 }
 

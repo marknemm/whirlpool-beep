@@ -1,5 +1,5 @@
 import type { LiquidityUnit } from '@npc/core';
-import type { BundledPosition } from '@npc/orca/interfaces/position.interfaces';
+import type { BundledPosition } from '@npc/orca/util/position/position';
 import type { Address, Percentage } from '@orca-so/common-sdk';
 import type { Position } from '@orca-so/whirlpools-sdk';
 import type BN from 'bn.js';

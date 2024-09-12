@@ -1,4 +1,4 @@
-import type { BuildTransactionOptions, BuildTransactionRecord, InstructionSet, ResetTransactionBuilderOptions } from '@npc/solana/util/transaction-builder/transaction-builder';
+import type { BuildTransactionOptions, BuildTransactionRecord } from '@npc/solana/util/transaction-builder/transaction-builder';
 import type { SendTransactionConfig, SimulateTransactionConfig } from '@npc/solana/util/transaction-exec/transaction-exec.interfaces';
 import type { BlockhashWithExpiryBlockHeight, Commitment, TransactionSignature } from '@solana/web3.js';
 import type TransactionContext from './transaction-context';
@@ -125,7 +125,14 @@ export interface SimulateTransactionOptions extends SimulateTransactionConfig {
 
 }
 
-export interface ResetTransactionContextOptions extends ResetTransactionBuilderOptions {
+export interface ResetTransactionContextOptions {
+
+  /**
+   * Whether to retain the build history.
+   *
+   * @default false
+   */
+  retainBuildHistory?: boolean;
 
   /**
    * Whether to retain the send history.
@@ -158,18 +165,5 @@ export interface TransactionContextOptions {
 
 }
 
-/**
- * Instruction set object type for a {@link TransactionContext}.
- */
-export type InstructionSetObject = Record<string, InstructionSet>;
-
-/**
- * Metadata for a {@link TransactionContext}.
- */
-export type TransactionMetadata<T extends InstructionSet | InstructionSetObject> = T extends InstructionSet<infer U>
-  ? U
-  : { [K in keyof T]: T[K] extends InstructionSet<infer U> ? U : never };
-
-export type * from '@npc/solana/util/compute-budget/compute-budget.interfaces';
 export type * from '@npc/solana/util/transaction-builder/transaction-builder.interfaces';
 

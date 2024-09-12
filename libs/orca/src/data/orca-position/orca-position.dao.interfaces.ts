@@ -1,3 +1,11 @@
+import type { OrcaPosition } from '@npc/core';
+import type { Selectable } from 'kysely';
+
+/**
+ * A single row in the `orca_position` table.
+ */
+export type OrcaPositionRow = Selectable<OrcaPosition>;
+
 /**
  * The results of the `updateEmptied` data access operation.
  */

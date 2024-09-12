@@ -1,16 +1,16 @@
 import { debug, expBackoff, toNumber, tokenAmountToUSD, warn } from '@npc/core';
 import { addressEquals } from '@npc/solana/util/address/address';
+import type { ComputeBudget } from '@npc/solana/util/compute-budget/compute-budget.interfaces';
 import { decodeTransaction } from '@npc/solana/util/program/program';
 import type { DecodedTransactionIx, TokenTransfer } from '@npc/solana/util/program/program.interfaces';
 import rpc from '@npc/solana/util/rpc/rpc';
 import { getToken, getTokenPrice } from '@npc/solana/util/token/token';
-import { ComputeBudget } from '@npc/solana/util/transaction-context/transaction-context';
 import { toLamports } from '@npc/solana/util/unit-conversion/unit-conversion';
 import wallet from '@npc/solana/util/wallet/wallet';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ComputeBudgetProgram, SetComputeUnitLimitParams, SetComputeUnitPriceParams, VersionedTransactionResponse, type TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
-import type { TransferTotals, TxSummary } from './transaction-query.interfaces';
+import type { IxSummary, TransferTotals, TxSummary } from './transaction-query.interfaces';
 
 const _txCache = new Map<string, VersionedTransactionResponse>();
 const _txSummaryCache = new Map<string, TxSummary>();
@@ -55,9 +55,8 @@ export async function getTxSummary(signature: TransactionSignature): Promise<TxS
       blockTime: new Date(),
       computeBudget: {},
       computeUnitsConsumed: 0,
-      decodedIxs: [],
       fee: 0,
-      instructionSet: undefined,
+      instructions: [],
       priorityFee: 0,
       signature,
       size: 0,
@@ -84,16 +83,17 @@ export async function getTxSummary(signature: TransactionSignature): Promise<TxS
 
       // Decode instructions with best attempt - do not throw errors if decode fails
       try {
-        // Assign decoded instructions
-        txSummary.decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
+        // Assign decoded instruction summaries
+        const decodedIxs = await decodeTransaction({ ...transaction, meta, signature });
+        txSummary.instructions = await Promise.all(decodedIxs.map((ix) => getIxSummary(ix)));
 
         // Assign transaction compute budget data
         txSummary.computeBudget = await getComputeBudget(signature);
 
         // Assign token transfer data
         txSummary.transfers = await getTransfers(signature);
-        const { tokenTotals, usd } = await getTransferTotals(signature);
-        txSummary.tokens = tokenTotals;
+        const { tokens, usd } = await getTransferTotals(signature);
+        txSummary.tokens = tokens;
         txSummary.usd = usd;
       } catch (err) {
         warn('Error decoding transaction instructions:', err);
@@ -106,6 +106,24 @@ export async function getTxSummary(signature: TransactionSignature): Promise<TxS
   }
 
   return _txSummaryCache.get(signature)!;
+}
+
+/**
+ * Gets the summary of a decoded instruction.
+ *
+ * @param decodedIx The {@link DecodedTransactionIx} to get the summary of.
+ * @returns A {@link Promise} that resolves to the {@link IxSummary}.
+ */
+export async function getIxSummary(decodedIx: DecodedTransactionIx): Promise<IxSummary> {
+  const transfers = getTransfersFromIxs([decodedIx]);
+  const { tokens, usd } = await calcTransferTotals(transfers);
+
+  return {
+    ...decodedIx,
+    transfers,
+    tokens,
+    usd,
+  };
 }
 
 /**
@@ -224,17 +242,17 @@ export async function getTransferTotalsFromIxs(
  * @returns A {@link Promise} that resolves to the {@link TransferTotals}.
  */
 export async function calcTransferTotals(transfers: TokenTransfer[]): Promise<TransferTotals> {
-  const tokenTotals = new Map<string, BN>();
+  const tokens = new Map<string, BN>();
   let usd = 0;
 
   // Calculate total token transfer amount deltas and USD delta
   for (const transfer of transfers) {
     // Add token delta to total token delta
-    const baseAmount = tokenTotals.get(transfer.keys.mint) ?? new BN(0);
+    const baseAmount = tokens.get(transfer.keys.mint) ?? new BN(0);
     const deltaAmount = (transfer.keys.destinationOwner === wallet().publicKey.toBase58())
       ? transfer.amount
       : transfer.amount.neg();
-    tokenTotals.set(transfer.keys.mint, baseAmount.add(deltaAmount));
+    tokens.set(transfer.keys.mint, baseAmount.add(deltaAmount));
 
     // Add token delta to total USD delta
     const token = await getToken(transfer.keys.mint);
@@ -242,7 +260,7 @@ export async function calcTransferTotals(transfers: TokenTransfer[]): Promise<Tr
     usd += tokenAmountToUSD(deltaAmount, tokenPrice, token?.mint.decimals).toNumber();
   }
 
-  return { tokenTotals, usd };
+  return { tokens, usd };
 }
 
 export type * from './transaction-query.interfaces';
